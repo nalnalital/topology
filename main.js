@@ -1,12 +1,14 @@
-// File: main.js - Topology viewer with morphing animation
-// Desc: En français, dans l'architecture, je suis le moteur de rendu avec animation morphing barycentrique
-// Version 3.1.0 (ajout animation morphing)
+// File: main.js - Moteur 3D isométrique avec morphing et texture mapping
+// Desc: En français, dans l'architecture, je suis le cœur du moteur de rendu 3D isométrique avec support morphing barycentrique, algorithme faces cachées par raytracing, et texture mapping par transformations affines pour projection de texture complète sur surfaces topologiques
+// Version 3.6.0 (texture mapping par transformations affines optimisé)
 // Author: DNAvatar.org - Arnaud Maignan
-// Date: June 08, 2025 15:45 UTC+1
+// Date: June 08, 2025 19:47 UTC+1
 // Logs:
-//   - Added barycentric morphing animation between surfaces
-//   - Smooth transitions using interpolation
-//   - Convergence detection for smooth stops
+//   - v3.6.0: Texture mapping par transformations affines (scale/rotate/skew), projection complète de texture au lieu d'échantillonnage moyenné
+//   - v3.5.0: Texture mapping avec échantillonnage 4 coins, couleur moyenne par face, rendu dual texture/wireframe
+//   - v3.4.0: Raytracing faces cachées avec classification visible/partiel/caché, couleurs adaptatives
+//   - v3.3.0: Morphing barycentrique avec convergence automatique et interface couleur
+//   - v3.2.0: Projection isométrique native, maillage 30x20, animation 60 FPS
 
 // === IMPORTS ===
 import { config } from './config.js';
@@ -19,6 +21,116 @@ const MESH_V = 20; // Résolution en V (moins en Y)
 const ISO_COS = Math.cos(Math.PI / 6); // cos(30°)
 const ISO_SIN = Math.sin(Math.PI / 6); // sin(30°)
 
+// === CHARGEMENT TEXTURE ===
+function loadTexture() {
+  const img = new Image();
+  img.onload = function() {
+    // Créer canvas hors-écran pour les transformations affines
+    mapCanvas = document.createElement('canvas');
+    mapCanvas.width = img.width;
+    mapCanvas.height = img.height;
+    mapContext = mapCanvas.getContext('2d');
+    mapContext.drawImage(img, 0, 0);
+    
+    pd('loadTexture', 'main.js', `✅ Texture chargée: ${img.width}x${img.height} pixels - Prête pour projection affine`);
+    
+    // Redessiner la scène avec la nouvelle texture
+    requestAnimationFrame(render);
+  };
+  img.onerror = function() {
+    pd('loadTexture', 'main.js', '❌ Erreur chargement texture map.png');
+  };
+  img.src = 'map.png';
+}
+
+// Fonction pour projeter une face texturée (transformation affine optimisée)
+function drawTexturedQuad(ctx, face, vertices, projectedVertices) {
+  if (!mapCanvas) return false;
+  
+  const indices = face.vertices;
+  const v0 = vertices[indices[0]];
+  const v1 = vertices[indices[1]];
+  const v2 = vertices[indices[2]];
+  const v3 = vertices[indices[3]];
+  
+  // Coordonnées UV dans la texture (normalisées [0,1])
+  const u0 = ((v0.u % 1) + 1) % 1;
+  const v0_tex = ((v0.v % 1) + 1) % 1;
+  const u1 = ((v1.u % 1) + 1) % 1;
+  const v1_tex = ((v1.v % 1) + 1) % 1;
+  const u2 = ((v2.u % 1) + 1) % 1;
+  const v2_tex = ((v2.v % 1) + 1) % 1;
+  const u3 = ((v3.u % 1) + 1) % 1;
+  const v3_tex = ((v3.v % 1) + 1) % 1;
+  
+  // Rectangle UV dans la texture (en pixels)
+  const texW = mapCanvas.width;
+  const texH = mapCanvas.height;
+  
+  const minU = Math.min(u0, u1, u2, u3);
+  const maxU = Math.max(u0, u1, u2, u3);
+  const minV = Math.min(v0_tex, v1_tex, v2_tex, v3_tex);
+  const maxV = Math.max(v0_tex, v1_tex, v2_tex, v3_tex);
+  
+  const srcX = Math.floor(minU * texW);
+  const srcY = Math.floor((1 - maxV) * texH); // Inverser Y
+  const srcW = Math.ceil((maxU - minU) * texW);
+  const srcH = Math.ceil((maxV - minV) * texH);
+  
+  // Rectangle de destination à l'écran
+  const p0 = projectedVertices[indices[0]];
+  const p1 = projectedVertices[indices[1]];
+  const p2 = projectedVertices[indices[2]];
+  const p3 = projectedVertices[indices[3]];
+  
+  const minX = Math.min(p0.x, p1.x, p2.x, p3.x);
+  const maxX = Math.max(p0.x, p1.x, p2.x, p3.x);
+  const minY = Math.min(p0.y, p1.y, p2.y, p3.y);
+  const maxY = Math.max(p0.y, p1.y, p2.y, p3.y);
+  
+  const dstW = maxX - minX;
+  const dstH = maxY - minY;
+  
+  // Éviter les transformations trop petites
+  if (srcW < 1 || srcH < 1 || dstW < 1 || dstH < 1) return false;
+  
+  // Sauvegarder l'état du contexte
+  ctx.save();
+  
+  // Clipping du quad pour éviter les débordements
+  ctx.beginPath();
+  ctx.moveTo(p0.x, p0.y);
+  ctx.lineTo(p1.x, p1.y);
+  ctx.lineTo(p2.x, p2.y);
+  ctx.lineTo(p3.x, p3.y);
+  ctx.closePath();
+  ctx.clip();
+  
+  // Transformation affine simple : scale + translate
+  const scaleX = dstW / srcW;
+  const scaleY = dstH / srcH;
+  
+  ctx.translate(minX, minY);
+  ctx.scale(scaleX, scaleY);
+  
+  // Dessiner la portion de texture
+  try {
+    ctx.drawImage(mapCanvas, 
+      Math.max(0, srcX), Math.max(0, srcY), 
+      Math.min(srcW, texW - srcX), Math.min(srcH, texH - srcY),
+      -srcX / scaleX, -srcY / scaleY,
+      texW / scaleX, texH / scaleY
+    );
+  } catch (e) {
+    // Fallback silencieux en cas d'erreur
+  }
+  
+  // Restaurer l'état
+  ctx.restore();
+  
+  return true;
+}
+
 function pd(func, file, msg) {
   console.log(`❌ [${func}][${file}] ${msg}`);
 }
@@ -26,7 +138,20 @@ function pd(func, file, msg) {
 // === MAILLAGE AVEC ANIMATION ===
 let currentMesh = null;
 let targetSurface = 'plane';
+let currentSurface = 'plane';
 let isAnimating = false;
+let dragEnabled = true;
+
+// === TEXTURE MAPPING ===
+let mapCanvas = null;
+let mapContext = null;
+let showTexture = true;
+
+// === FACES CACHÉES AVEC RAYTRACING PAR COINS ===
+let showHiddenFaces = false;
+
+// Direction de vue isométrique (vers le fond)
+const VIEW_DIRECTION = { x: -ISO_COS, y: 0, z: ISO_COS };
 
 function initializeMesh(surfaceFunc) {
   const vertices = [];
@@ -68,12 +193,140 @@ function initializeMesh(surfaceFunc) {
         vertices: [i0, i1, i2, i3], // 4 indices
         center: null, // Calculé plus tard
         normal: null, // Calculé plus tard
-        avgZ: null    // Profondeur après rotation
+        avgZ: null,   // Profondeur après rotation
+        // Nouvelles propriétés pour faces cachées
+        hiddenCorners: 0, // Nombre de coins cachés (0-4)
+        visibility: 'visible' // 'visible', 'partial', 'hidden'
       });
     }
   }
   
   return { vertices, faces };
+}
+
+// === RAYTRACING POUR FACES CACHÉES ===
+
+// Test si un point 3D est caché par d'autres faces
+function isPointOccluded(point3D, excludeFace, allFaces, allVertices) {
+  // Lancer un rayon depuis le point vers le fond (direction de vue)
+  
+  for (let face of allFaces) {
+    if (face === excludeFace) continue; // Ne pas tester contre soi-même
+    
+    // Optimisation : test rapide de profondeur Z
+    if (face.avgZ <= excludeFace.avgZ + 0.1) continue; // Face pas assez devant
+    
+    // Test intersection rayon-face
+    if (rayIntersectsFace(point3D, VIEW_DIRECTION, face, allVertices)) {
+      return true; // Point occulté par cette face
+    }
+  }
+  
+  return false; // Point visible
+}
+
+// Test intersection rayon-face (quad) simplifié
+function rayIntersectsFace(rayOrigin, rayDir, face, vertices) {
+  // Récupérer les 4 sommets de la face
+  const v0 = vertices[face.vertices[0]];
+  const v1 = vertices[face.vertices[1]];
+  const v2 = vertices[face.vertices[2]];
+  const v3 = vertices[face.vertices[3]];
+  
+  // Test d'intersection avec les 2 triangles du quad
+  return rayIntersectsTriangle(rayOrigin, rayDir, v0, v1, v2) ||
+         rayIntersectsTriangle(rayOrigin, rayDir, v0, v2, v3);
+}
+
+// Test intersection rayon-triangle (Möller-Trumbore adapté pour faces cachées)
+function rayIntersectsTriangle(rayOrigin, rayDir, v0, v1, v2) {
+  const EPSILON = 1e-6;
+  
+  // Vecteurs du triangle
+  const edge1 = { x: v1.x - v0.x, y: v1.y - v0.y, z: v1.z - v0.z };
+  const edge2 = { x: v2.x - v0.x, y: v2.y - v0.y, z: v2.z - v0.z };
+  
+  // Produit vectoriel rayDir × edge2
+  const h = {
+    x: rayDir.y * edge2.z - rayDir.z * edge2.y,
+    y: rayDir.z * edge2.x - rayDir.x * edge2.z,
+    z: rayDir.x * edge2.y - rayDir.y * edge2.x
+  };
+  
+  // Déterminant
+  const a = edge1.x * h.x + edge1.y * h.y + edge1.z * h.z;
+  if (a > -EPSILON && a < EPSILON) return false; // Rayon parallèle au triangle
+  
+  const f = 1.0 / a;
+  const s = { x: rayOrigin.x - v0.x, y: rayOrigin.y - v0.y, z: rayOrigin.z - v0.z };
+  const u = f * (s.x * h.x + s.y * h.y + s.z * h.z);
+  
+  if (u < 0.0 || u > 1.0) return false;
+  
+  const q = {
+    x: s.y * edge1.z - s.z * edge1.y,
+    y: s.z * edge1.x - s.x * edge1.z,
+    z: s.x * edge1.y - s.y * edge1.x
+  };
+  
+  const v = f * (rayDir.x * q.x + rayDir.y * q.y + rayDir.z * q.z);
+  if (v < 0.0 || u + v > 1.0) return false;
+  
+  // Distance d'intersection
+  const t = f * (edge2.x * q.x + edge2.y * q.y + edge2.z * q.z);
+  
+  // Intersection devant le rayon et pas trop proche (éviter auto-intersection)
+  return t > EPSILON && t < 10.0; // Distance max raisonnable
+}
+
+// Calculer visibilité de toutes les faces
+function calculateFaceVisibility() {
+  if (!currentMesh || !showHiddenFaces) {
+    // Reset visibility si désactivé
+    if (currentMesh) {
+      currentMesh.faces.forEach(face => {
+        face.visibility = 'visible';
+        face.hiddenCorners = 0;
+      });
+    }
+    return;
+  }
+  
+  let visibleCount = 0, partialCount = 0, hiddenCount = 0;
+  
+  currentMesh.faces.forEach(face => {
+    let hiddenCorners = 0;
+    
+    // Tester chaque coin de la face
+    face.vertices.forEach(vertexIndex => {
+      const vertex = currentMesh.vertices[vertexIndex];
+      
+      if (isPointOccluded(vertex, face, currentMesh.faces, currentMesh.vertices)) {
+        hiddenCorners++;
+      }
+    });
+    
+    // Classification selon nombre de coins cachés
+    face.hiddenCorners = hiddenCorners;
+    if (hiddenCorners === 0) {
+      face.visibility = 'visible';
+      visibleCount++;
+    } else if (hiddenCorners === 4) {
+      face.visibility = 'hidden';
+      hiddenCount++;
+    } else {
+      face.visibility = 'partial';
+      partialCount++;
+    }
+  });
+  
+  // Debug moins fréquent pour performances
+  calculateFaceVisibility.debugCounter = (calculateFaceVisibility.debugCounter || 0) + 1;
+  if (calculateFaceVisibility.debugCounter % config.hiddenFacesDebugInterval === 0) {
+    pd('calculateFaceVisibility', 'main.js', 
+      `Faces: ${visibleCount} visibles, ${partialCount} partielles, ${hiddenCount} cachées`
+    );
+  }
 }
 
 // Morphing vers une nouvelle surface
@@ -137,25 +390,7 @@ function updateMorphing() {
 
 // === SURFACES PARAMÉTRÉES ===
 const surfaces = {
-  // Plan test pour commencer
-  plane: (u, v) => {
-    return {
-      x: (u - 0.5) * 4, // Plus large en X
-      y: 0,
-      z: (v - 0.5) * 2  // Moins large en Z
-    };
-  },
-  
-  cylinder: (u, v) => {
-    const phi = u * 2 * Math.PI;
-    const h = (v - 0.5) * 3;
-    return {
-      x: Math.cos(phi),
-      y: h,
-      z: Math.sin(phi)
-    };
-  },
-  
+  // Tore [+ +] - bords verticaux et horizontaux dans même sens
   torus: (u, v) => {
     const R = 1.5, r = 0.6;
     const phi = u * 2 * Math.PI;
@@ -167,6 +402,38 @@ const surfaces = {
     };
   },
   
+  // Bouteille de Klein [+ -] - bords verticaux opposés
+  klein: (u, v) => {
+    u *= 2 * Math.PI;
+    v *= 2 * Math.PI;
+    const a = 1.5;
+    if (u < Math.PI) {
+      return {
+        x: 2.5 * Math.cos(u) * (1 + Math.sin(u)) + (a * (1 - Math.cos(u) / 2)) * Math.cos(u) * Math.cos(v),
+        z: -6 * Math.sin(u) - (a * (1 - Math.cos(u) / 2)) * Math.sin(u) * Math.cos(v),
+        y: (a * (1 - Math.cos(u) / 2)) * Math.sin(v)
+      };
+    } else {
+      return {
+        x: 2.5 * Math.cos(u) * (1 + Math.sin(u)) + (a * (1 - Math.cos(u) / 2)) * Math.cos(v + Math.PI),
+        z: -6 * Math.sin(u),
+        y: (a * (1 - Math.cos(u) / 2)) * Math.sin(v)
+      };
+    }
+  },
+  
+  // Cylindre [+ +] - bords horizontaux dans même sens
+  cylinder: (u, v) => {
+    const phi = u * 2 * Math.PI;
+    const h = (v - 0.5) * 3;
+    return {
+      x: Math.cos(phi),
+      y: h,
+      z: Math.sin(phi)
+    };
+  },
+  
+  // Ruban de Möbius [+ -] - bords horizontaux opposés
   mobius: (u, v) => {
     u *= 2 * Math.PI;
     v = (v - 0.5) * 2;
@@ -174,6 +441,52 @@ const surfaces = {
       x: Math.cos(u) + v * Math.cos(u/2) * Math.cos(u),
       y: Math.sin(u) + v * Math.cos(u/2) * Math.sin(u),
       z: v * Math.sin(u/2)
+    };
+  },
+  
+  // Cross-cap [- -] - surface non-orientable avec singularité
+  crosscap: (u, v) => {
+    u *= Math.PI;
+    v *= 2 * Math.PI;
+    return {
+      x: Math.sin(u) * Math.cos(v),
+      y: Math.sin(u) * Math.sin(v),
+      z: Math.cos(u) * Math.cos(2*v) * 0.5
+    };
+  },
+  
+  // Plan projectif - quotient de la sphère
+  projective: (u, v) => {
+    u *= Math.PI;
+    v *= 2 * Math.PI;
+    const x = Math.sin(u) * Math.cos(v);
+    const y = Math.sin(u) * Math.sin(v);
+    const z = Math.cos(u);
+    // Projection stéréographique modifiée
+    return {
+      x: x / (1 + Math.abs(z)) * 2,
+      y: y / (1 + Math.abs(z)) * 2,
+      z: Math.sign(z) * (1 - 1/(1 + Math.abs(z)))
+    };
+  },
+  
+  // Disque - surface avec bord
+  disk: (u, v) => {
+    const r = u; // Rayon de 0 à 1
+    const theta = v * 2 * Math.PI;
+    return {
+      x: r * Math.cos(theta) * 2,
+      y: 0,
+      z: r * Math.sin(theta) * 2
+    };
+  },
+  
+  // Plan - surface plate infinie
+  plane: (u, v) => {
+    return {
+      x: (u - 0.5) * 4,
+      y: 0,
+      z: (v - 0.5) * 4
     };
   }
 };
@@ -206,10 +519,24 @@ function projectIso(x, y, z, scale) {
 // === RENDU CANVAS ===
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-let currentSurface = 'plane'; // Commencer par un plan (compatible legacy)
-let rotX = Math.PI / 6, rotY = Math.PI / 4, scale = 150;
-let showWireframe = true;
-let showFaces = false;
+// Surface courante déjà déclarée en haut
+let rotX = (config.defaultRotationX * Math.PI) / 180;
+let rotY = (config.defaultRotationY * Math.PI) / 180;
+let scale = 150;
+
+// === GESTION SOURIS ===
+let isDragging = false;
+let lastMouseX = 0;
+let lastMouseY = 0;
+
+// Mettre à jour l'affichage des angles
+function updateAngleDisplay() {
+  const angleXDeg = Math.round((rotX * 180) / Math.PI);
+  const angleYDeg = Math.round((rotY * 180) / Math.PI);
+  
+  document.getElementById('angleX').textContent = `${angleXDeg}°`;
+  document.getElementById('angleY').textContent = `${angleYDeg}°`;
+}
 
 function render() {
   // Clear
@@ -223,6 +550,9 @@ function render() {
   
   // Update animation
   updateMorphing();
+  
+  // Calculer visibilité des faces si activé
+  calculateFaceVisibility();
   
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
@@ -261,13 +591,78 @@ function render() {
   // Tri des faces par profondeur (painter's algorithm)
   const sortedFaces = currentMesh.faces.sort((a, b) => a.avgZ - b.avgZ);
   
-  // Rendu wireframe avec couleur selon animation
-  if (showWireframe) {
-    ctx.strokeStyle = isAnimating ? '#e74c3c' : '#333'; // Rouge si en animation
-    ctx.lineWidth = isAnimating ? 1.5 : 1;
-    
+  // Rendu selon le mode sélectionné
+  if (showTexture) {
+    // Rendu avec texture projetée (transformations affines)
+    sortedFaces.forEach(face => {
+      // Skip faces cachées si activé
+      if (showHiddenFaces && face.visibility === 'hidden') return;
+      
+      // Projeter la texture sur le quad avec transformations affines
+      const success = drawTexturedQuad(ctx, face, currentMesh.vertices, projectedVertices);
+      
+      // Si la projection échoue ou pour les contours, dessiner un contour léger
+      if (success) {
+        const indices = face.vertices;
+        
+        // Contour selon visibilité
+        let strokeColor, lineWidth;
+        if (showHiddenFaces) {
+          switch (face.visibility) {
+            case 'visible':
+              strokeColor = 'rgba(0,0,0,0.1)';
+              lineWidth = 0.2;
+              break;
+            case 'partial':
+              strokeColor = 'rgba(243,156,18,0.5)';
+              lineWidth = 0.3;
+              break;
+            default:
+              strokeColor = 'rgba(149,165,166,0.7)';
+              lineWidth = 0.5;
+          }
+        } else {
+          strokeColor = isAnimating ? 'rgba(231,76,60,0.3)' : 'rgba(0,0,0,0.1)';
+          lineWidth = isAnimating ? 0.3 : 0.1;
+        }
+        
+        // Dessiner contour très fin
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = lineWidth;
+        ctx.beginPath();
+        ctx.moveTo(projectedVertices[indices[0]].x, projectedVertices[indices[0]].y);
+        ctx.lineTo(projectedVertices[indices[1]].x, projectedVertices[indices[1]].y);
+        ctx.lineTo(projectedVertices[indices[2]].x, projectedVertices[indices[2]].y);
+        ctx.lineTo(projectedVertices[indices[3]].x, projectedVertices[indices[3]].y);
+        ctx.closePath();
+        ctx.stroke();
+      }
+    });
+  } else {
+    // Rendu wireframe classique
     sortedFaces.forEach(face => {
       const indices = face.vertices;
+      
+      // Couleur selon visibilité des faces cachées
+      if (showHiddenFaces) {
+        switch (face.visibility) {
+          case 'visible':
+            ctx.strokeStyle = isAnimating ? '#e74c3c' : '#2c3e50';
+            ctx.lineWidth = 1.5;
+            break;
+          case 'partial':
+            ctx.strokeStyle = '#f39c12';
+            ctx.lineWidth = 1;
+            break;
+          case 'hidden':
+            ctx.strokeStyle = '#95a5a6';
+            ctx.lineWidth = 0.5;
+            break;
+        }
+      } else {
+        ctx.strokeStyle = isAnimating ? '#e74c3c' : '#333';
+        ctx.lineWidth = isAnimating ? 1.5 : 1;
+      }
       
       // Dessiner le contour du quad
       ctx.beginPath();
@@ -291,27 +686,112 @@ function animate() {
   requestAnimationFrame(animate);
 }
 
-// Démarrer l'animation
+// Démarrer l'animation et charger la texture
+loadTexture();
 animate();
 
 // === CONTRÔLES ===
-document.getElementById('surfaceSelector').addEventListener('change', (e) => {
-  const newSurface = e.target.value;
-  if (newSurface !== targetSurface) {
-    morphToSurface(newSurface);
+// Noms des topologies pour affichage
+const topologyNames = {
+  'torus': 'Tore',
+  'klein': 'Klein',
+  'cylinder': 'Cylindre', 
+  'mobius': 'Möbius',
+  'crosscap': 'Cross-cap',
+  'projective': 'Projectif',
+  'disk': 'Disque',
+  'plane': 'Plan'
+};
+
+// Fonction pour mettre à jour l'affichage du nom
+function updateTopologyName(surfaceName) {
+  document.getElementById('selectedTopology').textContent = topologyNames[surfaceName] || surfaceName;
+}
+
+// Boutons radio pour sélection de topologie
+document.querySelectorAll('input[name="topology"]').forEach(radio => {
+  radio.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      const newSurface = e.target.value;
+      updateTopologyName(newSurface);
+      if (newSurface !== targetSurface) {
+        morphToSurface(newSurface);
+      }
+    }
+  });
+});
+
+// Contrôle d'échelle supprimé - utiliser le zoom molette
+
+document.getElementById('hiddenFaces').addEventListener('change', (e) => {
+  showHiddenFaces = e.target.checked;
+  pd('hiddenFaces', 'main.js', `Faces cachées: ${showHiddenFaces ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`);
+});
+
+document.getElementById('enableDrag').addEventListener('change', (e) => {
+  dragEnabled = e.target.checked;
+  pd('enableDrag', 'main.js', `Drag rotation: ${dragEnabled ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`);
+});
+
+document.getElementById('showTexture').addEventListener('change', (e) => {
+  showTexture = e.target.checked;
+  pd('showTexture', 'main.js', `Texture mapping: ${showTexture ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`);
+});
+
+// === ÉVÉNEMENTS SOURIS ===
+canvas.addEventListener('mousedown', (e) => {
+  if (dragEnabled) {
+    isDragging = true;
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+    canvas.style.cursor = 'grabbing';
   }
 });
 
-document.getElementById('rotY').addEventListener('input', (e) => {
-  rotY = (e.target.value * Math.PI) / 180;
+canvas.addEventListener('mousemove', (e) => {
+  if (!isDragging || !dragEnabled) return;
+  
+  const deltaX = e.clientX - lastMouseX;
+  const deltaY = e.clientY - lastMouseY;
+  
+  // Rotation Y (horizontal) et X (vertical)
+  rotY += deltaX * config.mouseSensitivity * 0.01;
+  rotX += deltaY * config.mouseSensitivity * 0.01;
+  
+  // Garder les angles dans une plage raisonnable
+  rotX = Math.max(-Math.PI, Math.min(Math.PI, rotX));
+  
+  lastMouseX = e.clientX;
+  lastMouseY = e.clientY;
+  
+  updateAngleDisplay();
 });
 
-document.getElementById('rotX').addEventListener('input', (e) => {
-  rotX = (e.target.value * Math.PI) / 180;
+canvas.addEventListener('mouseup', () => {
+  isDragging = false;
+  canvas.style.cursor = dragEnabled ? 'grab' : 'default';
 });
 
-document.getElementById('scale').addEventListener('input', (e) => {
-  scale = parseInt(e.target.value);
+canvas.addEventListener('mouseleave', () => {
+  isDragging = false;
+  canvas.style.cursor = dragEnabled ? 'grab' : 'default';
 });
+
+// Update cursor style based on drag state
+setInterval(() => {
+  if (!isDragging) {
+    canvas.style.cursor = dragEnabled ? 'grab' : 'default';
+  }
+}, 100);
+
+// Zoom avec molette
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+  scale = Math.max(50, Math.min(500, scale * zoomFactor));
+});
+
+// Initialiser l'affichage des angles
+updateAngleDisplay();
 
 // Plus besoin d'appeler render() manuellement - animation automatique !

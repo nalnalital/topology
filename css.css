@@ -1,8 +1,8 @@
 /* File: css.css - Styles for isometric topology viewer */
 /* Desc: En français, dans l'architecture, je suis les styles pour l'interface de projection isométrique */
-/* Version 2.0.0 (adaptation pour projection native) */
+/* Version 2.2.0 (ajout styles boutons radio topologies) */
 /* Author: DNAvatar.org - Arnaud Maignan */
-/* Date: June 08, 2025 14:50 UTC+1 */
+/* Date: June 08, 2025 16:15 UTC+1 */
 /* Logs: */
 /*   - Updated styles for canvas-based rendering */
 /*   - Added controls styling */
@@ -55,4 +55,210 @@ canvas {
 .controls input[type="range"] {
   margin-top: 8px;
   width: 150px;
+}
+
+.info-panel {
+  margin-top: 20px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.angle-display {
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.angle-display span {
+  padding: 5px 10px;
+  background: #ecf0f1;
+  border-radius: 4px;
+  border: 1px solid #bdc3c7;
+}
+
+.mouse-help {
+  margin-top: 10px;
+  text-align: center;
+  color: #7f8c8d;
+  font-style: italic;
+}
+
+canvas {
+  border: 2px solid #333;
+  background: white;
+  margin: 20px auto;
+  display: block;
+  cursor: grab;
+}
+
+canvas:active {
+  cursor: grabbing;
+}
+
+
+
+
+
+.topology-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 120px;
+}
+
+.topology-option:hover {
+  background: #f8f9fa;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.topology-option input[type="radio"] {
+  display: none;
+}
+
+.topology-option input[type="radio"]:checked + .topology-visual {
+  background: #e3f2fd;
+  border: 2px solid #3498db;
+  color: #3498db;
+  transform: scale(1.1);
+}
+
+.topology-option input[type="radio"]:checked ~ .topology-name {
+  color: #3498db;
+  font-weight: bold;
+}
+
+.topology-visual {
+  font-size: 18px;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  padding: 8px;
+  border-radius: 4px;
+  background: transparent;
+  margin-bottom: 5px;
+  transition: all 0.3s ease;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 1px;
+}
+
+.cross-pattern {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  gap: 2px;
+  width: 80px;
+  height: 50px;
+  align-items: center;
+  justify-items: center;
+}
+
+.cross-top {
+  grid-column: 3;
+  grid-row: 1;
+  font-size: 14px;
+}
+
+.cross-left {
+  grid-column: 1;
+  grid-row: 2;
+  font-size: 14px;
+}
+
+.cross-center {
+  grid-column: 3;
+  grid-row: 2;
+  font-size: 16px;
+}
+
+.cross-right {
+  grid-column: 5;
+  grid-row: 2;
+  font-size: 14px;
+}
+
+.cross-bottom {
+  grid-column: 3;
+  grid-row: 3;
+  font-size: 14px;
+}
+
+.topology-name {
+  font-size: 12px;
+  text-align: center;
+  color: #2c3e50;
+  transition: all 0.3s ease;
+}
+
+.selected-topology {
+  text-align: center;
+  font-size: 24px;
+  font-weight: bold;
+  color: #3498db;
+  margin: 10px 0 20px 0;
+}
+
+.main-container {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 40px;
+  margin: 20px 0;
+  min-height: 600px;
+}
+
+.left-controls, .right-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  min-width: 120px;
+}
+
+.center-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.bottom-controls {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.bottom-controls label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  color: #2c3e50;
+}
+
+.angle-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #7f8c8d;
 }

@@ -1,3 +1,36 @@
+// File: klein.js - Klein bottle surface
+// Desc: En français, dans l'architecture, je suis la bouteille de Klein [+ -]
+// Version 1.0.0 (création)
+// Author: DNAvatar.org - Arnaud Maignan
+// Date: June 08, 2025 16:15 UTC+1
+// Logs:
+//   - Initial Klein bottle implementation with self-intersection
+
+export function klein(u, v) {
+  u *= 2 * Math.PI;
+  v *= 2 * Math.PI;
+  
+  const a = 1.5;
+  const cosU = Math.cos(u);
+  const sinU = Math.sin(u);
+  const cosV = Math.cos(v);
+  const sinV = Math.sin(v);
+  
+  if (u < Math.PI) {
+    return {
+      x: (2.5 + 1.5 * cosV) * cosU,
+      y: (2.5 + 1.5 * cosV) * sinU,
+      z: -2.5 * sinV
+    };
+  } else {
+    return {
+      x: (2.5 + 1.5 * cosV) * cosU,
+      y: (2.5 + 1.5 * cosV) * sinU,
+      z: 2.5 * sinV
+    };
+  }
+}
+
 export function createSurface() {
   const geometry = new THREE.ParametricGeometry((u, v, target) => {
     u *= Math.PI * 2;

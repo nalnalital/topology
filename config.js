@@ -1,10 +1,12 @@
 // File: config.js - Configuration for topology morphing animation
 // Desc: En français, dans l'architecture, je suis la configuration des animations morphing
-// Version 1.0.0
+// Version 1.4.0 (ajout contrôles interface)
 // Author: DNAvatar.org - Arnaud Maignan
-// Date: June 08, 2025 15:45 UTC+1
+// Date: June 08, 2025 16:15 UTC+1
 // Logs:
-//   - Animation configuration for barycentric interpolation
+//   - Updated default rotation to rx=0°, ry=22°
+//   - Added drag control configuration
+//   - Support for 8 topology types
 
 // === CONFIGURATION ANIMATION ===
 export const config = {
@@ -23,5 +25,20 @@ export const config = {
   autoMorphDelay: 3000, // 3 secondes par surface
   
   // Debug
-  showConvergence: false
+  showConvergence: false,
+  
+  // Raytracing faces cachées
+  hiddenFacesDebugInterval: 30, // Affichage debug toutes les N frames
+  
+  // Rotations par défaut (en degrés)
+  defaultRotationX: 0,   // 0° vue horizontale
+  defaultRotationY: 22,  // 22° légère rotation
+  
+  // Sensibilité souris
+  mouseSensitivity: 0.5,  // Facteur de sensibilité pour drag
+  
+  // Icônes alternatives intéressantes pour les surfaces topologiques
+  // 💠 - étoile à six branches (géométrie complexe)
+  // 🌌 - galaxie spirale (cosmos, infini)
+  // 🪐 - planète avec anneaux (géométrie toroïdale)
 }; 
