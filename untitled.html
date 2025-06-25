@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Visualisation de Surfaces Topologiques - Projection Isométrique</title>
+  <link rel="stylesheet" href="css.css">
+</head>
+<body>
+  <h1>Surfaces topologiques - Projection 3D Isométrique</h1>
+  <select id="surfaceSelector">
+    <option value="plane">Plan de test</option>
+    <option value="cylinder">Cylindre [+]</option>
+    <option value="torus">Tore [+ +]</option>
+    <option value="mobius">Ruban de Möbius [-]</option>
+  </select>
+  <canvas id="canvas" width="800" height="600"></canvas>
+  <div class="controls">
+    <label>Rotation Y: <input type="range" id="rotY" min="0" max="360" value="45"></label>
+    <label>Rotation X: <input type="range" id="rotX" min="0" max="360" value="30"></label>
+    <label>Échelle: <input type="range" id="scale" min="50" max="300" value="150"></label>
+  </div>
+  <script type="module" src="main.js"></script>
+  <!-- Config chargé automatiquement via import ES6 -->
+</body>
+</html>

@@ -1,0 +1,58 @@
+/* File: css.css - Styles for isometric topology viewer */
+/* Desc: En français, dans l'architecture, je suis les styles pour l'interface de projection isométrique */
+/* Version 2.0.0 (adaptation pour projection native) */
+/* Author: DNAvatar.org - Arnaud Maignan */
+/* Date: June 08, 2025 14:50 UTC+1 */
+/* Logs: */
+/*   - Updated styles for canvas-based rendering */
+/*   - Added controls styling */
+
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: #f0f0f0;
+  text-align: center;
+  padding: 20px;
+}
+
+h1 {
+  color: #333;
+  margin-bottom: 20px;
+}
+
+select {
+  padding: 8px 12px;
+  font-size: 16px;
+  margin-bottom: 20px;
+  border: 2px solid #333;
+  border-radius: 4px;
+  background: white;
+}
+
+canvas {
+  border: 2px solid #333;
+  background: white;
+  margin: 20px auto;
+  display: block;
+}
+
+.controls {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  flex-wrap: wrap;
+}
+
+.controls label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-weight: bold;
+  color: #333;
+}
+
+.controls input[type="range"] {
+  margin-top: 8px;
+  width: 150px;
+}
