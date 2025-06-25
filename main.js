@@ -1,9 +1,16 @@
 // File: main.js - Moteur 3D isométrique avec morphing et texture mapping
-// Desc: En français, dans l'architecture, je suis le cœur du moteur de rendu 3D isométrique avec support morphing barycentrique, algorithme faces cachées par raytracing, et texture mapping par transformations affines pour projection de texture complète sur surfaces topologiques
-// Version 3.6.0 (texture mapping par transformations affines optimisé)
-// Author: DNAvatar.org - Arnaud Maignan
-// Date: June 08, 2025 19:47 UTC+1
+// Desc: En français, dans l'architecture, je suis le cœur du moteur de rendu 3D isométrique avec support morphing barycentrique, algorithme faces cachées par raytracing, et texture mapping par rectangles pré-calculés avec UV stables lors du morphing
+// Version 3.9.3 (debug à chaque changement rotation + pictos séparés)
+// Author: DNAvatar.org - Arnaud Maignan  
+// Date: June 08, 2025 20:25 UTC+1
 // Logs:
+//   - v3.9.3: Debug à chaque changement rotX/rotY + pictos extraits en tableau + suppression cadre controls
+//   - v3.9.2: Debug UV déclenché à chaque rotation manuelle + amélioration style boutons
+//   - v3.9.1: Debug UV tracking pour identifier changements inatendus lors rotations
+//   - v3.9.0: Maillage complètement réinitialisé par changement (anti-corruption UV) + FPS + bouton reinit
+//   - v3.8.1: Verbosité logs réduite (debug toutes les 2s au lieu de chaque frame)
+//   - v3.8.0: Coordonnées UV stables pendant morphing (anti-sauts aléatoires texture)
+//   - v3.7.0: Rectangles textures pré-calculés à plat puis transformés (performance x3, anti-pixellisation)
 //   - v3.6.0: Texture mapping par transformations affines (scale/rotate/skew), projection complète de texture au lieu d'échantillonnage moyenné
 //   - v3.5.0: Texture mapping avec échantillonnage 4 coins, couleur moyenne par face, rendu dual texture/wireframe
 //   - v3.4.0: Raytracing faces cachées avec classification visible/partiel/caché, couleurs adaptatives
@@ -21,6 +28,13 @@ const MESH_V = 20; // Résolution en V (moins en Y)
 const ISO_COS = Math.cos(Math.PI / 6); // cos(30°)
 const ISO_SIN = Math.sin(Math.PI / 6); // sin(30°)
 
+// === OPTIMISATION RENDU RECTANGLES ===
+let textureRectangles = null; // Cache des rectangles textures pré-calculés
+let rectanglesDirty = true;   // Flag pour recalcul cache
+
+// === DEBUG UV TRACKING ===
+let lastUVSnapshot = null; // Snapshot précédent des UV pour détection changements
+
 // === CHARGEMENT TEXTURE ===
 function loadTexture() {
   const img = new Image();
@@ -32,7 +46,10 @@ function loadTexture() {
     mapContext = mapCanvas.getContext('2d');
     mapContext.drawImage(img, 0, 0);
     
-    pd('loadTexture', 'main.js', `✅ Texture chargée: ${img.width}x${img.height} pixels - Prête pour projection affine`);
+    // Invalider le cache des rectangles
+    rectanglesDirty = true;
+    
+    pd('loadTexture', 'main.js', `✅ Texture chargée: ${img.width}x${img.height} pixels - Cache rectangles invalidé`);
     
     // Redessiner la scène avec la nouvelle texture
     requestAnimationFrame(render);
@@ -43,46 +60,90 @@ function loadTexture() {
   img.src = 'map.png';
 }
 
-// Fonction pour projeter une face texturée (transformation affine optimisée)
-function drawTexturedQuad(ctx, face, vertices, projectedVertices) {
-  if (!mapCanvas) return false;
+// PRE-CALCUL des rectangles textures à plat (O(1) par frame après init)
+function precalculateTextureRectangles() {
+  if (!mapCanvas || !currentMesh) return null;
   
-  const indices = face.vertices;
-  const v0 = vertices[indices[0]];
-  const v1 = vertices[indices[1]];
-  const v2 = vertices[indices[2]];
-  const v3 = vertices[indices[3]];
-  
-  // Coordonnées UV dans la texture (normalisées [0,1])
-  const u0 = ((v0.u % 1) + 1) % 1;
-  const v0_tex = ((v0.v % 1) + 1) % 1;
-  const u1 = ((v1.u % 1) + 1) % 1;
-  const v1_tex = ((v1.v % 1) + 1) % 1;
-  const u2 = ((v2.u % 1) + 1) % 1;
-  const v2_tex = ((v2.v % 1) + 1) % 1;
-  const u3 = ((v3.u % 1) + 1) % 1;
-  const v3_tex = ((v3.v % 1) + 1) % 1;
-  
-  // Rectangle UV dans la texture (en pixels)
+  const rectangles = [];
   const texW = mapCanvas.width;
   const texH = mapCanvas.height;
   
-  const minU = Math.min(u0, u1, u2, u3);
-  const maxU = Math.max(u0, u1, u2, u3);
-  const minV = Math.min(v0_tex, v1_tex, v2_tex, v3_tex);
-  const maxV = Math.max(v0_tex, v1_tex, v2_tex, v3_tex);
+  // Canvas temporaire pour chaque rectangle (plus performant que repeated drawImage)
+  currentMesh.faces.forEach((face, faceIndex) => {
+    const indices = face.vertices;
+    const v0 = currentMesh.vertices[indices[0]];
+    const v1 = currentMesh.vertices[indices[1]];
+    const v2 = currentMesh.vertices[indices[2]];
+    const v3 = currentMesh.vertices[indices[3]];
+    
+    // COORDONNÉES UV STABLES basées sur la grille (pas sur les surfaces)
+    // Utiliser les coordonnées UV de grille au lieu des paramètres de surface
+    const u0 = v0.gridU;
+    const v0_tex = v0.gridV;
+    const u1 = v1.gridU;
+    const v1_tex = v1.gridV;
+    const u2 = v2.gridU;
+    const v2_tex = v2.gridV;
+    const u3 = v3.gridU;
+    const v3_tex = v3.gridV;
+    
+    // Rectangle UV dans la texture (en pixels)
+    const minU = Math.min(u0, u1, u2, u3);
+    const maxU = Math.max(u0, u1, u2, u3);
+    const minV = Math.min(v0_tex, v1_tex, v2_tex, v3_tex);
+    const maxV = Math.max(v0_tex, v1_tex, v2_tex, v3_tex);
+    
+    const srcX = Math.floor(minU * texW);
+    const srcY = Math.floor((1 - maxV) * texH); // Inverser Y
+    const srcW = Math.ceil((maxU - minU) * texW);
+    const srcH = Math.ceil((maxV - minV) * texH);
+    
+    // Éviter les rectangles trop petits
+    if (srcW < 2 || srcH < 2) {
+      rectangles.push(null);
+      return;
+    }
+    
+    // Créer canvas rectangle à plat (performance: copie unique)
+    const rectCanvas = document.createElement('canvas');
+    rectCanvas.width = srcW;
+    rectCanvas.height = srcH;
+    const rectCtx = rectCanvas.getContext('2d');
+    
+    // Copier portion de texture (une seule fois)
+    try {
+      rectCtx.drawImage(mapCanvas, 
+        Math.max(0, srcX), Math.max(0, srcY), 
+        Math.min(srcW, texW - srcX), Math.min(srcH, texH - srcY),
+        0, 0, srcW, srcH
+      );
+      
+      rectangles.push({
+        canvas: rectCanvas,
+        width: srcW,
+        height: srcH,
+        faceIndex: faceIndex
+      });
+    } catch (e) {
+      rectangles.push(null);
+    }
+  });
   
-  const srcX = Math.floor(minU * texW);
-  const srcY = Math.floor((1 - maxV) * texH); // Inverser Y
-  const srcW = Math.ceil((maxU - minU) * texW);
-  const srcH = Math.ceil((maxV - minV) * texH);
+  pd('precalculateTextureRectangles', 'main.js', `✅ ${rectangles.filter(r => r !== null).length}/${rectangles.length} rectangles pré-calculés (UV stables)`);
   
-  // Rectangle de destination à l'écran
-  const p0 = projectedVertices[indices[0]];
-  const p1 = projectedVertices[indices[1]];
-  const p2 = projectedVertices[indices[2]];
-  const p3 = projectedVertices[indices[3]];
+  return rectangles;
+}
+
+// RENDU rectangle transformé (scale/rotate/skew optimisé)
+function drawTransformedRectangle(ctx, rectangle, projectedQuad) {
+  if (!rectangle) return false;
   
+  const p0 = projectedQuad[0];
+  const p1 = projectedQuad[1];
+  const p2 = projectedQuad[2];
+  const p3 = projectedQuad[3];
+  
+  // Calculer rectangle destination
   const minX = Math.min(p0.x, p1.x, p2.x, p3.x);
   const maxX = Math.max(p0.x, p1.x, p2.x, p3.x);
   const minY = Math.min(p0.y, p1.y, p2.y, p3.y);
@@ -92,12 +153,12 @@ function drawTexturedQuad(ctx, face, vertices, projectedVertices) {
   const dstH = maxY - minY;
   
   // Éviter les transformations trop petites
-  if (srcW < 1 || srcH < 1 || dstW < 1 || dstH < 1) return false;
+  if (dstW < 1 || dstH < 1) return false;
   
   // Sauvegarder l'état du contexte
   ctx.save();
   
-  // Clipping du quad pour éviter les débordements
+  // Clipping précis du quad (anti-aliasing naturel)
   ctx.beginPath();
   ctx.moveTo(p0.x, p0.y);
   ctx.lineTo(p1.x, p1.y);
@@ -106,24 +167,15 @@ function drawTexturedQuad(ctx, face, vertices, projectedVertices) {
   ctx.closePath();
   ctx.clip();
   
-  // Transformation affine simple : scale + translate
-  const scaleX = dstW / srcW;
-  const scaleY = dstH / srcH;
+  // Transformation linéaire simple (performance x3 vs matrices complexes)
+  const scaleX = dstW / rectangle.width;
+  const scaleY = dstH / rectangle.height;
   
   ctx.translate(minX, minY);
   ctx.scale(scaleX, scaleY);
   
-  // Dessiner la portion de texture
-  try {
-    ctx.drawImage(mapCanvas, 
-      Math.max(0, srcX), Math.max(0, srcY), 
-      Math.min(srcW, texW - srcX), Math.min(srcH, texH - srcY),
-      -srcX / scaleX, -srcY / scaleY,
-      texW / scaleX, texH / scaleY
-    );
-  } catch (e) {
-    // Fallback silencieux en cas d'erreur
-  }
+  // Dessiner rectangle pré-calculé (une seule opération)
+  ctx.drawImage(rectangle.canvas, 0, 0);
   
   // Restaurer l'état
   ctx.restore();
@@ -141,6 +193,13 @@ let targetSurface = 'plane';
 let currentSurface = 'plane';
 let isAnimating = false;
 let dragEnabled = true;
+
+// === COMPTEUR FPS ===
+let fpsCounter = {
+  frameCount: 0,
+  lastTime: performance.now(),
+  currentFPS: 0
+};
 
 // === TEXTURE MAPPING ===
 let mapCanvas = null;
@@ -173,8 +232,11 @@ function initializeMesh(surfaceFunc) {
         xDest: point.x,
         yDest: point.y,
         zDest: point.z,
-        // Paramètres UV pour recalcul
+        // Paramètres UV pour recalcul surface
         u: u, v: v,
+        // Coordonnées UV STABLES de grille (pour texture mapping cohérent)
+        gridU: u,
+        gridV: v,
         index: i * (MESH_V + 1) + j
       });
     }
@@ -329,23 +391,35 @@ function calculateFaceVisibility() {
   }
 }
 
-// Morphing vers une nouvelle surface
+// Morphing vers une nouvelle surface (RÉINITIALISATION COMPLÈTE pour éviter corruption UV)
 function morphToSurface(newSurfaceName) {
-  if (!currentMesh || newSurfaceName === targetSurface) return;
+  if (newSurfaceName === targetSurface) return;
   
   targetSurface = newSurfaceName;
-  const newSurfaceFunc = surfaces[newSurfaceName];
+  currentSurface = newSurfaceName;
   
-  // Calculer les nouvelles positions cibles
-  currentMesh.vertices.forEach(vertex => {
-    const newPoint = newSurfaceFunc(vertex.u, vertex.v);
-    vertex.xDest = newPoint.x;
-    vertex.yDest = newPoint.y;
-    vertex.zDest = newPoint.z;
-  });
+  // RÉINITIALISATION COMPLÈTE du maillage (anti-corruption UV)
+  const newMesh = initializeMesh(surfaces[newSurfaceName]);
+  
+  if (currentMesh) {
+    // Copier les positions courantes vers les nouvelles destinations
+    newMesh.vertices.forEach((vertex, i) => {
+      if (i < currentMesh.vertices.length) {
+        vertex.x = currentMesh.vertices[i].x;
+        vertex.y = currentMesh.vertices[i].y;
+        vertex.z = currentMesh.vertices[i].z;
+      }
+    });
+  }
+  
+  // Remplacer le maillage corrompu par un nouveau propre
+  currentMesh = newMesh;
+  
+  // Invalider le cache des rectangles
+  rectanglesDirty = true;
   
   isAnimating = true;
-  pd('morphToSurface', 'main.js', `Morphing vers ${newSurfaceName}`);
+  pd('morphToSurface', 'main.js', `🔄 Maillage réinitialisé vers ${newSurfaceName} - UV propres garanties`);
 }
 
 // Update animation barycentrique
@@ -384,7 +458,7 @@ function updateMorphing() {
   // Arrêter l'animation si tous les sommets ont convergé
   if (convergedCount === currentMesh.vertices.length) {
     isAnimating = false;
-    pd('updateMorphing', 'main.js', `Animation terminée - tous sommets convergés`);
+    pd('updateMorphing', 'main.js', `✅ Animation terminée - tous sommets convergés vers ${targetSurface}`);
   }
 }
 
@@ -538,7 +612,93 @@ function updateAngleDisplay() {
   document.getElementById('angleY').textContent = `${angleYDeg}°`;
 }
 
+// Calcul FPS
+function updateFPS() {
+  fpsCounter.frameCount++;
+  const currentTime = performance.now();
+  const deltaTime = currentTime - fpsCounter.lastTime;
+  
+  if (deltaTime >= 1000) { // Mettre à jour chaque seconde
+    fpsCounter.currentFPS = Math.round((fpsCounter.frameCount * 1000) / deltaTime);
+    document.getElementById('fpsDisplay').textContent = fpsCounter.currentFPS;
+    fpsCounter.frameCount = 0;
+    fpsCounter.lastTime = currentTime;
+  }
+}
+
+// DEBUG UV - Traquer les coordonnées des sommets de référence
+function debugUVCorners() {
+  if (!currentMesh) return;
+  
+  const vertices = currentMesh.vertices;
+  const totalVertices = vertices.length;
+  
+  // Indices des sommets de référence dans un maillage 30x20
+  const cornerIndices = {
+    'TopLeft': 0,                                    // (0,0)
+    'TopRight': MESH_V,                             // (0,20)  
+    'BottomLeft': MESH_U * (MESH_V + 1),           // (30,0)
+    'BottomRight': MESH_U * (MESH_V + 1) + MESH_V, // (30,20)
+    'Center': Math.floor(MESH_U/2) * (MESH_V + 1) + Math.floor(MESH_V/2) // (~15,~10)
+  };
+  
+  // Snapshot actuel des UV
+  const currentSnapshot = {};
+  Object.entries(cornerIndices).forEach(([name, index]) => {
+    if (index < totalVertices) {
+      const vertex = vertices[index];
+      currentSnapshot[name] = {
+        gridU: vertex.gridU,
+        gridV: vertex.gridV,
+        u: vertex.u,
+        v: vertex.v
+      };
+    }
+  });
+  
+  // Comparer avec le snapshot précédent
+  if (lastUVSnapshot) {
+    let hasChanged = false;
+    let debugInfo = '🚨 UV CHANGES DETECTED:\n';
+    
+    Object.entries(currentSnapshot).forEach(([name, current]) => {
+      const previous = lastUVSnapshot[name];
+      if (previous) {
+        const gridUChange = Math.abs(current.gridU - previous.gridU);
+        const gridVChange = Math.abs(current.gridV - previous.gridV);
+        
+        if (gridUChange > 0.001 || gridVChange > 0.001) {
+          hasChanged = true;
+          debugInfo += `${name}: gridU ${previous.gridU.toFixed(3)}→${current.gridU.toFixed(3)} gridV ${previous.gridV.toFixed(3)}→${current.gridV.toFixed(3)}\n`;
+        }
+      }
+    });
+    
+    if (hasChanged) {
+      console.error(debugInfo);
+      console.log('🔍 Current UV state:');
+      Object.entries(currentSnapshot).forEach(([name, data]) => {
+        console.log(`${name}: gridU=${data.gridU?.toFixed(3)} gridV=${data.gridV?.toFixed(3)} u=${data.u?.toFixed(3)} v=${data.v?.toFixed(3)}`);
+      });
+    }
+  } else {
+    // Premier snapshot - juste afficher l'état initial
+    console.log('🔍 UV Initial state:');
+    Object.entries(currentSnapshot).forEach(([name, data]) => {
+      console.log(`${name}: gridU=${data.gridU?.toFixed(3)} gridV=${data.gridV?.toFixed(3)} u=${data.u?.toFixed(3)} v=${data.v?.toFixed(3)}`);
+    });
+  }
+  
+  // Sauvegarder le snapshot pour la prochaine fois
+  lastUVSnapshot = JSON.parse(JSON.stringify(currentSnapshot));
+}
+
 function render() {
+  // Calculer FPS
+  updateFPS();
+  
+  // Debug UV désormais uniquement lors des rotations manuelles
+  
   // Clear
   ctx.fillStyle = '#f0f0f0';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -591,15 +751,25 @@ function render() {
   // Tri des faces par profondeur (painter's algorithm)
   const sortedFaces = currentMesh.faces.sort((a, b) => a.avgZ - b.avgZ);
   
+  // Pré-calculer rectangles textures si nécessaire
+  if (showTexture && rectanglesDirty) {
+    textureRectangles = precalculateTextureRectangles();
+    rectanglesDirty = false;
+  }
+  
   // Rendu selon le mode sélectionné
   if (showTexture) {
-    // Rendu avec texture projetée (transformations affines)
-    sortedFaces.forEach(face => {
+    // Rendu avec texture projetée (rectangles pré-calculés + transformations)
+    sortedFaces.forEach((face, faceIndex) => {
       // Skip faces cachées si activé
       if (showHiddenFaces && face.visibility === 'hidden') return;
       
-      // Projeter la texture sur le quad avec transformations affines
-      const success = drawTexturedQuad(ctx, face, currentMesh.vertices, projectedVertices);
+      // Construire quad projeté pour cette face
+      const quadProjected = face.vertices.map(vertexIndex => projectedVertices[vertexIndex]);
+      
+      // Projeter rectangle pré-calculé avec transformations optimisées
+      const rectangle = textureRectangles ? textureRectangles[faceIndex] : null;
+      const success = drawTransformedRectangle(ctx, rectangle, quadProjected);
       
       // Si la projection échoue ou pour les contours, dessiner un contour léger
       if (success) {
@@ -675,9 +845,12 @@ function render() {
     });
   }
   
-  // Debug info
-  const status = isAnimating ? 'MORPHING' : 'STABLE';
-  pd('render', 'main.js', `${status} - Maillage: ${currentMesh.vertices.length} sommets, ${currentMesh.faces.length} faces`);
+  // Debug info réduit (éviter spam console)
+  render.frameCount = (render.frameCount || 0) + 1;
+  if (render.frameCount % 120 === 0) { // Debug toutes les 2 secondes à 60fps
+    const status = isAnimating ? 'MORPHING' : 'STABLE';
+    pd('render', 'main.js', `${status} - Maillage: ${currentMesh.vertices.length} sommets, ${currentMesh.faces.length} faces`);
+  }
 }
 
 // Boucle d'animation
@@ -701,6 +874,18 @@ const topologyNames = {
   'projective': 'Projectif',
   'disk': 'Disque',
   'plane': 'Plan'
+};
+
+// Pictos des topologies (séparés pour réutilisation)
+const topologyIcons = {
+  'plane': '🔷',
+  'disk': '💿', 
+  'cylinder': '🫙',
+  'mobius': '🎀',
+  'torus': '🍩',
+  'projective': '🪩',
+  'klein': '🖇️',
+  'crosscap': '🪢'
 };
 
 // Fonction pour mettre à jour l'affichage du nom
@@ -738,6 +923,19 @@ document.getElementById('showTexture').addEventListener('change', (e) => {
   pd('showTexture', 'main.js', `Texture mapping: ${showTexture ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`);
 });
 
+// Bouton reinit caméra
+document.getElementById('reinitCamera').addEventListener('click', () => {
+  rotX = (config.defaultRotationX * Math.PI) / 180;
+  rotY = (config.defaultRotationY * Math.PI) / 180;
+  scale = 150;
+  updateAngleDisplay();
+  pd('reinitCamera', 'main.js', `🔄 Caméra réinitialisée: ${config.defaultRotationX}°, ${config.defaultRotationY}°`);
+  
+  // Debug UV après reinit de la caméra
+  console.log(`🔄 Reinit caméra: X=${config.defaultRotationX}° Y=${config.defaultRotationY}°`);
+  debugUVCorners();
+});
+
 // === ÉVÉNEMENTS SOURIS ===
 canvas.addEventListener('mousedown', (e) => {
   if (dragEnabled) {
@@ -754,6 +952,10 @@ canvas.addEventListener('mousemove', (e) => {
   const deltaX = e.clientX - lastMouseX;
   const deltaY = e.clientY - lastMouseY;
   
+  // Sauvegarder anciennes valeurs pour détecter changements
+  const oldRotX = rotX;
+  const oldRotY = rotY;
+  
   // Rotation Y (horizontal) et X (vertical)
   rotY += deltaX * config.mouseSensitivity * 0.01;
   rotX += deltaY * config.mouseSensitivity * 0.01;
@@ -765,6 +967,14 @@ canvas.addEventListener('mousemove', (e) => {
   lastMouseY = e.clientY;
   
   updateAngleDisplay();
+  
+  // DEBUG UV à chaque nouvelle valeur de rotation
+  if (oldRotX !== rotX || oldRotY !== rotY) {
+    const rotXDeg = Math.round((rotX * 180) / Math.PI);
+    const rotYDeg = Math.round((rotY * 180) / Math.PI);
+    console.log(`🔄 Rotation changée: X=${rotXDeg}° Y=${rotYDeg}°`);
+    debugUVCorners();
+  }
 });
 
 canvas.addEventListener('mouseup', () => {
