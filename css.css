@@ -1,7 +1,11 @@
 /* File: css.css - Styles for isometric topology viewer */
 /* Desc: En français, dans l'architecture, je suis les styles pour l'interface de projection isométrique */
+/* Version 2.3.1 (suppression cadre contrôles) */
 /* Author: DNAvatar.org - Arnaud Maignan */
+/* Date: June 08, 2025 20:25 UTC+1 */
 /* Logs: */
+/*   - v2.3.1: Suppression cadre/bordure des colonnes left/right controls */
+/*   - v2.3.0: Ajout cadres boutons topologiques + centrage vertical amélioré */
 /*   - Updated styles for canvas-based rendering */
 /*   - Added controls styling */
 
