@@ -48,6 +48,8 @@ let currentMapName = 'map'; // Carte par défaut
 
 // === CHARGEMENT TEXTURE ===
 function loadTexture(mapName = currentMapName) {
+  pd('loadTexture', 'main.js', `🔍 TRACE → CALL loadTexture("${mapName}") | previousSurfaceBeforeMapChange="${previousSurfaceBeforeMapChange}"`);
+  
   const mapConfig = availableMaps.find(m => m.name === mapName);
   if (!mapConfig) {
     pd('loadTexture', 'main.js', `❌ Carte inconnue: ${mapName}`);
@@ -58,6 +60,8 @@ function loadTexture(mapName = currentMapName) {
   
   const img = new Image();
   img.onload = function() {
+    pd('loadTexture', 'main.js', `🔍 TRACE → Image onload event | previousSurfaceBeforeMapChange="${previousSurfaceBeforeMapChange}"`);
+    
     // Créer canvas hors-écran pour les transformations affines
     mapCanvas = document.createElement('canvas');
     mapCanvas.width = img.width;
@@ -73,57 +77,80 @@ function loadTexture(mapName = currentMapName) {
     // AUTO-RETOUR 3D avec petit timeout pour éviter mélange tuiles
     if (previousSurfaceBeforeMapChange && previousSurfaceBeforeMapChange !== 'view2d') {
       pd('loadTexture', 'main.js', `⚡ Auto-retour 3D vers: ${previousSurfaceBeforeMapChange} (timeout 20ms)`);
+      pd('loadTexture', 'main.js', `🔍 TRACE → Condition timeout TRUE | previousSurfaceBeforeMapChange="${previousSurfaceBeforeMapChange}" != null et != "view2d"`);
       
-                    // Petit timeout pour laisser le recalcul se stabiliser
-       setTimeout(() => {
-         // Retourner à la surface précédente SANS ANIMATION
-         view2DMode = false;
-         morphToSurface(previousSurfaceBeforeMapChange, true); // SKIP ANIMATION
-         
-         // RÉINITIALISER les angles avec config de la surface 3D
-         if (config.privilegedAngles[previousSurfaceBeforeMapChange]) {
-           const angles = config.privilegedAngles[previousSurfaceBeforeMapChange];
-           rotX = (angles.rotX * Math.PI) / 180;
-           rotY = (angles.rotY * Math.PI) / 180;
-           rotZ = (angles.rotZ * Math.PI) / 180;
-           scale = angles.scale;
-         } else {
-           // Angles par défaut si pas de config spécifique
-           rotX = (config.defaultRotationX * Math.PI) / 180;
-           rotY = (config.defaultRotationY * Math.PI) / 180;
-           rotZ = 0;
-           scale = getOptimalScale(previousSurfaceBeforeMapChange);
-         }
-         updateAngleDisplay();
-         updateScaleDisplay();
-         
-         pd('loadTexture', 'main.js', `🔄 Angles réinitialisés pour ${previousSurfaceBeforeMapChange}: rotX=${Math.round(rotX * 180 / Math.PI)}°, rotY=${Math.round(rotY * 180 / Math.PI)}°, scale=${scale}`);
-         
-         // Mettre à jour l'interface
-         const radioButton = document.querySelector(`input[value="${previousSurfaceBeforeMapChange}"]`);
-         if (radioButton) {
-           radioButton.checked = true;
-         }
-         
-         // CACHE MISÈRE : Masquer overlay après retour 3D
-         const overlay = document.getElementById('loading-overlay');
-         if (overlay) {
-           overlay.classList.remove('active');
-           overlay.innerHTML = ''; // Nettoyer capture
-           pd('loadTexture', 'main.js', `🎭 Cache misère désactivé (overlay masqué + capture nettoyée)`);
-         }
-         
-         // Réinitialiser pour prochain changement
-         previousSurfaceBeforeMapChange = null;
-        }, 20); // 20ms timeout pour stabilisation recalcul
+      // Petit timeout pour laisser le recalcul se stabiliser
+      setTimeout(() => {
+        pd('loadTexture', 'main.js', `⏱️ TIMEOUT EXECUTED ! → Début auto-retour 3D vers "${previousSurfaceBeforeMapChange}"`);
+        
+        // Retourner à la surface précédente SANS ANIMATION
+        view2DMode = false;
+        morphToSurface(previousSurfaceBeforeMapChange, true); // SKIP ANIMATION
+        
+        pd('loadTexture', 'main.js', `🔍 TRACE → morphToSurface("${previousSurfaceBeforeMapChange}", true) terminé`);
+        
+        // RÉINITIALISER les angles avec config de la surface 3D
+        if (config.privilegedAngles[previousSurfaceBeforeMapChange]) {
+          const angles = config.privilegedAngles[previousSurfaceBeforeMapChange];
+          rotX = (angles.rotX * Math.PI) / 180;
+          rotY = (angles.rotY * Math.PI) / 180;
+          rotZ = (angles.rotZ * Math.PI) / 180;
+          scale = angles.scale;
+          pd('loadTexture', 'main.js', `🔍 TRACE → Angles depuis config privilégiés`);
+        } else {
+          // Angles par défaut si pas de config spécifique
+          rotX = (config.defaultRotationX * Math.PI) / 180;
+          rotY = (config.defaultRotationY * Math.PI) / 180;
+          rotZ = 0;
+          scale = getOptimalScale(previousSurfaceBeforeMapChange);
+          pd('loadTexture', 'main.js', `🔍 TRACE → Angles par défaut + scale optimal`);
+        }
+        updateAngleDisplay();
+        updateScaleDisplay();
+        
+        pd('loadTexture', 'main.js', `🔄 Angles réinitialisés pour ${previousSurfaceBeforeMapChange}: rotX=${Math.round(rotX * 180 / Math.PI)}°, rotY=${Math.round(rotY * 180 / Math.PI)}°, scale=${scale}`);
+        
+        // Mettre à jour l'interface
+        const radioButton = document.querySelector(`input[value="${previousSurfaceBeforeMapChange}"]`);
+        if (radioButton) {
+          radioButton.checked = true;
+          pd('loadTexture', 'main.js', `🔍 TRACE → Radio button mis à jour pour "${previousSurfaceBeforeMapChange}"`);
+        } else {
+          pd('loadTexture', 'main.js', `❌ Radio button introuvable pour "${previousSurfaceBeforeMapChange}"`);
+        }
+        
+        // CACHE MISÈRE : Masquer overlay après retour 3D
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+          overlay.classList.remove('active');
+          overlay.innerHTML = ''; // Nettoyer capture
+          pd('loadTexture', 'main.js', `🎭 Cache misère désactivé (overlay masqué + capture nettoyée)`);
+        }
+        
+        // Réinitialiser pour prochain changement
+        previousSurfaceBeforeMapChange = null;
+        pd('loadTexture', 'main.js', `⏱️ TIMEOUT COMPLETE ! → previousSurfaceBeforeMapChange reset à null`);
+      }, 20); // 20ms timeout pour stabilisation recalcul
+    } else {
+      pd('loadTexture', 'main.js', `🔍 TRACE → Condition timeout FALSE | previousSurfaceBeforeMapChange="${previousSurfaceBeforeMapChange}" (null ou "view2d")`);
+      
+      // MASQUER OVERLAY même en 2D après chargement texture
+      const overlay = document.getElementById('loading-overlay');
+      if (overlay) {
+        overlay.classList.remove('active');
+        overlay.innerHTML = ''; // Nettoyer capture
+        pd('loadTexture', 'main.js', `🎭 Cache misère désactivé (overlay masqué + capture nettoyée) - changement texture 2D`);
+      }
     }
     
     // Redessiner la scène avec la nouvelle texture
     requestAnimationFrame(render);
+    pd('loadTexture', 'main.js', `🔍 TRACE → requestAnimationFrame(render) appelé`);
   };
   img.onerror = function() {
     pd('loadTexture', 'main.js', `❌ Erreur chargement carte: ${mapConfig.file}`);
   };
+  pd('loadTexture', 'main.js', `🔍 TRACE → img.src = "${mapConfig.file}" (début chargement)`);
   img.src = mapConfig.file;
 }
 
@@ -132,7 +159,11 @@ let previousSurfaceBeforeMapChange = null;
 
 // Changer de carte
 function changeMap(mapName) {
+  pd('changeMap', 'main.js', `🔍 TRACE → CALL changeMap("${mapName}") | currentMapName="${currentMapName}" | view2DMode=${view2DMode} | currentSurface="${currentSurface}"`);
+  
   if (mapName !== currentMapName) {
+    pd('changeMap', 'main.js', `🔍 TRACE → Changement nécessaire de ${currentMapName} vers ${mapName}`);
+    
     // CACHE MISÈRE : Capture canvas + afficher overlay
     const overlay = document.getElementById('loading-overlay');
     const canvas = document.getElementById('canvas');
@@ -152,10 +183,14 @@ function changeMap(mapName) {
     // Mémoriser surface précédente si on était en 3D
     if (!view2DMode) {
       previousSurfaceBeforeMapChange = currentSurface;
+      pd('changeMap', 'main.js', `🔍 TRACE → previousSurfaceBeforeMapChange = "${previousSurfaceBeforeMapChange}" (mémorisé depuis 3D)`);
+    } else {
+      pd('changeMap', 'main.js', `🔍 TRACE → Déjà en 2D, pas de mémorisation surface précédente`);
     }
     
     // FORCER le passage par 2D pour recalculer tout
     if (!view2DMode) {
+      pd('changeMap', 'main.js', `🔍 TRACE → Forcer passage 2D depuis 3D`);
       view2DMode = true;
       morphToSurface('view2d', true); // SKIP ANIMATION pour changement texture
       
@@ -183,9 +218,12 @@ function changeMap(mapName) {
     }
     
     // Charger la nouvelle texture (avec callback auto-retour 3D)
+    pd('changeMap', 'main.js', `🔍 TRACE → Appel loadTexture("${mapName}") avec previousSurfaceBeforeMapChange="${previousSurfaceBeforeMapChange}"`);
     loadTexture(mapName);
     
     pd('changeMap', 'main.js', `🗺️ Changement vers carte: ${mapName} - Auto-retour 3D après chargement`);
+  } else {
+    pd('changeMap', 'main.js', `🔍 TRACE → Pas de changement nécessaire (même carte ${mapName})`);
   }
 }
 
@@ -390,7 +428,28 @@ function drawTriangleTexture(ctx, image, triangle, textureCoords) {
 }
 
 function pd(func, file, msg) {
-  console.log(`❌ [${func}][${file}] ${msg}`);
+  // Détection automatique du type de message par icônes dans le message
+  let icon = '📄'; // Par défaut : info neutre
+  
+  if (msg.includes('✅') || msg.includes('✓')) {
+    icon = '✅'; // Succès
+  } else if (msg.includes('🔧') || msg.includes('⚡') || msg.includes('🔄')) {
+    icon = '🔧'; // Technique/Process
+  } else if (msg.includes('📊') || msg.includes('📍') || msg.includes('📐')) {
+    icon = '📊'; // Info/Stats
+  } else if (msg.includes('🎭') || msg.includes('🗺️')) {
+    icon = '🎭'; // Interface/Display
+  } else if (msg.includes('⏱️') || msg.includes('TIMEOUT') || msg.includes('timeout')) {
+    icon = '⏱️'; // Debug spécial timeout
+  } else if (msg.includes('TRACE') || msg.includes('CALL') || msg.includes('→')) {
+    icon = '🔍'; // Debug trace
+  } else if (msg.includes('❌') || msg.includes('ERREUR') || msg.includes('ERROR')) {
+    icon = '❌'; // Erreur explicite
+  } else if (msg.includes('STABLE') || msg.includes('MORPHING') || msg.includes('Mode de vue')) {
+    icon = '📊'; // Messages d'état
+  }
+  
+  console.log(`${icon} [${func}][${file}] ${msg}`);
 }
 
 // DEBUG: Afficher la structure complète du maillage
@@ -1220,6 +1279,11 @@ function render() {
     pd('render', 'main.js', '🔧 Rectangles texture pré-calculés UNE SEULE FOIS');
   }
   
+  // DEBUG: Vérifier que mapCanvas existe bien
+  if (showTexture && render.frameCount % 120 === 0) {
+    pd('render', 'main.js', `🔍 TRACE → mapCanvas=${mapCanvas ? `${mapCanvas.width}x${mapCanvas.height}` : 'NULL'} | currentMapName="${currentMapName}" | textureRectangles=${textureRectangles ? 'OK' : 'NULL'}`);
+  }
+  
   // Rendu avec texture ET grille si activé
   if (showTexture) {
     // Rendu avec texture projetée (rectangles pré-calculés + transformations)
@@ -1233,6 +1297,11 @@ function render() {
       // CORRECTION CRITIQUE: Utiliser l'index ORIGINAL de la face, pas l'index trié
       const rectangle = textureRectangles ? textureRectangles[face.originalIndex] : null;
       const success = drawTransformedRectangle(ctx, rectangle, quadProjected);
+      
+      // DEBUG: Tracer les échecs de texture
+      if (!success && sortedIndex < 5) { // Seulement les 5 premières faces pour éviter spam
+        pd('render', 'main.js', `🔍 TRACE → drawTransformedRectangle FAILED pour face ${face.originalIndex} (rectangle=${rectangle ? 'OK' : 'NULL'})`);
+      }
       
       // Si la projection échoue ou pour les contours, dessiner un contour léger
       if (success) {
@@ -1362,8 +1431,10 @@ function updateTopologyName(surfaceName) {
 // Boutons radio pour sélection de topologie
 document.querySelectorAll('input[name="topology"]').forEach(radio => {
   radio.addEventListener('change', (e) => {
+    pd('topology_event', 'main.js', `🔍 TRACE → Radio topology event | checked=${e.target.checked} | value="${e.target.value}"`);
     if (e.target.checked) {
       const newValue = e.target.value;
+      pd('topology_event', 'main.js', `🔍 TRACE → Topologie sélectionnée: "${newValue}"`);
       
       if (newValue === 'view2d') {
         // NOUVEAU: Bouton 2D = Reinit caméra avec config 2D complète
@@ -1421,8 +1492,10 @@ document.querySelectorAll('input[name="topology"]').forEach(radio => {
 // Boutons radio pour sélection de cartes
 document.querySelectorAll('input[name="mapChoice"]').forEach(radio => {
   radio.addEventListener('change', (e) => {
+    pd('mapChoice_event', 'main.js', `🔍 TRACE → Radio mapChoice event | checked=${e.target.checked} | value="${e.target.value}"`);
     if (e.target.checked) {
       const mapName = e.target.value;
+      pd('mapChoice_event', 'main.js', `🔍 TRACE → Appel changeMap("${mapName}") depuis événement radio`);
       changeMap(mapName);
     }
   });
