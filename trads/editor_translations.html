@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<!--
+File: editor_translations.html - Éditeur de traductions interface topologie 3D
+Desc: En français, dans l'architecture, je suis l'éditeur GUI pour modifier les traductions CSV
+Version 1.0.1 (éditeur interactif avec sauvegarde, réorganisé dans trads/)
+Author: DNAvatar.org - Arnaud Maignan
+Date: December 16, 2024 08:40 UTC+1
+Logs:
+  - v1.0.1: Correction commentaires HTML + réorganisation dans trads/
+  - v1.0.0: Éditeur GUI avec chargement CSV, modification inline et export
+-->
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>🌍 Éditeur Traductions - DNAvatar Topology</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container { 
+            max-width: 1400px; margin: 0 auto; 
+            background: rgba(255,255,255,0.95); 
+            padding: 30px; border-radius: 15px; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .header {
+            text-align: center; margin-bottom: 30px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 20px;
+        }
+        
+        .header h1 {
+            color: #333; margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .controls {
+            display: flex; gap: 15px; margin-bottom: 25px;
+            flex-wrap: wrap; align-items: center;
+        }
+        
+        .btn {
+            padding: 12px 25px; border: none; border-radius: 8px;
+            cursor: pointer; font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5a67d8; transform: translateY(-2px); }
+        
+        .btn-success { background: #48bb78; color: white; }
+        .btn-success:hover { background: #38a169; transform: translateY(-2px); }
+        
+        .btn-warning { background: #ed8936; color: white; }
+        .btn-warning:hover { background: #dd6b20; transform: translateY(-2px); }
+        
+        .btn-danger { background: #f56565; color: white; }
+        .btn-danger:hover { background: #e53e3e; transform: translateY(-2px); }
+        
+        .status {
+            padding: 15px; border-radius: 8px; margin: 15px 0;
+            font-weight: 500;
+        }
+        
+        .status.success { background: #c6f6d5; color: #276749; border-left: 4px solid #48bb78; }
+        .status.error { background: #fed7d7; color: #c53030; border-left: 4px solid #f56565; }
+        .status.info { background: #bee3f8; color: #2a69ac; border-left: 4px solid #4299e1; }
+        
+        .translations-table {
+            width: 100%; border-collapse: collapse;
+            margin-top: 20px; background: white;
+            border-radius: 8px; overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        
+        .translations-table th {
+            background: #667eea; color: white;
+            padding: 15px 10px; text-align: left;
+            font-weight: 600; font-size: 14px;
+        }
+        
+        .translations-table td {
+            padding: 12px 10px; border-bottom: 1px solid #e2e8f0;
+            vertical-align: top;
+        }
+        
+        .translations-table tr:hover {
+            background: #f7fafc;
+        }
+        
+        .translations-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .translations-table tr:nth-child(even):hover {
+            background: #e8f4fd;
+        }
+        
+        .edit-input {
+            width: 100%; padding: 8px; border: 1px solid #cbd5e0;
+            border-radius: 4px; font-size: 13px;
+            transition: border-color 0.2s;
+        }
+        
+        .edit-input:focus {
+            outline: none; border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .id-cell {
+            font-weight: 600; color: #2d3748;
+            background: #edf2f7 !important;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .stats {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px; margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: white; padding: 20px; border-radius: 8px;
+            text-align: center; border-left: 4px solid #667eea;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .stat-number { font-size: 32px; font-weight: bold; color: #667eea; }
+        .stat-label { color: #666; font-size: 14px; margin-top: 5px; }
+        
+        .loading {
+            text-align: center; padding: 40px;
+            color: #666; font-style: italic;
+        }
+        
+        .export-area {
+            margin-top: 30px; padding: 20px;
+            background: #f8f9fa; border-radius: 8px;
+            border: 2px dashed #dee2e6;
+        }
+        
+        .export-textarea {
+            width: 100%; height: 200px; font-family: 'Courier New', monospace;
+            font-size: 12px; padding: 10px; border: 1px solid #cbd5e0;
+            border-radius: 4px; resize: vertical;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌍 Éditeur de Traductions</h1>
+            <p>Interface d'édition pour le système de traductions DNAvatar Topology</p>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-primary" onclick="loadTranslations()">
+                📥 Charger CSV
+            </button>
+            <button class="btn btn-success" onclick="saveChanges()" id="save-btn" disabled>
+                💾 Sauvegarder
+            </button>
+            <button class="btn btn-warning" onclick="addNewEntry()">
+                ➕ Nouvelle Entrée
+            </button>
+            <button class="btn btn-danger" onclick="exportCSV()">
+                📤 Exporter CSV
+            </button>
+            <select id="filter-lang" onchange="filterByLanguage()" class="btn">
+                <option value="">Toutes langues</option>
+                <option value="fr">Français</option>
+                <option value="en">English</option>
+                <option value="es">Español</option>
+                <option value="it">Italiano</option>
+                <option value="de">Deutsch</option>
+            </select>
+        </div>
+        
+        <div id="status" class="status info" style="display: none;">
+            En attente de chargement...
+        </div>
+        
+        <div id="stats" class="stats" style="display: none;"></div>
+        
+        <div id="table-container">
+            <div class="loading">
+                🔄 Cliquez sur "Charger CSV" pour commencer l'édition
+            </div>
+        </div>
+        
+        <div id="export-section" class="export-area" style="display: none;">
+            <h3>📤 Export CSV</h3>
+            <p>Copiez le contenu ci-dessous et sauvegardez-le dans votre fichier translations.csv :</p>
+            <textarea id="csv-export" class="export-textarea" readonly></textarea>
+            <button class="btn btn-primary" onclick="copyToClipboard()">📋 Copier</button>
+        </div>
+    </div>
+
+    <script src="translations.js"></script>
+    <script>
+        let translationAPI = null;
+        let currentData = {};
+        let hasChanges = false;
+        
+        // Fonction PrintDebug globale
+        function pd(message, context = 'editor') {
+            const timestamp = new Date().toLocaleTimeString();
+            console.log(`❌ [${context}][editor_translations.html] ${timestamp}: ${message}`);
+        }
+        
+        // Charger les traductions
+        async function loadTranslations() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'status info';
+            statusDiv.innerHTML = '🔄 Chargement des traductions...';
+            
+            try {
+                if (typeof TranslationAPI === 'undefined') {
+                    throw new Error('TranslationAPI non disponible');
+                }
+                
+                translationAPI = new TranslationAPI();
+                const success = await translationAPI.init('translations.csv');
+                
+                if (success) {
+                    currentData = translationAPI.getDNAvatarData();
+                    displayTranslations();
+                    showStats();
+                    
+                    statusDiv.className = 'status success';
+                    statusDiv.innerHTML = `✅ ${Object.keys(currentData).length} traductions chargées avec succès`;
+                } else {
+                    throw new Error('Échec du chargement du CSV');
+                }
+                
+            } catch (error) {
+                pd(error.message, 'loadTranslations');
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = `❌ Erreur: ${error.message}`;
+            }
+        }
+        
+        // Afficher les traductions dans un tableau
+        function displayTranslations() {
+            const container = document.getElementById('table-container');
+            const languages = ['fr', 'en', 'es', 'it', 'de'];
+            
+            let html = `
+                <table class="translations-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>🇫🇷 Français</th>
+                            <th>🇬🇧 English</th>
+                            <th>🇪🇸 Español</th>
+                            <th>🇮🇹 Italiano</th>
+                            <th>🇩🇪 Deutsch</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            for (const [id, translations] of Object.entries(currentData)) {
+                html += `<tr data-id="${id}">`;
+                html += `<td class="id-cell">${id}</td>`;
+                
+                for (const lang of languages) {
+                    const value = translations[lang] || '';
+                    html += `
+                        <td>
+                            <input type="text" class="edit-input" 
+                                   value="${escapeHtml(value)}" 
+                                   data-id="${id}" data-lang="${lang}"
+                                   onchange="markChanged(this)">
+                        </td>
+                    `;
+                }
+                
+                html += `
+                    <td>
+                        <button class="btn btn-danger" onclick="deleteEntry('${id}')" style="padding: 6px 12px; font-size: 12px;">
+                            🗑️
+                        </button>
+                    </td>
+                </tr>`;
+            }
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        // Marquer comme modifié
+        function markChanged(input) {
+            const id = input.dataset.id;
+            const lang = input.dataset.lang;
+            const value = input.value;
+            
+            if (!currentData[id]) {
+                currentData[id] = {};
+            }
+            
+            currentData[id][lang] = value;
+            hasChanges = true;
+            
+            document.getElementById('save-btn').disabled = false;
+            document.getElementById('save-btn').textContent = '💾 Sauvegarder *';
+            
+            // Changer couleur pour indiquer modification
+            input.style.borderColor = '#ed8936';
+            input.style.backgroundColor = '#fffbf0';
+        }
+        
+        // Sauvegarder les modifications
+        function saveChanges() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'status success';
+            statusDiv.innerHTML = '✅ Modifications sauvegardées (en mémoire). Utilisez "Exporter CSV" pour sauvegarder sur disque.';
+            
+            hasChanges = false;
+            document.getElementById('save-btn').disabled = true;
+            document.getElementById('save-btn').textContent = '💾 Sauvegarder';
+            
+            // Remettre couleurs normales
+            const inputs = document.querySelectorAll('.edit-input');
+            inputs.forEach(input => {
+                input.style.borderColor = '#cbd5e0';
+                input.style.backgroundColor = 'white';
+            });
+        }
+        
+        // Ajouter nouvelle entrée
+        function addNewEntry() {
+            const id = prompt('ID de la nouvelle entrée:');
+            if (!id || currentData[id]) {
+                alert(id ? 'Cette ID existe déjà!' : 'ID requise');
+                return;
+            }
+            
+            currentData[id] = {
+                fr: '', en: '', es: '', it: '', de: ''
+            };
+            
+            displayTranslations();
+            showStats();
+            hasChanges = true;
+            document.getElementById('save-btn').disabled = false;
+        }
+        
+        // Supprimer entrée
+        function deleteEntry(id) {
+            if (confirm(`Supprimer l'entrée "${id}" ?`)) {
+                delete currentData[id];
+                displayTranslations();
+                showStats();
+                hasChanges = true;
+                document.getElementById('save-btn').disabled = false;
+            }
+        }
+        
+        // Filtrer par langue
+        function filterByLanguage() {
+            const selectedLang = document.getElementById('filter-lang').value;
+            const rows = document.querySelectorAll('tbody tr');
+            
+            rows.forEach(row => {
+                if (!selectedLang) {
+                    row.style.display = '';
+                    return;
+                }
+                
+                const input = row.querySelector(`input[data-lang="${selectedLang}"]`);
+                const hasContent = input && input.value.trim();
+                row.style.display = hasContent ? '' : 'none';
+            });
+        }
+        
+        // Afficher statistiques
+        function showStats() {
+            const statsDiv = document.getElementById('stats');
+            const languages = ['fr', 'en', 'es', 'it', 'de'];
+            const total = Object.keys(currentData).length;
+            
+            let html = '';
+            
+            for (const lang of languages) {
+                let count = 0;
+                for (const translations of Object.values(currentData)) {
+                    if (translations[lang] && translations[lang].trim()) {
+                        count++;
+                    }
+                }
+                
+                const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+                const flagMap = {fr: '🇫🇷', en: '🇬🇧', es: '🇪🇸', it: '🇮🇹', de: '🇩🇪'};
+                
+                html += `
+                    <div class="stat-card">
+                        <div class="stat-number">${count}</div>
+                        <div class="stat-label">${flagMap[lang]} ${lang.toUpperCase()}<br>${percentage}%</div>
+                    </div>
+                `;
+            }
+            
+            // Total
+            html += `
+                <div class="stat-card">
+                    <div class="stat-number">${total}</div>
+                    <div class="stat-label">📊 Total<br>Entrées</div>
+                </div>
+            `;
+            
+            statsDiv.innerHTML = html;
+            statsDiv.style.display = 'grid';
+        }
+        
+        // Exporter CSV
+        function exportCSV() {
+            const languages = ['fr', 'en', 'es', 'it', 'de'];
+            let csv = '';
+            
+            for (const [id, translations] of Object.entries(currentData)) {
+                const row = [
+                    `"${id}"`,
+                    `"${escapeCSV(translations.fr || '')}"`,
+                    `"${escapeCSV(translations.en || '')}"`,
+                    `"${escapeCSV(translations.es || '')}"`,
+                    `"${escapeCSV(translations.it || '')}"`,
+                    `"${escapeCSV(translations.de || '')}"`
+                ];
+                csv += row.join(',') + '\n';
+            }
+            
+            document.getElementById('csv-export').value = csv;
+            document.getElementById('export-section').style.display = 'block';
+            document.getElementById('csv-export').scrollIntoView({behavior: 'smooth'});
+        }
+        
+        // Copier dans le presse-papier
+        function copyToClipboard() {
+            const textarea = document.getElementById('csv-export');
+            textarea.select();
+            document.execCommand('copy');
+            
+            const statusDiv = document.getElementById('status');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'status success';
+            statusDiv.innerHTML = '✅ CSV copié dans le presse-papier!';
+        }
+        
+        // Utilitaires
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function escapeCSV(text) {
+            return text.replace(/"/g, '""');
+        }
+        
+        // Prévenir perte de données
+        window.addEventListener('beforeunload', function(e) {
+            if (hasChanges) {
+                e.preventDefault();
+                e.returnValue = 'Vous avez des modifications non sauvegardées!';
+            }
+        });
+    </script>
+</body>
+</html>
