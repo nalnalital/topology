@@ -1,7 +1,11 @@
 // File: config.js - Configuration for topology morphing animation
 // Desc: En français, dans l'architecture, je suis la configuration des animations morphing
+// Version 1.10.0 (angles tore + projectif)
 // Author: DNAvatar.org - Arnaud Maignan
+// Date: December 16, 2024 00:08 UTC+1
 // Logs:
+//   - ANGLES TORE: -140° 90° -60° 90 (pôle sud intérieur visible)
+//   - ANGLES PROJECTIF: 40° 5° 160° 85 (vue optimale plan projectif)
 //   - Added drag control configuration
 //   - Support for 8 topology types
 
@@ -41,8 +45,10 @@ export const config = {
     'disk': { rotX: 5, rotY: 0, rotZ: -5, scale: 162 },           // Disque : 5° 0° -5° 162
     'cylinder': { rotX: 35, rotY: 250, rotZ: -45, scale: 100 },   // Cylindre : 35° 250° -45° 100
     'mobius': { rotX: 27, rotY: -9, rotZ: -45, scale: 100 },      // Möbius : 27° -9° -45° 100
+    'torus': { rotX: -140, rotY: 90, rotZ: -60, scale: 90 },      // Tore : -140° 90° -60° 90
     'klein': { rotX: 0, rotY: -25, rotZ: -75, scale: 40 },        // Klein : 0° -25° -75° 40
     'crosscap': { rotX: 0, rotY: -90, rotZ: -45, scale: 180 },    // Cross : 0° -90° -45° 180
+    'projective': { rotX: 40, rotY: 5, rotZ: 160, scale: 85 }     // Projectif : 40° 5° 160° 85
   },
   
   // Icônes alternatives intéressantes pour les surfaces topologiques
