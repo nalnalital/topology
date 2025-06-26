@@ -1,10 +1,7 @@
 // File: config.js - Configuration for topology morphing animation
 // Desc: En français, dans l'architecture, je suis la configuration des animations morphing
-// Version 1.9.0 (scale 2D ajusté)
 // Author: DNAvatar.org - Arnaud Maignan
-// Date: December 15, 2024 23:05 UTC+1
 // Logs:
-//   - SCALE 2D AJUSTÉ: Scale vue 2D 109 → 108 pour alignement parfait
 //   - Added drag control configuration
 //   - Support for 8 topology types
 
@@ -44,10 +41,8 @@ export const config = {
     'disk': { rotX: 5, rotY: 0, rotZ: -5, scale: 162 },           // Disque : 5° 0° -5° 162
     'cylinder': { rotX: 35, rotY: 250, rotZ: -45, scale: 100 },   // Cylindre : 35° 250° -45° 100
     'mobius': { rotX: 27, rotY: -9, rotZ: -45, scale: 100 },      // Möbius : 27° -9° -45° 100
-    'torus': { rotX: 40, rotY: -60, rotZ: -60, scale: 95 },       // Tore : 40° -60° -60° 95
     'klein': { rotX: 0, rotY: -25, rotZ: -75, scale: 40 },        // Klein : 0° -25° -75° 40
     'crosscap': { rotX: 0, rotY: -90, rotZ: -45, scale: 180 },    // Cross : 0° -90° -45° 180
-    'projective': { rotX: 10, rotY: 20, rotZ: 0, scale: 150 }     // Projectif (à voir après)
   },
   
   // Icônes alternatives intéressantes pour les surfaces topologiques

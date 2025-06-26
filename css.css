@@ -1,10 +1,10 @@
 /* File: css.css - Styles for isometric topology viewer */
 /* Desc: En français, dans l'architecture, je suis les styles pour l'interface de projection isométrique avec système multi-cartes */
-/* Version 2.24.0 (CSS boutons textures unifié) */
+/* Version 2.27.0 (overlay canvas uniquement) */
 /* Author: DNAvatar.org - Arnaud Maignan */
-/* Date: December 15, 2024 23:50 UTC+1 */
+/* Date: December 16, 2024 00:20 UTC+1 */
 /* Logs: */
-/*   - CSS UNIFIÉ: Boutons textures (.map-option) utilisent maintenant le même style que boutons shapes (.topology-option) */
+/*   - OVERLAY CANVAS: Position absolute uniquement sur canvas avec capture taille exacte */
 /*   - SÉLECTION COHÉRENTE: :has() pour bouton entier bleu + texte transparent, comme les shapes */
 /*   - v2.3.0: Ajout cadres boutons topologiques + centrage vertical amélioré */
 /*   - Updated styles for canvas-based rendering */
@@ -97,6 +97,30 @@ canvas {
 
 canvas:active {
   cursor: grabbing;
+}
+
+/* CACHE MISÈRE : Overlay UNIQUEMENT sur le canvas */
+#loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  z-index: 10;
+  display: none;
+  pointer-events: none;
+}
+
+#loading-overlay.active {
+  display: block;
+}
+
+/* Image de capture canvas (taille exacte du canvas) */
+#loading-overlay img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .topology-option {
@@ -269,6 +293,7 @@ canvas:active {
   align-items: center;
   justify-content: center;
   background: transparent;
+  position: relative; /* Pour positionnement absolu de l'overlay */
 }
 
 .bottom-controls {

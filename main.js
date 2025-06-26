@@ -1,10 +1,10 @@
 // File: main.js - 3D Isometric Topology Engine with texture mapping
 // Desc: En français, dans l'architecture, je suis le moteur principal qui gère la projection 3D isométrique, les transformations topologiques, et le texture mapping avec système multi-cartes
-// Version 3.49.0 (3.48.0 → 3.49.0 changeMap config 2D)
+// Version 3.57.0 (3.56.0 → 3.57.0 overlay canvas uniquement)
 // Author: DNAvatar.org - Arnaud Maignan  
-// Date: [December 15, 2024] [23:50 UTC+1]
+// Date: [December 16, 2024] [00:20 UTC+1]
 // Logs:
-//   - CHANGEMAP CONFIG 2D: Fonction changeMap utilise config.privilegedAngles['view2d'] au lieu de scale fixe 150
+//   - OVERLAY CANVAS: Overlay uniquement sur canvas (position absolute) avec capture exacte
 //   - Scale dynamique par surface (cylindre: 180, torus: 120, autres: 150)
 //   - Import fonctions mathématiques depuis surfaces/cylinder.js, torus.js, plane.js
 //   - Configuration scale + rotations optimales dans chaque fichier surface
@@ -70,6 +70,54 @@ function loadTexture(mapName = currentMapName) {
     
     pd('loadTexture', 'main.js', `✅ Carte "${mapConfig.title}" chargée: ${img.width}x${img.height} pixels`);
     
+    // AUTO-RETOUR 3D avec petit timeout pour éviter mélange tuiles
+    if (previousSurfaceBeforeMapChange && previousSurfaceBeforeMapChange !== 'view2d') {
+      pd('loadTexture', 'main.js', `⚡ Auto-retour 3D vers: ${previousSurfaceBeforeMapChange} (timeout 20ms)`);
+      
+                    // Petit timeout pour laisser le recalcul se stabiliser
+       setTimeout(() => {
+         // Retourner à la surface précédente SANS ANIMATION
+         view2DMode = false;
+         morphToSurface(previousSurfaceBeforeMapChange, true); // SKIP ANIMATION
+         
+         // RÉINITIALISER les angles avec config de la surface 3D
+         if (config.privilegedAngles[previousSurfaceBeforeMapChange]) {
+           const angles = config.privilegedAngles[previousSurfaceBeforeMapChange];
+           rotX = (angles.rotX * Math.PI) / 180;
+           rotY = (angles.rotY * Math.PI) / 180;
+           rotZ = (angles.rotZ * Math.PI) / 180;
+           scale = angles.scale;
+         } else {
+           // Angles par défaut si pas de config spécifique
+           rotX = (config.defaultRotationX * Math.PI) / 180;
+           rotY = (config.defaultRotationY * Math.PI) / 180;
+           rotZ = 0;
+           scale = getOptimalScale(previousSurfaceBeforeMapChange);
+         }
+         updateAngleDisplay();
+         updateScaleDisplay();
+         
+         pd('loadTexture', 'main.js', `🔄 Angles réinitialisés pour ${previousSurfaceBeforeMapChange}: rotX=${Math.round(rotX * 180 / Math.PI)}°, rotY=${Math.round(rotY * 180 / Math.PI)}°, scale=${scale}`);
+         
+         // Mettre à jour l'interface
+         const radioButton = document.querySelector(`input[value="${previousSurfaceBeforeMapChange}"]`);
+         if (radioButton) {
+           radioButton.checked = true;
+         }
+         
+         // CACHE MISÈRE : Masquer overlay après retour 3D
+         const overlay = document.getElementById('loading-overlay');
+         if (overlay) {
+           overlay.classList.remove('active');
+           overlay.innerHTML = ''; // Nettoyer capture
+           pd('loadTexture', 'main.js', `🎭 Cache misère désactivé (overlay masqué + capture nettoyée)`);
+         }
+         
+         // Réinitialiser pour prochain changement
+         previousSurfaceBeforeMapChange = null;
+        }, 20); // 20ms timeout pour stabilisation recalcul
+    }
+    
     // Redessiner la scène avec la nouvelle texture
     requestAnimationFrame(render);
   };
@@ -79,9 +127,33 @@ function loadTexture(mapName = currentMapName) {
   img.src = mapConfig.file;
 }
 
+// Variable pour mémoriser surface précédente
+let previousSurfaceBeforeMapChange = null;
+
 // Changer de carte
 function changeMap(mapName) {
   if (mapName !== currentMapName) {
+    // CACHE MISÈRE : Capture canvas + afficher overlay
+    const overlay = document.getElementById('loading-overlay');
+    const canvas = document.getElementById('canvas');
+    if (overlay && canvas) {
+      // Capture du canvas actuel
+      const captureImg = document.createElement('img');
+      captureImg.src = canvas.toDataURL('image/png');
+      
+      // Vider overlay et ajouter capture
+      overlay.innerHTML = '';
+      overlay.appendChild(captureImg);
+      overlay.classList.add('active');
+      
+      pd('changeMap', 'main.js', `🎭 Cache misère activé (capture canvas sur overlay canvas uniquement)`);
+    }
+    
+    // Mémoriser surface précédente si on était en 3D
+    if (!view2DMode) {
+      previousSurfaceBeforeMapChange = currentSurface;
+    }
+    
     // FORCER le passage par 2D pour recalculer tout
     if (!view2DMode) {
       view2DMode = true;
@@ -103,17 +175,17 @@ function changeMap(mapName) {
       updateAngleDisplay();
       updateScaleDisplay();
       
-      pd('changeMap', 'main.js', `⚡ Retour 2D immédiat + angles réinitialisés (${config.defaultRotationX}°, ${config.defaultRotationY}°)`);
+      pd('changeMap', 'main.js', `⚡ Retour 2D (masqué par overlay) + angles réinitialisés`);
       
       // Mettre à jour l'interface pour refléter le passage en 2D
       document.querySelector('input[value="view2d"]').checked = true;
       updateTopologyName('Vue 2D Grille');
     }
     
-    // Charger la nouvelle texture
+    // Charger la nouvelle texture (avec callback auto-retour 3D)
     loadTexture(mapName);
     
-    pd('changeMap', 'main.js', `🗺️ Changement vers carte: ${mapName} - RESTE EN 2D pour éviter décalages`);
+    pd('changeMap', 'main.js', `🗺️ Changement vers carte: ${mapName} - Auto-retour 3D après chargement`);
   }
 }
 
@@ -145,16 +217,16 @@ function precalculateTextureRectangles() {
      const v3_tex = v3.gridV;
     
     // Rectangle UV dans la texture (en pixels)
-    const minU = Math.min(u0, u1, u2, u3);
-    const maxU = Math.max(u0, u1, u2, u3);
-    const minV = Math.min(v0_tex, v1_tex, v2_tex, v3_tex);
-    const maxV = Math.max(v0_tex, v1_tex, v2_tex, v3_tex);
-    
-    const srcX = Math.floor(minU * texW);
+  const minU = Math.min(u0, u1, u2, u3);
+  const maxU = Math.max(u0, u1, u2, u3);
+  const minV = Math.min(v0_tex, v1_tex, v2_tex, v3_tex);
+  const maxV = Math.max(v0_tex, v1_tex, v2_tex, v3_tex);
+  
+  const srcX = Math.floor(minU * texW);
     const srcY = Math.floor(minV * texH); // Pas d'inversion Y
-    const srcW = Math.ceil((maxU - minU) * texW);
-    const srcH = Math.ceil((maxV - minV) * texH);
-    
+  const srcW = Math.ceil((maxU - minU) * texW);
+  const srcH = Math.ceil((maxV - minV) * texH);
+  
     // Éviter les rectangles trop petits
     if (srcW < 2 || srcH < 2) {
       rectangles.push(null);
@@ -619,7 +691,7 @@ function morphToSurface(newSurfaceName, skipAnimation = false) {
     // COPIE PAR CORRESPONDANCE LOGIQUE (même position grille) et non par index tableau
     // Créer un mapping basé sur les coordonnées UV originales
     const oldVertexMap = new Map();
-    currentMesh.vertices.forEach(vertex => {
+  currentMesh.vertices.forEach(vertex => {
       const key = `${vertex.u.toFixed(6)}_${vertex.v.toFixed(6)}`;
       oldVertexMap.set(key, vertex);
     });
@@ -654,7 +726,7 @@ function morphToSurface(newSurfaceName, skipAnimation = false) {
     isAnimating = false;
     pd('morphToSurface', 'main.js', `⚡ Animation skippée - transition immédiate vers ${newSurfaceName}`);
   } else {
-    isAnimating = true;
+  isAnimating = true;
     pd('morphToSurface', 'main.js', `🔄 Animation démarrée vers ${newSurfaceName}`);
   }
 }
@@ -1191,13 +1263,13 @@ function render() {
         if (showGrid) {
           ctx.strokeStyle = 'rgba(0,0,0,0.4)';
           ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(projectedVertices[indices[0]].x, projectedVertices[indices[0]].y);
-          ctx.lineTo(projectedVertices[indices[1]].x, projectedVertices[indices[1]].y);
-          ctx.lineTo(projectedVertices[indices[2]].x, projectedVertices[indices[2]].y);
-          ctx.lineTo(projectedVertices[indices[3]].x, projectedVertices[indices[3]].y);
-          ctx.closePath();
-          ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(projectedVertices[indices[0]].x, projectedVertices[indices[0]].y);
+        ctx.lineTo(projectedVertices[indices[1]].x, projectedVertices[indices[1]].y);
+        ctx.lineTo(projectedVertices[indices[2]].x, projectedVertices[indices[2]].y);
+        ctx.lineTo(projectedVertices[indices[3]].x, projectedVertices[indices[3]].y);
+        ctx.closePath();
+        ctx.stroke();
         }
       }
     });
@@ -1241,8 +1313,8 @@ function render() {
   // Debug info réduit (éviter spam console)
   render.frameCount = (render.frameCount || 0) + 1;
   if (render.frameCount % 120 === 0) { // Debug toutes les 2 secondes à 60fps
-    const status = isAnimating ? 'MORPHING' : 'STABLE';
-    pd('render', 'main.js', `${status} - Maillage: ${currentMesh.vertices.length} sommets, ${currentMesh.faces.length} faces`);
+  const status = isAnimating ? 'MORPHING' : 'STABLE';
+  pd('render', 'main.js', `${status} - Maillage: ${currentMesh.vertices.length} sommets, ${currentMesh.faces.length} faces`);
   }
 }
 
@@ -1471,11 +1543,11 @@ canvas.addEventListener('mousemove', (e) => {
     rotZ += deltaX * config.mouseSensitivity * 0.01;
   } else {
     // Drag normal = Rotation Y (horizontal) et X (vertical)
-    rotY += deltaX * config.mouseSensitivity * 0.01;
-    rotX += deltaY * config.mouseSensitivity * 0.01;
-    
-    // Garder les angles dans une plage raisonnable
-    rotX = Math.max(-Math.PI, Math.min(Math.PI, rotX));
+  rotY += deltaX * config.mouseSensitivity * 0.01;
+  rotX += deltaY * config.mouseSensitivity * 0.01;
+  
+  // Garder les angles dans une plage raisonnable
+  rotX = Math.max(-Math.PI, Math.min(Math.PI, rotX));
   }
   
   lastMouseX = e.clientX;

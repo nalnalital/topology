@@ -1,10 +1,10 @@
 // File: torus.js - Tore surface topologique
 // Desc: En français, dans l'architecture, je suis un tore avec structure 2D universelle
-// Version 1.2.0 (ajout fonction mathématique + scale)
+// Version 1.3.0 (correction pôle sud intérieur)
 // Author: DNAvatar.org - Arnaud Maignan
-// Date: [December 15, 2024] [21:05 UTC+1]
+// Date: [December 16, 2024] [00:02 UTC+1]
 // Logs:
-//   - v1.2.0: Ajout fonction mathématique torus() + scale optimal + configuration
+//   - v1.3.0: CORRECTION PÔLE SUD: theta = (v + 0.5) * 2π pour pôle sud à l'intérieur du tore
 //   - v1.1.0: Structure 2D universelle appliquée
 //   - v1.0.0: Icône topologique initiale
 
@@ -29,7 +29,8 @@ export const config = {
 // Fonction mathématique du torus
 export function torus(u, v) {
   const phi = u * 2 * Math.PI;
-  const theta = v * 2 * Math.PI;
+  // CORRECTION PÔLE SUD: Décaler theta de π/2 pour que pôle sud soit à l'intérieur
+  const theta = (v + 0.5) * 2 * Math.PI; // v=0 → theta=π (pôle sud intérieur)
   const R = 2; // Rayon majeur
   const r = 0.8; // Rayon mineur
   
