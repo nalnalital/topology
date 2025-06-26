@@ -1,10 +1,10 @@
 // File: crosscap.js - Cross-cap surface 
 // Desc: En français, dans l'architecture, je suis un cross-cap [- -] non-orientable
-// Version 1.0.0 (création)
+// Version 1.1.0 (homogénéisation architecture)
 // Author: DNAvatar.org - Arnaud Maignan
-// Date: June 08, 2025 16:15 UTC+1
+// Date: December 15, 2024 23:25 UTC+1
 // Logs:
-//   - Initial cross-cap implementation with singularity
+//   - v1.1.0: Ajout createSurface() et config pour homogénéité avec autres surfaces
 
 // Icône topologique avec flèches directionnelles
 // Cross-cap [- -] : surface non-orientable avec singularité
@@ -31,4 +31,20 @@ export function crosscap(u, v) {
     y: sinU * sinV * 2,
     z: cosU * cos2V
   };
+}
+
+// Configuration spécifique crosscap
+export const config = {
+  scale: 180,                    // Scale optimal pour cross-cap
+  defaultRotation: { x: 0, y: -90 }, // Vue par défaut
+  name: 'Cross-cap',
+  emoji: '🪢'
+};
+
+// Fonction Three.js (legacy - pour homogénéité)
+export function createSurface() {
+  // Géométrie approximative pour cross-cap
+  const geometry = new THREE.SphereGeometry(2, 16, 16);
+  const material = new THREE.MeshStandardMaterial({ color: 0x3399ff });
+  return new THREE.Mesh(geometry, material);
 } 

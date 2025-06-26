@@ -1,18 +1,24 @@
 // File: main.js - 3D Isometric Topology Engine with texture mapping
-// Desc: En français, dans l'architecture, je suis le moteur principal qui gère la projection 3D isométrique, les transformations topologiques, et le texture mapping avec déformation perspective vraie (trapèzes)
-// Version 3.32.0 (3.31.0 → 3.32.0 miroir X cylindre)
+// Desc: En français, dans l'architecture, je suis le moteur principal qui gère la projection 3D isométrique, les transformations topologiques, et le texture mapping avec système multi-cartes
+// Version 3.49.0 (3.48.0 → 3.49.0 changeMap config 2D)
 // Author: DNAvatar.org - Arnaud Maignan  
-// Date: [December 15, 2024] [20:55 UTC+1]
+// Date: [December 15, 2024] [23:50 UTC+1]
 // Logs:
-//   - CORRECTION: Miroir X cylindre - inversion sens rotation (1-u) au lieu de u
-//   - Cylindre maintenant cohérent avec structure 2D (double inversion X+Y)
-//   - Texture mapping cylindre parfaitement aligné avec 2D
-//   - Morphing 2D ↔ cylindre sans déformation texture
+//   - CHANGEMAP CONFIG 2D: Fonction changeMap utilise config.privilegedAngles['view2d'] au lieu de scale fixe 150
+//   - Scale dynamique par surface (cylindre: 180, torus: 120, autres: 150)
+//   - Import fonctions mathématiques depuis surfaces/cylinder.js, torus.js, plane.js
+//   - Configuration scale + rotations optimales dans chaque fichier surface
+//   - Réduction main.js: fonctions déplacées vers fichiers spécialisés
 
 // === IMPORTS ===
 import { config } from './config.js';
 import { createMesh, createSurface, transformCase, transformMesh, debugCase, debugMesh } from './mesh.js';
 import { surface2D } from './surfaces/2D.js';
+// Import configurations des surfaces
+import { config as cylinderConfig, cylinder } from './surfaces/cylinder.js';
+import { config as torusConfig, torus } from './surfaces/torus.js';
+import { config as mobiusConfig, mobius } from './surfaces/mobius.js';
+import { plane } from './surfaces/plane.js';
 
 // === CONFIGURATION MAILLAGE ===
 const MESH_U = 30; // Résolution en U (plus en X)
@@ -28,8 +34,28 @@ let textureRectangles = null; // Cache des rectangles textures pré-calculés (c
 // === DEBUG UV TRACKING ===
 let lastUVSnapshot = null; // Snapshot précédent des UV pour détection changements
 
+// === SYSTÈME MULTI-CARTES ===
+const availableMaps = [
+  { name: 'map', file: 'cartes/map.png', title: 'Carte Monde' },
+  { name: 'relief', file: 'cartes/relief.jpg', title: 'Relief' },
+  { name: 'night', file: 'cartes/night.jpg', title: 'Nuit' },
+  { name: 'great', file: 'cartes/great.png', title: 'Great' },
+  { name: 'sheet', file: 'cartes/sheet.jpg', title: 'Sheet' },
+  { name: 'geoview', file: 'cartes/geoview.jpg', title: 'GeoView' }
+];
+
+let currentMapName = 'map'; // Carte par défaut
+
 // === CHARGEMENT TEXTURE ===
-function loadTexture() {
+function loadTexture(mapName = currentMapName) {
+  const mapConfig = availableMaps.find(m => m.name === mapName);
+  if (!mapConfig) {
+    pd('loadTexture', 'main.js', `❌ Carte inconnue: ${mapName}`);
+    return;
+  }
+  
+  currentMapName = mapName;
+  
   const img = new Image();
   img.onload = function() {
     // Créer canvas hors-écran pour les transformations affines
@@ -42,15 +68,53 @@ function loadTexture() {
     // Réinitialiser le cache des rectangles pour nouvelle texture
     textureRectangles = null;
     
-    pd('loadTexture', 'main.js', `✅ Texture chargée: ${img.width}x${img.height} pixels - Cache rectangles invalidé`);
+    pd('loadTexture', 'main.js', `✅ Carte "${mapConfig.title}" chargée: ${img.width}x${img.height} pixels`);
     
     // Redessiner la scène avec la nouvelle texture
     requestAnimationFrame(render);
   };
   img.onerror = function() {
-    pd('loadTexture', 'main.js', '❌ Erreur chargement texture map.png');
+    pd('loadTexture', 'main.js', `❌ Erreur chargement carte: ${mapConfig.file}`);
   };
-  img.src = 'map.png';
+  img.src = mapConfig.file;
+}
+
+// Changer de carte
+function changeMap(mapName) {
+  if (mapName !== currentMapName) {
+    // FORCER le passage par 2D pour recalculer tout
+    if (!view2DMode) {
+      view2DMode = true;
+      morphToSurface('view2d', true); // SKIP ANIMATION pour changement texture
+      
+      // RÉINITIALISER les angles avec config 2D complète
+      if (config.privilegedAngles['view2d']) {
+        const angles = config.privilegedAngles['view2d'];
+        rotX = (angles.rotX * Math.PI) / 180;
+        rotY = (angles.rotY * Math.PI) / 180;
+        rotZ = (angles.rotZ * Math.PI) / 180;
+        scale = angles.scale;
+      } else {
+        rotX = (config.defaultRotationX * Math.PI) / 180;
+        rotY = (config.defaultRotationY * Math.PI) / 180;
+        rotZ = 0;
+        scale = 108;
+      }
+      updateAngleDisplay();
+      updateScaleDisplay();
+      
+      pd('changeMap', 'main.js', `⚡ Retour 2D immédiat + angles réinitialisés (${config.defaultRotationX}°, ${config.defaultRotationY}°)`);
+      
+      // Mettre à jour l'interface pour refléter le passage en 2D
+      document.querySelector('input[value="view2d"]').checked = true;
+      updateTopologyName('Vue 2D Grille');
+    }
+    
+    // Charger la nouvelle texture
+    loadTexture(mapName);
+    
+    pd('changeMap', 'main.js', `🗺️ Changement vers carte: ${mapName} - RESTE EN 2D pour éviter décalages`);
+  }
 }
 
 // PRE-CALCUL des rectangles textures à plat (O(1) par frame après init)
@@ -313,19 +377,16 @@ let isAnimating = false;
 let dragEnabled = true;
 let view2DMode = true; // Mode vue 2D grille par défaut
 
-// === COMPTEUR FPS ===
-let fpsCounter = {
-  frameCount: 0,
-  lastTime: performance.now(),
-  currentFPS: 0
-};
+// === AFFICHAGE SCALE ===
+// Scale affiché en temps réel
 
 // === TEXTURE MAPPING ===
 let mapCanvas = null;
 let mapContext = null;
-let showTexture = true;
+let showTexture = true;  // Afficher la texture (cartes)
+let showGrid = true;     // Afficher les lignes de grille
 
-// === FACES CACHÉES AVEC RAYTRACING PAR COINS ===
+// === FACES CACHÉES DÉSACTIVÉES (contrôle supprimé) ===
 let showHiddenFaces = false;
 
 // Direction de vue isométrique (vers le fond)
@@ -523,11 +584,13 @@ function calculateFaceVisibility() {
 }
 
 // Morphing vers une nouvelle surface (RÉINITIALISATION COMPLÈTE pour éviter corruption UV)
-function morphToSurface(newSurfaceName) {
+function morphToSurface(newSurfaceName, skipAnimation = false) {
   if (newSurfaceName === targetSurface) return;
   
   targetSurface = newSurfaceName;
   currentSurface = newSurfaceName;
+  
+  // SCALE GÉRÉ PAR LES ANGLES PRIVILÉGIÉS - plus besoin de getOptimalScale
   
   let newMesh;
   
@@ -581,7 +644,19 @@ function morphToSurface(newSurfaceName) {
   // PLUS BESOIN de réinitialiser le cache rectangles - structure UV identique !
   // textureRectangles reste valide car même grille 30x20, mêmes UV, même texture
   
-  isAnimating = true;
+  if (skipAnimation) {
+    // SKIP ANIMATION : Aller directement à la position finale
+    currentMesh.vertices.forEach(vertex => {
+      vertex.x = vertex.xDest;
+      vertex.y = vertex.yDest;
+      vertex.z = vertex.zDest;
+    });
+    isAnimating = false;
+    pd('morphToSurface', 'main.js', `⚡ Animation skippée - transition immédiate vers ${newSurfaceName}`);
+  } else {
+    isAnimating = true;
+    pd('morphToSurface', 'main.js', `🔄 Animation démarrée vers ${newSurfaceName}`);
+  }
 }
 
 // Update animation barycentrique
@@ -626,17 +701,8 @@ function updateMorphing() {
 
 // === SURFACES PARAMÉTRÉES ===
 const surfaces = {
-  // Tore [+ +] - bords verticaux et horizontaux dans même sens
-  torus: (u, v) => {
-    const R = 1.5, r = 0.6;
-    const phi = u * 2 * Math.PI;
-    const theta = v * 2 * Math.PI;
-    return {
-      x: (R + r * Math.cos(theta)) * Math.cos(phi),
-      y: r * Math.sin(theta),
-      z: (R + r * Math.cos(theta)) * Math.sin(phi)
-    };
-  },
+  // Tore [+ +] - bords verticaux et horizontaux dans même sens (IMPORTÉ)
+  torus: torus,
   
   // Bouteille de Klein [+ -] - bords verticaux opposés
   klein: (u, v) => {
@@ -658,27 +724,11 @@ const surfaces = {
     }
   },
   
-  // Cylindre [+ +] - bords horizontaux dans même sens (Y inversé pour cohérence avec 2D)
-  cylinder: (u, v) => {
-    const phi = (1 - u) * 2 * Math.PI; // INVERSION X : sens de rotation inversé (1-u)
-    const h = ((1 - v) - 0.5) * 3; // INVERSION Y : même logique que 2D (1-v)
-    return {
-      x: Math.cos(phi),
-      y: h,
-      z: Math.sin(phi)
-    };
-  },
+  // Cylindre [+ +] - bords horizontaux dans même sens (IMPORTÉ)
+  cylinder: cylinder,
   
   // Ruban de Möbius [+ -] - bords horizontaux opposés
-  mobius: (u, v) => {
-    u *= 2 * Math.PI;
-    v = (v - 0.5) * 2;
-    return {
-      x: Math.cos(u) + v * Math.cos(u/2) * Math.cos(u),
-      y: Math.sin(u) + v * Math.cos(u/2) * Math.sin(u),
-      z: v * Math.sin(u/2)
-    };
-  },
+  mobius: mobius,
   
   // Cross-cap [- -] - surface non-orientable avec singularité
   crosscap: (u, v) => {
@@ -717,37 +767,33 @@ const surfaces = {
     };
   },
   
-  // Plan - surface plate infinie (IDENTIQUE à 2D)
-  plane: (u, v) => {
-    // IDENTIQUE à 2D : mêmes inversions et axes
-    const vInversed = 1 - v;    // INVERSION Y comme 2D
-    const uInversed = 1 - u;    // INVERSION X comme 2D
-    
-    return {
-      x: (uInversed - 0.5) * 6,  // X inversé comme 2D
-      y: (vInversed - 0.5) * 4,  // Y inversé comme 2D (pas Z!)
-      z: 0                       // Complètement plat comme 2D
-    };
-  },
+  // Plan - surface plate infinie (IMPORTÉ)
+  plane: plane,
 
   // Vue 2D - grille plate pour morphing 2D ↔ 3D (avec inversion Y)
   view2d: surface2D
 };
 
 // === ROTATION 3D ===
-function rotate3D(x, y, z, rotX, rotY) {
+function rotate3D(x, y, z, rotX, rotY, rotZ) {
   const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
   const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+  const cosZ = Math.cos(rotZ), sinZ = Math.sin(rotZ);
   
-  // Rotation Y puis X
+  // Rotation Y puis X puis Z (ordre important pour effet Diablo)
   const x1 = x * cosY - z * sinY;
   const y1 = y;
   const z1 = x * sinY + z * cosY;
   
+  const x2 = x1;
+  const y2 = y1 * cosX - z1 * sinX;
+  const z2 = y1 * sinX + z1 * cosX;
+  
+  // Rotation Z finale pour inclinaison
   return {
-    x: x1,
-    y: y1 * cosX - z1 * sinX,
-    z: y1 * sinX + z1 * cosX
+    x: x2 * cosZ - y2 * sinZ,
+    y: x2 * sinZ + y2 * cosZ,
+    z: z2
   };
 }
 
@@ -759,13 +805,35 @@ function projectIso(x, y, z, scale) {
   };
 }
 
+// === CONFIGURATION SCALE DYNAMIQUE ===
+function getOptimalScale(surfaceName) {
+  const surfaceConfigs = {
+    'cylinder': cylinderConfig,
+    'torus': torusConfig,
+    'mobius': mobiusConfig,
+    'view2d': { scale: 108 }, // Scale par défaut pour 2D
+    'plane': { scale: 150 },  // Scale par défaut pour plan
+    // Autres surfaces utilisent scale par défaut
+    'klein': { scale: 150 },
+    'crosscap': { scale: 150 },
+    'projective': { scale: 150 },
+    'disk': { scale: 150 },
+    'nonorientable2': { scale: 150 }
+  };
+  
+  const config = surfaceConfigs[surfaceName];
+  return config ? config.scale : 150; // Fallback vers scale par défaut
+}
+
 // === RENDU CANVAS ===
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 // Surface courante déjà déclarée en haut
-let rotX = (config.defaultRotationX * Math.PI) / 180;
-let rotY = (config.defaultRotationY * Math.PI) / 180;
-let scale = 150;
+// Initialisation avec config 2D par défaut
+let rotX = config.privilegedAngles['view2d'] ? (config.privilegedAngles['view2d'].rotX * Math.PI) / 180 : (config.defaultRotationX * Math.PI) / 180;
+let rotY = config.privilegedAngles['view2d'] ? (config.privilegedAngles['view2d'].rotY * Math.PI) / 180 : (config.defaultRotationY * Math.PI) / 180;
+let rotZ = config.privilegedAngles['view2d'] ? (config.privilegedAngles['view2d'].rotZ * Math.PI) / 180 : 0;
+let scale = config.privilegedAngles['view2d'] ? config.privilegedAngles['view2d'].scale : 108; // Scale initial 2D
 
 // === GESTION SOURIS ===
 let isDragging = false;
@@ -776,23 +844,16 @@ let lastMouseY = 0;
 function updateAngleDisplay() {
   const angleXDeg = Math.round((rotX * 180) / Math.PI);
   const angleYDeg = Math.round((rotY * 180) / Math.PI);
+  const angleZDeg = Math.round((rotZ * 180) / Math.PI);
   
   document.getElementById('angleXInput').value = angleXDeg;
   document.getElementById('angleYInput').value = angleYDeg;
+  document.getElementById('angleZInput').value = angleZDeg;
 }
 
-// Calcul FPS
-function updateFPS() {
-  fpsCounter.frameCount++;
-  const currentTime = performance.now();
-  const deltaTime = currentTime - fpsCounter.lastTime;
-  
-  if (deltaTime >= 1000) { // Mettre à jour chaque seconde
-    fpsCounter.currentFPS = Math.round((fpsCounter.frameCount * 1000) / deltaTime);
-    document.getElementById('fpsDisplay').textContent = fpsCounter.currentFPS;
-    fpsCounter.frameCount = 0;
-    fpsCounter.lastTime = currentTime;
-  }
+// Affichage du scale
+function updateScaleDisplay() {
+  document.getElementById('scaleDisplay').textContent = Math.round(scale);
 }
 
 // DEBUG UV + PROJECTION - Traquer les coordonnées des sommets de référence
@@ -805,11 +866,12 @@ function debugUVCorners() {
   const centerY = canvas.height / 2;
   
   // Indices des sommets de référence dans un maillage 30x20
+  // Organisation: index = i * (MESH_V + 1) + j
   const cornerIndices = {
-    'TopLeft': 0,                                    // (0,0)
-    'TopRight': MESH_V,                             // (0,20)  
-    'BottomLeft': MESH_U * (MESH_V + 1),           // (30,0)
-    'BottomRight': MESH_U * (MESH_V + 1) + MESH_V, // (30,20)
+    'TopLeft': 0 * (MESH_V + 1) + MESH_V,           // (0,20) - coin haut-gauche
+    'TopRight': MESH_U * (MESH_V + 1) + MESH_V,     // (30,20) - coin haut-droite
+    'BottomLeft': 0 * (MESH_V + 1) + 0,             // (0,0) - coin bas-gauche
+    'BottomRight': MESH_U * (MESH_V + 1) + 0,       // (30,0) - coin bas-droite
     'Center': Math.floor(MESH_U/2) * (MESH_V + 1) + Math.floor(MESH_V/2) // (~15,~10)
   };
   
@@ -820,7 +882,7 @@ function debugUVCorners() {
       const vertex = vertices[index];
       
       // Calculer projection à l'écran pour ce sommet
-      const rotated = rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY);
+      const rotated = rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
       const projected = projectIso(rotated.x, rotated.y, rotated.z, scale);
       const screenX = centerX + projected.x;
       const screenY = centerY - projected.y;
@@ -865,10 +927,16 @@ function debugUVCorners() {
    }
    
    // Toujours afficher les coordonnées projetées à chaque rotation
-   console.log('📍 Coordonnées projetées (3D → écran):');
+   console.log(`📍 Coordonnées projetées (3D → écran) - Surface: ${targetSurface}:`);
    Object.entries(currentSnapshot).forEach(([name, data]) => {
      console.log(`${name}: gridU=${data.gridU?.toFixed(3)} gridV=${data.gridV?.toFixed(3)} u=${data.u?.toFixed(3)} v=${data.v?.toFixed(3)} → screenX=${Math.round(data.screenX)} screenY=${Math.round(data.screenY)} z=${data.rotatedZ?.toFixed(2)}`);
    });
+   
+   // Vérifier si on est sur une surface fermée (cylindre, torus, etc.)
+   const closedSurfaces = ['cylinder', 'torus', 'mobius', 'klein'];
+   if (closedSurfaces.includes(targetSurface)) {
+     console.log(`ℹ️ SURFACE FERMÉE (${targetSurface}): Les bords u=0 et u=1 se rejoignent mathématiquement - coordonnées identiques NORMALES`);
+   }
    
    // Afficher aussi les coordonnées 2D de référence (grille plate)
    console.log('📐 Coordonnées 2D référence (grille plate):');
@@ -927,7 +995,7 @@ function render2DGrid() {
   const cellWidth = optimalCellSize;
   const cellHeight = optimalCellSize;
   
-  // Dessiner la grille 2D avec texture si activée
+  // Dessiner la texture 2D si activée
   if (showTexture && mapCanvas) {
     // Dessiner chaque cellule avec sa texture
     for (let i = 0; i < MESH_U; i++) {
@@ -954,26 +1022,28 @@ function render2DGrid() {
     }
   }
   
-  // Dessiner la grille
-  ctx.strokeStyle = '#333';
-  ctx.lineWidth = 1;
-  
-  // Lignes verticales
-  for (let i = 0; i <= MESH_U; i++) {
-    const x = startX + i * cellWidth;
-    ctx.beginPath();
-    ctx.moveTo(x, startY);
-    ctx.lineTo(x, startY + gridHeight);
-    ctx.stroke();
-  }
-  
-  // Lignes horizontales
-  for (let j = 0; j <= MESH_V; j++) {
-    const y = startY + j * cellHeight;
-    ctx.beginPath();
-    ctx.moveTo(startX, y);
-    ctx.lineTo(startX + gridWidth, y);
-    ctx.stroke();
+  // Dessiner les lignes de grille si activées
+  if (showGrid) {
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    
+    // Lignes verticales
+    for (let i = 0; i <= MESH_U; i++) {
+      const x = startX + i * cellWidth;
+      ctx.beginPath();
+      ctx.moveTo(x, startY);
+      ctx.lineTo(x, startY + gridHeight);
+      ctx.stroke();
+    }
+    
+    // Lignes horizontales
+    for (let j = 0; j <= MESH_V; j++) {
+      const y = startY + j * cellHeight;
+      ctx.beginPath();
+      ctx.moveTo(startX, y);
+      ctx.lineTo(startX + gridWidth, y);
+      ctx.stroke();
+    }
   }
   
   // Marquer les 5 points de référence
@@ -1008,8 +1078,8 @@ function render2DGrid() {
 }
 
 function render() {
-  // Calculer FPS
-  updateFPS();
+  // Afficher le scale
+  updateScaleDisplay();
   
   // Debug UV désormais uniquement lors des rotations manuelles
   
@@ -1036,7 +1106,7 @@ function render() {
   // Rotation et projection des sommets (avec positions animées)
   const projectedVertices = currentMesh.vertices.map(vertex => {
     // MÊME SYSTÈME pour 2D et 3D : rotation puis projection isométrique
-    const rotated = rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY);
+    const rotated = rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
     const projected = projectIso(rotated.x, rotated.y, rotated.z, scale);
     
     return {
@@ -1058,7 +1128,7 @@ function render() {
       
       // MÊME CALCUL de profondeur pour 2D et 3D
       const vertex = currentMesh.vertices[vertexIndex];
-      const rotated = rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY);
+      const rotated = rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
       centerZ += rotated.z;
     });
     
@@ -1118,15 +1188,17 @@ function render() {
         }
         
         // GRILLE DÉFORMABLE au-dessus de la texture (filet de foot !)
-        ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(projectedVertices[indices[0]].x, projectedVertices[indices[0]].y);
-        ctx.lineTo(projectedVertices[indices[1]].x, projectedVertices[indices[1]].y);
-        ctx.lineTo(projectedVertices[indices[2]].x, projectedVertices[indices[2]].y);
-        ctx.lineTo(projectedVertices[indices[3]].x, projectedVertices[indices[3]].y);
-        ctx.closePath();
-        ctx.stroke();
+        if (showGrid) {
+          ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(projectedVertices[indices[0]].x, projectedVertices[indices[0]].y);
+          ctx.lineTo(projectedVertices[indices[1]].x, projectedVertices[indices[1]].y);
+          ctx.lineTo(projectedVertices[indices[2]].x, projectedVertices[indices[2]].y);
+          ctx.lineTo(projectedVertices[indices[3]].x, projectedVertices[indices[3]].y);
+          ctx.closePath();
+          ctx.stroke();
+        }
       }
     });
   } else {
@@ -1205,7 +1277,7 @@ const topologyIcons = {
   'cylinder': '🫙',
   'mobius': '🎀',
   'torus': '🍩',
-  'projective': '🪩',
+  'projective': '🌎',
   'klein': '🖇️',
   'crosscap': '🪢'
 };
@@ -1222,11 +1294,22 @@ document.querySelectorAll('input[name="topology"]').forEach(radio => {
       const newValue = e.target.value;
       
       if (newValue === 'view2d') {
-        // NOUVEAU: Bouton 2D = Reinit caméra (0°, 135°)
-        rotX = (config.defaultRotationX * Math.PI) / 180;
-        rotY = (config.defaultRotationY * Math.PI) / 180;
-        scale = 150;
+        // NOUVEAU: Bouton 2D = Reinit caméra avec config 2D complète
+        if (config.privilegedAngles['view2d']) {
+          const angles = config.privilegedAngles['view2d'];
+          rotX = (angles.rotX * Math.PI) / 180;
+          rotY = (angles.rotY * Math.PI) / 180;
+          rotZ = (angles.rotZ * Math.PI) / 180;
+          scale = angles.scale;
+        } else {
+          // Fallback si pas de config
+          rotX = (config.defaultRotationX * Math.PI) / 180;
+          rotY = (config.defaultRotationY * Math.PI) / 180;
+          rotZ = 0;
+          scale = 108; // Scale 2D correct
+        }
         updateAngleDisplay();
+        updateScaleDisplay();
         
         // Rester en mode 2D après reinit
         view2DMode = true;
@@ -1235,7 +1318,7 @@ document.querySelectorAll('input[name="topology"]').forEach(radio => {
           morphToSurface('view2d');
         }
         
-        pd('reinitCamera', 'main.js', `🔄 Caméra réinitialisée via bouton 2D: ${config.defaultRotationX}°, ${config.defaultRotationY}°`);
+        pd('reinitCamera', 'main.js', `🔄 Caméra réinitialisée via bouton 2D: X=${Math.round(rotX * 180 / Math.PI)}° Y=${Math.round(rotY * 180 / Math.PI)}° Z=${Math.round(rotZ * 180 / Math.PI)}° Scale=${scale}`);
         if (!view2DMode) debugUVCorners();
       } else {
         // Mode 3D normal avec topologie + ANGLES PRIVILÉGIÉS
@@ -1247,8 +1330,11 @@ document.querySelectorAll('input[name="topology"]').forEach(radio => {
           const angles = config.privilegedAngles[newValue];
           rotX = (angles.rotX * Math.PI) / 180;
           rotY = (angles.rotY * Math.PI) / 180;
+          rotZ = (angles.rotZ * Math.PI) / 180;
+          scale = angles.scale;
           updateAngleDisplay();
-          pd('privilegedAngles', 'main.js', `📐 Angles privilégiés appliqués pour ${newValue}: X=${angles.rotX}° Y=${angles.rotY}°`);
+          updateScaleDisplay();
+          pd('privilegedAngles', 'main.js', `📐 Angles privilégiés appliqués pour ${newValue}: X=${angles.rotX}° Y=${angles.rotY}° Z=${angles.rotZ}° Scale=${angles.scale}`);
         }
         
         if (newValue !== targetSurface) {
@@ -1260,19 +1346,24 @@ document.querySelectorAll('input[name="topology"]').forEach(radio => {
   });
 });
 
-// Contrôle d'échelle supprimé - utiliser le zoom molette
-
-document.getElementById('hiddenFaces').addEventListener('change', (e) => {
-  showHiddenFaces = e.target.checked;
-  pd('hiddenFaces', 'main.js', `Faces cachées: ${showHiddenFaces ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`);
+// Boutons radio pour sélection de cartes
+document.querySelectorAll('input[name="mapChoice"]').forEach(radio => {
+  radio.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      const mapName = e.target.value;
+      changeMap(mapName);
+    }
+  });
 });
+
+// Contrôle d'échelle supprimé - utiliser le zoom molette
 
 // Drag rotation toujours activé (plus de contrôle)
 dragEnabled = true;
 
 document.getElementById('showTexture').addEventListener('change', (e) => {
-  showTexture = e.target.checked;
-  pd('showTexture', 'main.js', `Texture mapping: ${showTexture ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`);
+  showGrid = e.target.checked;
+  pd('showGrid', 'main.js', `Lignes de grille: ${showGrid ? 'ACTIVÉES' : 'DÉSACTIVÉES'}`);
 });
 
 // Les boutons radio topology gèrent maintenant aussi la vue 2D
@@ -1294,6 +1385,15 @@ document.getElementById('angleYInput').addEventListener('input', (e) => {
   if (!isNaN(newAngle)) {
     rotY = (newAngle * Math.PI) / 180;
     pd('angleYInput', 'main.js', `Rotation Y manuelle: ${newAngle}°`);
+    if (!view2DMode) debugUVCorners();
+  }
+});
+
+document.getElementById('angleZInput').addEventListener('input', (e) => {
+  const newAngle = parseInt(e.target.value);
+  if (!isNaN(newAngle)) {
+    rotZ = (newAngle * Math.PI) / 180;
+    pd('angleZInput', 'main.js', `Rotation Z manuelle: ${newAngle}°`);
     if (!view2DMode) debugUVCorners();
   }
 });
@@ -1328,11 +1428,22 @@ document.getElementById('rotYRight').addEventListener('click', () => {
   if (!view2DMode) debugUVCorners();
 });
 
-// Bouton affichage structure
-document.getElementById('showStructure').addEventListener('click', () => {
-  console.log('📋 Affichage structure du maillage...');
-  showMeshStructure();
+// Boutons fine-tuning rotation Z
+document.getElementById('rotZLeft').addEventListener('click', () => {
+  rotZ -= (5 * Math.PI) / 180; // -5°
+  updateAngleDisplay();
+  pd('rotZLeft', 'main.js', `Rotation Z -5°: ${Math.round(rotZ * 180 / Math.PI)}°`);
+  if (!view2DMode) debugUVCorners();
 });
+
+document.getElementById('rotZRight').addEventListener('click', () => {
+  rotZ += (5 * Math.PI) / 180; // +5°
+  updateAngleDisplay();
+  pd('rotZRight', 'main.js', `Rotation Z +5°: ${Math.round(rotZ * 180 / Math.PI)}°`);
+  if (!view2DMode) debugUVCorners();
+});
+
+// Bouton affichage structure supprimé
 
 // === ÉVÉNEMENTS SOURIS ===
 canvas.addEventListener('mousedown', (e) => {
@@ -1353,13 +1464,19 @@ canvas.addEventListener('mousemove', (e) => {
   // Sauvegarder anciennes valeurs pour détecter changements
   const oldRotX = rotX;
   const oldRotY = rotY;
+  const oldRotZ = rotZ;
   
-  // Rotation Y (horizontal) et X (vertical)
-  rotY += deltaX * config.mouseSensitivity * 0.01;
-  rotX += deltaY * config.mouseSensitivity * 0.01;
-  
-  // Garder les angles dans une plage raisonnable
-  rotX = Math.max(-Math.PI, Math.min(Math.PI, rotX));
+  if (e.shiftKey) {
+    // SHIFT + Drag = Rotation Z (inclinaison Diablo/Civilization)
+    rotZ += deltaX * config.mouseSensitivity * 0.01;
+  } else {
+    // Drag normal = Rotation Y (horizontal) et X (vertical)
+    rotY += deltaX * config.mouseSensitivity * 0.01;
+    rotX += deltaY * config.mouseSensitivity * 0.01;
+    
+    // Garder les angles dans une plage raisonnable
+    rotX = Math.max(-Math.PI, Math.min(Math.PI, rotX));
+  }
   
   lastMouseX = e.clientX;
   lastMouseY = e.clientY;
@@ -1367,10 +1484,11 @@ canvas.addEventListener('mousemove', (e) => {
   updateAngleDisplay();
   
   // DEBUG UV à chaque nouvelle valeur de rotation
-  if (oldRotX !== rotX || oldRotY !== rotY) {
+  if (oldRotX !== rotX || oldRotY !== rotY || oldRotZ !== rotZ) {
     const rotXDeg = Math.round((rotX * 180) / Math.PI);
     const rotYDeg = Math.round((rotY * 180) / Math.PI);
-    console.log(`🔄 Rotation changée: X=${rotXDeg}° Y=${rotYDeg}°`);
+    const rotZDeg = Math.round((rotZ * 180) / Math.PI);
+    console.log(`🔄 Rotation changée: X=${rotXDeg}° Y=${rotYDeg}° Z=${rotZDeg}°`);
     debugUVCorners();
   }
 });
@@ -1397,6 +1515,7 @@ canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
   const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
   scale = Math.max(50, Math.min(500, scale * zoomFactor));
+  updateScaleDisplay();
 });
 
 // Initialiser l'affichage des angles

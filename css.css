@@ -1,10 +1,11 @@
 /* File: css.css - Styles for isometric topology viewer */
-/* Desc: En français, dans l'architecture, je suis les styles pour l'interface de projection isométrique */
-/* Version 2.11.0 (boutons carrés espacement uniforme) */
+/* Desc: En français, dans l'architecture, je suis les styles pour l'interface de projection isométrique avec système multi-cartes */
+/* Version 2.24.0 (CSS boutons textures unifié) */
 /* Author: DNAvatar.org - Arnaud Maignan */
-/* Date: June 08, 2025 21:35 UTC+1 */
+/* Date: December 15, 2024 23:50 UTC+1 */
 /* Logs: */
-/*   - v2.3.1: Suppression cadre/bordure des colonnes left/right controls */
+/*   - CSS UNIFIÉ: Boutons textures (.map-option) utilisent maintenant le même style que boutons shapes (.topology-option) */
+/*   - SÉLECTION COHÉRENTE: :has() pour bouton entier bleu + texte transparent, comme les shapes */
 /*   - v2.3.0: Ajout cadres boutons topologiques + centrage vertical amélioré */
 /*   - Updated styles for canvas-based rendering */
 /*   - Added controls styling */
@@ -86,13 +87,12 @@ select {
 }
 
 canvas {
-  border: 2px solid #333;
   background: white;
   margin: 0;
   display: block;
   cursor: grab;
   width: 800px;
-  height: 500px;
+  height: 450px;
 }
 
 canvas:active {
@@ -126,12 +126,19 @@ canvas:active {
   display: none;
 }
 
-.topology-option input[type="radio"]:checked + .topology-visual {
+/* Changer la couleur de TOUT le bouton quand sélectionné (pas l'icône) */
+.topology-option:has(input[type="radio"]:checked) {
   background: linear-gradient(145deg, #e3f2fd, #bbdefb);
   border: 2px solid #3498db;
-  color: #3498db;
   transform: scale(1.05);
   box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+}
+
+/* Garder l'icône transparente quand sélectionnée */
+.topology-option:has(input[type="radio"]:checked) .topology-visual {
+  background: transparent;
+  border: none;
+  color: #3498db;
 }
 
 .topology-option input[type="radio"]:checked ~ .topology-name {
@@ -230,13 +237,15 @@ canvas:active {
   margin: 10px 0 20px 0;
 }
 
-.main-container {
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 20px;
+.simulation-grid {
+  display: grid;
+  grid-template-columns: 90px 800px 90px;
+  gap: 5px;
+  align-items: center;
+  justify-items: center;
   margin: 10px 0;
   background: transparent;
+  justify-content: center;
 }
 
 .left-controls, .right-controls {
@@ -245,14 +254,20 @@ canvas:active {
   align-items: center;
   justify-content: center;
   gap: 25px;
-  min-width: 120px;
+  min-width: 90px;
+}
+
+.external-controls {
+  display: flex;
+  justify-content: center;
+  margin: 15px 0;
 }
 
 .center-area {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
   background: transparent;
 }
 
@@ -418,4 +433,97 @@ canvas:active {
 .controls-row button:hover {
   background: #d5dbdb;
   transform: translateY(-1px);
+}
+
+/* === SÉLECTION DES CARTES === */
+.map-selection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 15px 0;
+  padding: 12px 8px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  max-height: 40px;
+}
+
+/* Forcer la hauteur des boutons reinit et grille dans la section textures */
+.map-selection .topology-option {
+  height: 24px;
+  width: 24px;
+  padding: 2px;
+}
+
+.map-selection .topology-visual {
+  font-size: 12px;
+}
+
+.map-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 2px;
+}
+
+.map-options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-height: 40px;
+}
+
+.map-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: linear-gradient(145deg, #ffffff, #f8f9fa);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 50px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  max-height: 30px;
+}
+
+.map-option:hover {
+  background: linear-gradient(145deg, #f8f9fa, #e3f2fd);
+  border-color: #bbb;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+.map-option input[type="radio"] {
+  display: none;
+}
+
+/* Changer la couleur de TOUT le bouton map quand sélectionné */
+.map-option:has(input[type="radio"]:checked) {
+  background: linear-gradient(145deg, #e3f2fd, #bbdefb);
+  border: 2px solid #3498db;
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+}
+
+/* Garder le texte de la map transparent quand sélectionné */
+.map-option:has(input[type="radio"]:checked) .map-name {
+  background: transparent;
+  border: none;
+  color: #3498db;
+}
+
+.map-name {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 0;
+  border-radius: 4px;
+  background: transparent;
+  transition: all 0.3s ease;
+  border: none;
+  color: #2c3e50;
+  max-height: 30px;
 }

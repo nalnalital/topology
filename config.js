@@ -1,10 +1,10 @@
 // File: config.js - Configuration for topology morphing animation
 // Desc: En français, dans l'architecture, je suis la configuration des animations morphing
-// Version 1.7.0 (angles privilégiés par topologie)
+// Version 1.9.0 (scale 2D ajusté)
 // Author: DNAvatar.org - Arnaud Maignan
-// Date: June 08, 2025 22:30 UTC+1
+// Date: December 15, 2024 23:05 UTC+1
 // Logs:
-//   - Updated default rotation to rx=0°, ry=22°
+//   - SCALE 2D AJUSTÉ: Scale vue 2D 109 → 108 pour alignement parfait
 //   - Added drag control configuration
 //   - Support for 8 topology types
 
@@ -37,17 +37,17 @@ export const config = {
   // Sensibilité souris
   mouseSensitivity: 0.5,  // Facteur de sensibilité pour drag
   
-  // ANGLES PRIVILÉGIÉS PAR TOPOLOGIE (en degrés)
+  // ANGLES PRIVILÉGIÉS PAR TOPOLOGIE (X°, Y°, Z°, Scale)
   privilegedAngles: {
-    'view2d': { rotX: 0, rotY: 135 },     // Vue 2D optimale
-    'plane': { rotX: 0, rotY: 135 },      // Plan identique à 2D
-    'cylinder': { rotX: 0, rotY: 90 },    // Cylindre vue de profil
-    'torus': { rotX: 15, rotY: 45 },      // Tore vue 3/4
-    'mobius': { rotX: 30, rotY: 60 },     // Möbius vue perspective
-    'klein': { rotX: 20, rotY: 30 },      // Klein vue détaillée
-    'disk': { rotX: -10, rotY: 0 },       // Disque vue légèrement inclinée
-    'crosscap': { rotX: 25, rotY: 45 },   // Cross-cap vue 3D
-    'projective': { rotX: 10, rotY: 20 }  // Projectif vue douce
+    'view2d': { rotX: 0, rotY: 135, rotZ: 0, scale: 108 },        // 2D : 0° 135° 0° 108
+    'plane': { rotX: 35, rotY: 120, rotZ: 45, scale: 100 },       // Plan : 35° 120° 45° 100
+    'disk': { rotX: 5, rotY: 0, rotZ: -5, scale: 162 },           // Disque : 5° 0° -5° 162
+    'cylinder': { rotX: 35, rotY: 250, rotZ: -45, scale: 100 },   // Cylindre : 35° 250° -45° 100
+    'mobius': { rotX: 27, rotY: -9, rotZ: -45, scale: 100 },      // Möbius : 27° -9° -45° 100
+    'torus': { rotX: 40, rotY: -60, rotZ: -60, scale: 95 },       // Tore : 40° -60° -60° 95
+    'klein': { rotX: 0, rotY: -25, rotZ: -75, scale: 40 },        // Klein : 0° -25° -75° 40
+    'crosscap': { rotX: 0, rotY: -90, rotZ: -45, scale: 180 },    // Cross : 0° -90° -45° 180
+    'projective': { rotX: 10, rotY: 20, rotZ: 0, scale: 150 }     // Projectif (à voir après)
   },
   
   // Icônes alternatives intéressantes pour les surfaces topologiques
