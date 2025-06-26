@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Visualisation de Surfaces Topologiques - Projection Isométrique</title>
   <link rel="stylesheet" href="css.css">
-      <!-- Version 3.5.0 - Canvas réduit pour 2D optimisé -->
+      <!-- Version 3.7.0 - Bouton Structure ajouté -->
 </head>
 <body>
   <h1>Surfaces topologiques - Projection 3D Isométrique</h1>
@@ -14,7 +14,7 @@
       <div class="left-controls">
         <label class="topology-option">
           <input type="radio" name="topology" value="view2d" checked>
-          <span class="topology-visual">📐</span>
+          <span class="topology-visual">🔄</span>
         </label>
         
         <label class="topology-option">
@@ -58,8 +58,7 @@
                 <div class="controls-row">
           <label>Grille: <input type="checkbox" id="showTexture" checked></label>
           <label>Faces cachées: <input type="checkbox" id="hiddenFaces"></label>
-          <button id="reinitCamera">🔄 Reinit (0°, 135°)</button>
-          <button id="testMesh">🧪 Test Mesh</button>
+          <button id="showStructure">📋 Structure</button>
         </div>
       </div>
       

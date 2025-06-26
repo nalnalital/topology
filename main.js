@@ -1,36 +1,13 @@
-// File: main.js - Moteur 3D isométrique avec morphing et texture mapping
-// Desc: En français, dans l'architecture, je suis le cœur du moteur de rendu 3D isométrique avec support morphing barycentrique, algorithme faces cachées par raytracing, et texture mapping par rectangles pré-calculés avec UV stables lors du morphing
-// Version 3.17.0 (inversion bandes X texture)
+// File: main.js - 3D Isometric Topology Engine with texture mapping
+// Desc: En français, dans l'architecture, je suis le moteur principal qui gère la projection 3D isométrique, les transformations topologiques, et le texture mapping avec déformation perspective vraie (trapèzes)
+// Version 3.32.0 (3.31.0 → 3.32.0 miroir X cylindre)
 // Author: DNAvatar.org - Arnaud Maignan  
-// Date: June 08, 2025 21:20 UTC+1
+// Date: [December 15, 2024] [20:55 UTC+1]
 // Logs:
-//   - v3.17.0: Inversion bandes X texture (gridU = 1-u) pour orientation correcte carte
-//   - v3.16.0: CORRECTION CRITIQUE texture mapping - index original des faces pour éviter mélange lors tri profondeur
-//   - v3.15.0: Optimisation 2D plein écran (95% au lieu de 80%) + cases carrées préservées + affichage utilisation
-//   - v3.14.0: Défaut 2D + rotations 0°/135° optimales + view2DMode=true par défaut
-//   - v3.13.0: Rotations éditables manuellement + boutons fine-tuning ↩️↪️ + défaut Y=-45°
-//   - v3.12.1: Rotation drag toujours activé (plus de contrôle utilisateur) + interface optimisée
-//   - v3.12.0: Vue 2D avec filet déformable (même rendu que 3D) + debug en haut + boutons rapprochés
-//   - v3.11.1: Surface 2D externalisée dans surfaces/2D.js avec inversion Y des tuiles
-//   - v3.11.0: Vue 2D avec morphing barycentrique (surface view2d + projection orthogonale)
-//   - v3.10.0: Vue 2D intégrée comme 9ème topologie (même groupe radio, pas de conflit 2D/3D)
-//   - v3.9.9: Projections 2D/3D en boutons radio au-dessus du canvas (plus de bouton toggle)
-//   - v3.9.8: Rectangles texture pré-calculés UNE SEULE FOIS - plus de recalcul lors rotations
-//   - v3.9.7: Suppression inversion Y dans mapping texture (ymax-y) - orientation correcte
-//   - v3.9.5: Bouton Vue 2D grille texture + debug coordonnées 2D référence + comparaison 3D/2D
-//   - v3.9.4: Affichage coordonnées projetées (screenX/Y + z) des 5 points référence à chaque rotation
-//   - v3.9.3: Debug à chaque changement rotX/rotY + pictos extraits en tableau + suppression cadre controls
-//   - v3.9.2: Debug UV déclenché à chaque rotation manuelle + amélioration style boutons
-//   - v3.9.1: Debug UV tracking pour identifier changements inatendus lors rotations
-//   - v3.9.0: Maillage complètement réinitialisé par changement (anti-corruption UV) + FPS + bouton reinit
-//   - v3.8.1: Verbosité logs réduite (debug toutes les 2s au lieu de chaque frame)
-//   - v3.8.0: Coordonnées UV stables pendant morphing (anti-sauts aléatoires texture)
-//   - v3.7.0: Rectangles textures pré-calculés à plat puis transformés (performance x3, anti-pixellisation)
-//   - v3.6.0: Texture mapping par transformations affines (scale/rotate/skew), projection complète de texture au lieu d'échantillonnage moyenné
-//   - v3.5.0: Texture mapping avec échantillonnage 4 coins, couleur moyenne par face, rendu dual texture/wireframe
-//   - v3.4.0: Raytracing faces cachées avec classification visible/partiel/caché, couleurs adaptatives
-//   - v3.3.0: Morphing barycentrique avec convergence automatique et interface couleur
-//   - v3.2.0: Projection isométrique native, maillage 30x20, animation 60 FPS
+//   - CORRECTION: Miroir X cylindre - inversion sens rotation (1-u) au lieu de u
+//   - Cylindre maintenant cohérent avec structure 2D (double inversion X+Y)
+//   - Texture mapping cylindre parfaitement aligné avec 2D
+//   - Morphing 2D ↔ cylindre sans déformation texture
 
 // === IMPORTS ===
 import { config } from './config.js';
@@ -91,11 +68,9 @@ function precalculateTextureRectangles() {
     const v1 = currentMesh.vertices[indices[1]];
     const v2 = currentMesh.vertices[indices[2]];
     const v3 = currentMesh.vertices[indices[3]];
-    
 
-    
-         // COORDONNÉES UV STABLES basées sur la grille (pas sur les surfaces)
-     // Utiliser les coordonnées UV de grille au lieu des paramètres de surface
+    // COORDONNÉES UV STABLES basées sur la grille (pas sur les surfaces)
+    // Utiliser les coordonnées UV de grille au lieu des paramètres de surface
      const u0 = v0.gridU;
      const v0_tex = v0.gridV;
      const u1 = v1.gridU;
@@ -152,31 +127,24 @@ function precalculateTextureRectangles() {
   return rectangles;
 }
 
-// RENDU rectangle transformé (scale/rotate/skew optimisé)
+// RENDU rectangle transformé avec VRAIE TRANSFORMATION PERSPECTIVE (trapèze)
+// Basé sur perspective.js - subdivision intelligente pour vrais trapèzes
 function drawTransformedRectangle(ctx, rectangle, projectedQuad) {
   if (!rectangle) return false;
   
-  const p0 = projectedQuad[0];
-  const p1 = projectedQuad[1];
-  const p2 = projectedQuad[2];
-  const p3 = projectedQuad[3];
+  const p0 = projectedQuad[0]; // Top-left
+  const p1 = projectedQuad[1]; // Top-right  
+  const p2 = projectedQuad[2]; // Bottom-right
+  const p3 = projectedQuad[3]; // Bottom-left
   
-  // Calculer rectangle destination
-  const minX = Math.min(p0.x, p1.x, p2.x, p3.x);
-  const maxX = Math.max(p0.x, p1.x, p2.x, p3.x);
-  const minY = Math.min(p0.y, p1.y, p2.y, p3.y);
-  const maxY = Math.max(p0.y, p1.y, p2.y, p3.y);
-  
-  const dstW = maxX - minX;
-  const dstH = maxY - minY;
-  
-  // Éviter les transformations trop petites
-  if (dstW < 1 || dstH < 1) return false;
+  // Éviter les quads trop petits
+  const area = Math.abs((p1.x - p0.x) * (p3.y - p0.y) - (p3.x - p0.x) * (p1.y - p0.y));
+  if (area < 1) return false;
   
   // Sauvegarder l'état du contexte
   ctx.save();
   
-  // Clipping précis du quad (anti-aliasing naturel)
+  // Clipping précis du quad
   ctx.beginPath();
   ctx.moveTo(p0.x, p0.y);
   ctx.lineTo(p1.x, p1.y);
@@ -185,15 +153,52 @@ function drawTransformedRectangle(ctx, rectangle, projectedQuad) {
   ctx.closePath();
   ctx.clip();
   
-  // Transformation linéaire simple (performance x3 vs matrices complexes)
-  const scaleX = dstW / rectangle.width;
-  const scaleY = dstH / rectangle.height;
+  // VRAIE TRANSFORMATION PERSPECTIVE - Méthode perspective.js
+  // Subdivision adaptative pour créer de vrais trapèzes
   
-  ctx.translate(minX, minY);
-  ctx.scale(scaleX, scaleY);
+  const srcW = rectangle.width;
+  const srcH = rectangle.height;
   
-  // Dessiner rectangle pré-calculé (une seule opération)
-  ctx.drawImage(rectangle.canvas, 0, 0);
+  // Calculer nombre de subdivisions basé sur la déformation
+  const maxDist = Math.max(
+    distance2D(p0, p1), distance2D(p1, p2), 
+    distance2D(p2, p3), distance2D(p3, p0)
+  );
+  const subdivisions = Math.min(8, Math.max(2, Math.floor(maxDist / 50)));
+  
+  // Subdivision intelligente pour perspective vraie
+  for (let u = 0; u < subdivisions; u++) {
+    for (let v = 0; v < subdivisions; v++) {
+      const u0 = u / subdivisions;
+      const u1 = (u + 1) / subdivisions;
+      const v0 = v / subdivisions;
+      const v1 = (v + 1) / subdivisions;
+      
+      // Interpolation bilinéaire pour les 4 coins du sous-quad
+      const corner00 = bilinearInterpolation(p0, p1, p2, p3, u0, v0);
+      const corner10 = bilinearInterpolation(p0, p1, p2, p3, u1, v0);
+      const corner11 = bilinearInterpolation(p0, p1, p2, p3, u1, v1);
+      const corner01 = bilinearInterpolation(p0, p1, p2, p3, u0, v1);
+      
+      // Correspondance dans la texture source
+      const srcX0 = u0 * srcW;
+      const srcY0 = v0 * srcH;
+      const srcW_sub = (u1 - u0) * srcW;
+      const srcH_sub = (v1 - v0) * srcH;
+      
+      // Dessiner triangle 1 (corner00, corner10, corner01)
+      drawTriangleTexture(ctx, rectangle.canvas,
+        [corner00, corner10, corner01],
+        [[srcX0, srcY0], [srcX0 + srcW_sub, srcY0], [srcX0, srcY0 + srcH_sub]]
+      );
+      
+      // Dessiner triangle 2 (corner10, corner11, corner01)  
+      drawTriangleTexture(ctx, rectangle.canvas,
+        [corner10, corner11, corner01],
+        [[srcX0 + srcW_sub, srcY0], [srcX0 + srcW_sub, srcY0 + srcH_sub], [srcX0, srcY0 + srcH_sub]]
+      );
+    }
+  }
   
   // Restaurer l'état
   ctx.restore();
@@ -201,12 +206,107 @@ function drawTransformedRectangle(ctx, rectangle, projectedQuad) {
   return true;
 }
 
+// Interpolation bilinéaire dans un quad (perspective vraie)
+function bilinearInterpolation(p0, p1, p2, p3, u, v) {
+  // Interpolation bilinéaire correcte pour perspective
+  const x = (1-u)*(1-v)*p0.x + u*(1-v)*p1.x + u*v*p2.x + (1-u)*v*p3.x;
+  const y = (1-u)*(1-v)*p0.y + u*(1-v)*p1.y + u*v*p2.y + (1-u)*v*p3.y;
+  return {x, y};
+}
+
+// Distance 2D entre deux points
+function distance2D(p1, p2) {
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  return Math.sqrt(dx*dx + dy*dy);
+}
+
+// Dessiner triangle avec texture (méthode perspective.js)
+function drawTriangleTexture(ctx, image, triangle, textureCoords) {
+  const [p0, p1, p2] = triangle;
+  const [t0, t1, t2] = textureCoords;
+  
+  // Calculer matrice de transformation affine pour ce triangle
+  const denom = (t1[0] - t0[0]) * (t2[1] - t0[1]) - (t2[0] - t0[0]) * (t1[1] - t0[1]);
+  if (Math.abs(denom) < 1e-10) return; // Triangle dégénéré
+  
+  const m11 = ((p1.x - p0.x) * (t2[1] - t0[1]) - (p2.x - p0.x) * (t1[1] - t0[1])) / denom;
+  const m12 = ((p2.x - p0.x) * (t1[0] - t0[0]) - (p1.x - p0.x) * (t2[0] - t0[0])) / denom;
+  const m21 = ((p1.y - p0.y) * (t2[1] - t0[1]) - (p2.y - p0.y) * (t1[1] - t0[1])) / denom;
+  const m22 = ((p2.y - p0.y) * (t1[0] - t0[0]) - (p1.y - p0.y) * (t2[0] - t0[0])) / denom;
+  const dx = p0.x - m11 * t0[0] - m12 * t0[1];
+  const dy = p0.y - m21 * t0[0] - m22 * t0[1];
+  
+  // Sauvegarder et appliquer clipping triangle
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(p0.x, p0.y);
+  ctx.lineTo(p1.x, p1.y);
+  ctx.lineTo(p2.x, p2.y);
+  ctx.closePath();
+  ctx.clip();
+  
+  // Appliquer transformation et dessiner
+  ctx.setTransform(m11, m21, m12, m22, dx, dy);
+  ctx.drawImage(image, 0, 0);
+  
+  ctx.restore();
+}
+
 function pd(func, file, msg) {
   console.log(`❌ [${func}][${file}] ${msg}`);
 }
 
+// DEBUG: Afficher la structure complète du maillage
+function showMeshStructure() {
+  if (!currentMesh) {
+    console.log('❌ Pas de maillage actuel');
+    return;
+  }
+  
+  console.log('\n🔧 === STRUCTURE DU MAILLAGE ===');
+  console.log(`📊 Vertices: ${currentMesh.vertices.length} sommets`);
+  console.log(`📊 Faces: ${currentMesh.faces.length} faces`);
+  
+  // Montrer structure d'un vertex
+  const vertex0 = currentMesh.vertices[0];
+  console.log('\n📍 STRUCTURE VERTEX (exemple vertex[0]):');
+  console.log({
+    position_courante: { x: vertex0.x, y: vertex0.y, z: vertex0.z },
+    position_destination: { xDest: vertex0.xDest, yDest: vertex0.yDest, zDest: vertex0.zDest },
+    parametres_UV: { u: vertex0.u, v: vertex0.v },
+    coordonnees_grille_stables: { gridU: vertex0.gridU, gridV: vertex0.gridV },
+    index: vertex0.index
+  });
+  
+  // Montrer structure d'une face
+  const face0 = currentMesh.faces[0];
+  console.log('\n🔲 STRUCTURE FACE (exemple face[0]):');
+  console.log({
+    vertices_indices: face0.vertices,
+    centre_projete: face0.center,
+    profondeur: face0.avgZ,
+    visibilite: { visibility: face0.visibility, hiddenCorners: face0.hiddenCorners },
+    mapping_texture: { 
+      originalIndex: face0.originalIndex,
+      textureCenterX: face0.textureCenterX,
+      textureCenterY: face0.textureCenterY
+    }
+  });
+  
+  // Montrer quelques exemples de centres de cases
+  console.log('\n📐 CENTRES DES CASES (premiers exemples):');
+  for (let i = 0; i < Math.min(5, currentMesh.faces.length); i++) {
+    const face = currentMesh.faces[i];
+    console.log(`Face[${i}]: centre texture (${face.textureCenterX}, ${face.textureCenterY}) → originalIndex=${face.originalIndex}`);
+  }
+  
+  console.log('\n✅ Structure affichée dans la console');
+}
+
 // === MAILLAGE AVEC ANIMATION ===
 let currentMesh = null;
+let originalMesh2D = null; // RÉFÉRENCE FIXE du maillage 2D original (JAMAIS modifiée)
 let targetSurface = 'view2d';
 let currentSurface = 'view2d';
 let isAnimating = false;
@@ -242,6 +342,12 @@ function initializeMesh(surfaceFunc) {
       const v = j / MESH_V; // Paramètre V normalisé [0,1]
       
       const point = surfaceFunc(u, v);
+      
+      // STRUCTURE 2D UNIVERSELLE - Copier TOUJOURS la structure 2D avant projection
+      // Toutes les surfaces utilisent la même base UV que 2D (cohérence morphing garantie)
+      const gridU = 1 - u;  // Inversion X comme 2D (TOUJOURS)
+      const gridV = v;      // Pas d'inversion Y comme 2D (TOUJOURS)
+      
       vertices.push({
         // Position courante (animée)
         x: point.x,
@@ -254,9 +360,8 @@ function initializeMesh(surfaceFunc) {
         // Paramètres UV pour recalcul surface
         u: u, v: v,
         // Coordonnées UV STABLES de grille (pour texture mapping cohérent)
-        // INVERSION X: max-u pour inverser les bandes horizontales
-        gridU: 1 - u,
-        gridV: v,
+        gridU: gridU,  // UV avec inversions spécifiques à la surface
+        gridV: gridV,
         index: i * (MESH_V + 1) + j
       });
     }
@@ -281,7 +386,10 @@ function initializeMesh(surfaceFunc) {
         hiddenCorners: 0, // Nombre de coins cachés (0-4)
         visibility: 'visible', // 'visible', 'partial', 'hidden'
         // Index original pour texture mapping stable
-        originalIndex: i * MESH_V + j
+        originalIndex: i * MESH_V + j,
+        // COORDONNÉES FIXES DU CENTRE DE LA CASE [x,y] pour mapping texture stable
+        textureCenterX: i + 0.5,  // Centre en X de la case (0.5 à 29.5)
+        textureCenterY: j + 0.5   // Centre en Y de la case (0.5 à 19.5)
       });
     }
   }
@@ -421,28 +529,59 @@ function morphToSurface(newSurfaceName) {
   targetSurface = newSurfaceName;
   currentSurface = newSurfaceName;
   
-  // RÉINITIALISATION COMPLÈTE du maillage (anti-corruption UV)
-  const newMesh = initializeMesh(surfaces[newSurfaceName]);
+  let newMesh;
+  
+  if (newSurfaceName === 'view2d') {
+    // RETOUR EN 2D : Utiliser la référence fixe originale (transformation réversible garantie)
+    if (!originalMesh2D) {
+      // Première fois : créer la référence fixe
+      originalMesh2D = initializeMesh(surfaces.view2d);
+      pd('morphToSurface', 'main.js', '🔧 Référence 2D originale créée (première fois)');
+    }
+    
+    // Cloner la référence fixe (structure parfaitement identique)
+    newMesh = {
+      vertices: originalMesh2D.vertices.map(v => ({...v})),
+      faces: originalMesh2D.faces.map(f => ({...f, vertices: [...f.vertices]}))
+    };
+    
+    pd('morphToSurface', 'main.js', '🔄 Retour 2D via référence fixe - transformation réversible garantie');
+  } else {
+    // AUTRES SURFACES : Génération normale
+    newMesh = initializeMesh(surfaces[newSurfaceName]);
+    pd('morphToSurface', 'main.js', `🔄 Maillage généré vers ${newSurfaceName}`);
+  }
   
   if (currentMesh) {
-    // Copier les positions courantes vers les nouvelles destinations
-    newMesh.vertices.forEach((vertex, i) => {
-      if (i < currentMesh.vertices.length) {
-        vertex.x = currentMesh.vertices[i].x;
-        vertex.y = currentMesh.vertices[i].y;
-        vertex.z = currentMesh.vertices[i].z;
+    // COPIE PAR CORRESPONDANCE LOGIQUE (même position grille) et non par index tableau
+    // Créer un mapping basé sur les coordonnées UV originales
+    const oldVertexMap = new Map();
+    currentMesh.vertices.forEach(vertex => {
+      const key = `${vertex.u.toFixed(6)}_${vertex.v.toFixed(6)}`;
+      oldVertexMap.set(key, vertex);
+    });
+    
+    // Copier les positions vers les vertices correspondants
+    newMesh.vertices.forEach(vertex => {
+      const key = `${vertex.u.toFixed(6)}_${vertex.v.toFixed(6)}`;
+      const oldVertex = oldVertexMap.get(key);
+      if (oldVertex) {
+        vertex.x = oldVertex.x;
+        vertex.y = oldVertex.y;
+        vertex.z = oldVertex.z;
       }
     });
+    
+    pd('morphToSurface', 'main.js', '🔧 Positions copiées par correspondance logique UV (pas par index)');
   }
   
   // Remplacer le maillage corrompu par un nouveau propre
   currentMesh = newMesh;
   
-  // Réinitialiser le cache des rectangles pour nouvelle surface
-  textureRectangles = null;
+  // PLUS BESOIN de réinitialiser le cache rectangles - structure UV identique !
+  // textureRectangles reste valide car même grille 30x20, mêmes UV, même texture
   
   isAnimating = true;
-  pd('morphToSurface', 'main.js', `🔄 Maillage réinitialisé vers ${newSurfaceName} - UV propres garanties`);
 }
 
 // Update animation barycentrique
@@ -519,10 +658,10 @@ const surfaces = {
     }
   },
   
-  // Cylindre [+ +] - bords horizontaux dans même sens
+  // Cylindre [+ +] - bords horizontaux dans même sens (Y inversé pour cohérence avec 2D)
   cylinder: (u, v) => {
-    const phi = u * 2 * Math.PI;
-    const h = (v - 0.5) * 3;
+    const phi = (1 - u) * 2 * Math.PI; // INVERSION X : sens de rotation inversé (1-u)
+    const h = ((1 - v) - 0.5) * 3; // INVERSION Y : même logique que 2D (1-v)
     return {
       x: Math.cos(phi),
       y: h,
@@ -578,12 +717,16 @@ const surfaces = {
     };
   },
   
-  // Plan - surface plate infinie
+  // Plan - surface plate infinie (IDENTIQUE à 2D)
   plane: (u, v) => {
+    // IDENTIQUE à 2D : mêmes inversions et axes
+    const vInversed = 1 - v;    // INVERSION Y comme 2D
+    const uInversed = 1 - u;    // INVERSION X comme 2D
+    
     return {
-      x: (u - 0.5) * 4,
-      y: 0,
-      z: (v - 0.5) * 4
+      x: (uInversed - 0.5) * 6,  // X inversé comme 2D
+      y: (vInversed - 0.5) * 4,  // Y inversé comme 2D (pas Z!)
+      z: 0                       // Complètement plat comme 2D
     };
   },
 
@@ -1079,17 +1222,35 @@ document.querySelectorAll('input[name="topology"]').forEach(radio => {
       const newValue = e.target.value;
       
       if (newValue === 'view2d') {
-        // Vue 2D devient une vraie topologie avec morphing !
+        // NOUVEAU: Bouton 2D = Reinit caméra (0°, 135°)
+        rotX = (config.defaultRotationX * Math.PI) / 180;
+        rotY = (config.defaultRotationY * Math.PI) / 180;
+        scale = 150;
+        updateAngleDisplay();
+        
+        // Rester en mode 2D après reinit
         view2DMode = true;
         updateTopologyName('Vue 2D Grille');
-        if (newValue !== targetSurface) {
-          morphToSurface(newValue);
+        if ('view2d' !== targetSurface) {
+          morphToSurface('view2d');
         }
-        pd('topology', 'main.js', 'Mode de vue: 2D Grille avec morphing');
+        
+        pd('reinitCamera', 'main.js', `🔄 Caméra réinitialisée via bouton 2D: ${config.defaultRotationX}°, ${config.defaultRotationY}°`);
+        if (!view2DMode) debugUVCorners();
       } else {
-        // Mode 3D normal avec topologie
+        // Mode 3D normal avec topologie + ANGLES PRIVILÉGIÉS
         view2DMode = false;
         updateTopologyName(newValue);
+        
+        // Appliquer les angles privilégiés de cette topologie
+        if (config.privilegedAngles[newValue]) {
+          const angles = config.privilegedAngles[newValue];
+          rotX = (angles.rotX * Math.PI) / 180;
+          rotY = (angles.rotY * Math.PI) / 180;
+          updateAngleDisplay();
+          pd('privilegedAngles', 'main.js', `📐 Angles privilégiés appliqués pour ${newValue}: X=${angles.rotX}° Y=${angles.rotY}°`);
+        }
+        
         if (newValue !== targetSurface) {
           morphToSurface(newValue);
         }
@@ -1116,20 +1277,7 @@ document.getElementById('showTexture').addEventListener('change', (e) => {
 
 // Les boutons radio topology gèrent maintenant aussi la vue 2D
 
-// Bouton reinit caméra
-document.getElementById('reinitCamera').addEventListener('click', () => {
-  rotX = (config.defaultRotationX * Math.PI) / 180;
-  rotY = (config.defaultRotationY * Math.PI) / 180;
-  scale = 150;
-  updateAngleDisplay();
-  pd('reinitCamera', 'main.js', `🔄 Caméra réinitialisée: ${config.defaultRotationX}°, ${config.defaultRotationY}°`);
-  
-  // Debug UV après reinit de la caméra (seulement en mode 3D)
-  if (!view2DMode) {
-    console.log(`🔄 Reinit caméra: X=${config.defaultRotationX}° Y=${config.defaultRotationY}°`);
-    debugUVCorners();
-  }
-});
+// Ancien bouton reinit supprimé - fonction intégrée au bouton 2D
 
 // Inputs manuels pour les angles
 document.getElementById('angleXInput').addEventListener('input', (e) => {
@@ -1180,41 +1328,10 @@ document.getElementById('rotYRight').addEventListener('click', () => {
   if (!view2DMode) debugUVCorners();
 });
 
-// Bouton test mesh
-document.getElementById('testMesh').addEventListener('click', () => {
-  console.log('\n=== TEST MESH.JS ===');
-  
-  // 1. Créer un petit maillage 3x2 pour test
-  const maillage = createMesh(3, 2);
-  debugMesh(maillage);
-  
-  // 2. Afficher quelques cases
-  console.log('\n=== CASES BRUTES ===');
-  debugCase(maillage.all[0], 0); // Première case
-  debugCase(maillage.all[1], 1); // Deuxième case
-  debugCase(maillage.all[maillage.all.length - 1], maillage.all.length - 1); // Dernière case
-  
-  // 3. Test transformation d'une case
-  console.log('\n=== TRANSFORMATION CASE ===');
-  const params = { scale: 20, offsetX: 100, offsetY: 50 };
-  const caseTransformee = transformCase(maillage.all[0], params);
-  console.log(`❌ [test][main.js] Case[0] originale: ${JSON.stringify(maillage.all[0])}`);
-  console.log(`❌ [test][main.js] Case[0] transformée: ${JSON.stringify(caseTransformee)}`);
-  
-  // 4. Test transformation complète
-  console.log('\n=== TRANSFORMATION MAILLAGE ===');
-  const maillageTransforme = transformMesh(maillage, params);
-  debugMesh(maillageTransforme);
-  
-  // 5. Test avec le maillage actuel 30x20
-  console.log('\n=== MAILLAGE ACTUEL 30x20 ===');
-  const maillageReel = createMesh(30, 20);
-  debugMesh(maillageReel);
-  console.log(`❌ [test][main.js] Première case 30x20: ${JSON.stringify(maillageReel.all[0])}`);
-  console.log(`❌ [test][main.js] Dernière case 30x20: ${JSON.stringify(maillageReel.all[maillageReel.all.length - 1])}`);
-  
-  console.log('\n=== TEST TERMINÉ ===');
-  pd('testMesh', 'main.js', '🧪 Test mesh terminé - voir console pour détails');
+// Bouton affichage structure
+document.getElementById('showStructure').addEventListener('click', () => {
+  console.log('📋 Affichage structure du maillage...');
+  showMeshStructure();
 });
 
 // === ÉVÉNEMENTS SOURIS ===

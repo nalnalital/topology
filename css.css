@@ -1,8 +1,8 @@
 /* File: css.css - Styles for isometric topology viewer */
 /* Desc: En français, dans l'architecture, je suis les styles pour l'interface de projection isométrique */
-/* Version 2.9.0 (réduction hauteur canvas pour 2D optimisé) */
+/* Version 2.11.0 (boutons carrés espacement uniforme) */
 /* Author: DNAvatar.org - Arnaud Maignan */
-/* Date: June 08, 2025 21:00 UTC+1 */
+/* Date: June 08, 2025 21:35 UTC+1 */
 /* Logs: */
 /*   - v2.3.1: Suppression cadre/bordure des colonnes left/right controls */
 /*   - v2.3.0: Ajout cadres boutons topologiques + centrage vertical amélioré */
@@ -104,15 +104,15 @@ canvas:active {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 10px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
+  padding: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
   background: linear-gradient(145deg, #ffffff, #f8f9fa);
   cursor: pointer;
   transition: all 0.3s ease;
-  min-width: 80px;
-  min-height: 70px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  width: 70px;
+  height: 70px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
 }
 
 .topology-option:hover {
@@ -140,60 +140,79 @@ canvas:active {
 }
 
 .topology-visual {
-  font-size: 16px;
+  font-size: 22px;
   font-family: 'Courier New', monospace;
   font-weight: bold;
-  padding: 4px;
+  padding: 0;
   border-radius: 4px;
   background: transparent;
   transition: all 0.3s ease;
-  min-height: 40px;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  letter-spacing: 1px;
+  letter-spacing: 0px;
+  margin: 0;
+  line-height: 1;
 }
 
 .cross-pattern {
   display: grid !important;
   grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
   grid-template-rows: 1fr 1fr 1fr;
-  gap: 1px;
-  width: 60px;
-  height: 40px;
+  gap: 0px;
+  width: 100%;
+  height: 100%;
   align-items: center;
   justify-items: center;
-  margin: auto;
+  margin: 0;
+  padding: 0;
 }
 
 .cross-top {
   grid-column: 3;
   grid-row: 1;
-  font-size: 10px;
+  font-size: 12px;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
 }
 
 .cross-left {
   grid-column: 1;
   grid-row: 2;
-  font-size: 10px;
+  font-size: 12px;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
 }
 
 .cross-center {
   grid-column: 3;
   grid-row: 2;
-  font-size: 14px;
+  font-size: 18px;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
 }
 
 .cross-right {
   grid-column: 5;
   grid-row: 2;
-  font-size: 10px;
+  font-size: 12px;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
 }
 
 .cross-bottom {
   grid-column: 3;
   grid-row: 3;
-  font-size: 10px;
+  font-size: 12px;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
 }
 
 .topology-name {

@@ -1,8 +1,8 @@
 // File: config.js - Configuration for topology morphing animation
 // Desc: En français, dans l'architecture, je suis la configuration des animations morphing
-// Version 1.6.0 (défaut rotY=135° optimal pour 2D)
+// Version 1.7.0 (angles privilégiés par topologie)
 // Author: DNAvatar.org - Arnaud Maignan
-// Date: June 08, 2025 16:15 UTC+1
+// Date: June 08, 2025 22:30 UTC+1
 // Logs:
 //   - Updated default rotation to rx=0°, ry=22°
 //   - Added drag control configuration
@@ -36,6 +36,19 @@ export const config = {
   
   // Sensibilité souris
   mouseSensitivity: 0.5,  // Facteur de sensibilité pour drag
+  
+  // ANGLES PRIVILÉGIÉS PAR TOPOLOGIE (en degrés)
+  privilegedAngles: {
+    'view2d': { rotX: 0, rotY: 135 },     // Vue 2D optimale
+    'plane': { rotX: 0, rotY: 135 },      // Plan identique à 2D
+    'cylinder': { rotX: 0, rotY: 90 },    // Cylindre vue de profil
+    'torus': { rotX: 15, rotY: 45 },      // Tore vue 3/4
+    'mobius': { rotX: 30, rotY: 60 },     // Möbius vue perspective
+    'klein': { rotX: 20, rotY: 30 },      // Klein vue détaillée
+    'disk': { rotX: -10, rotY: 0 },       // Disque vue légèrement inclinée
+    'crosscap': { rotX: 25, rotY: 45 },   // Cross-cap vue 3D
+    'projective': { rotX: 10, rotY: 20 }  // Projectif vue douce
+  },
   
   // Icônes alternatives intéressantes pour les surfaces topologiques
   // 💠 - étoile à six branches (géométrie complexe)
