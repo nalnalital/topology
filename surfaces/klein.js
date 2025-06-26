@@ -6,6 +6,16 @@
 // Logs:
 //   - Initial Klein bottle implementation with self-intersection
 
+// Icône topologique avec flèches directionnelles
+// Bouteille de Klein [+ -] : bords verticaux opposés
+export const topologyIcon = {
+  center: '🖇️',
+  top: '▶️',
+  left: '⏫',
+  right: '⏫', 
+  bottom: '◀️'
+};
+
 export function klein(u, v) {
   u *= 2 * Math.PI;
   v *= 2 * Math.PI;

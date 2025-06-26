@@ -6,6 +6,16 @@
 // Logs:
 //   - Initial projective plane implementation
 
+// Icône topologique avec flèches directionnelles
+// Plan projectif : géométrie complexe avec croisements
+export const topologyIcon = {
+  center: '🪩',
+  top: '▶️',
+  left: '⏬',
+  right: '🔼',
+  bottom: '⏪'
+};
+
 export function projective(u, v) {
   u *= Math.PI;
   v *= 2 * Math.PI;

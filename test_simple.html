@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Mesh Standalone</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+    #console { background: #f0f0f0; padding: 15px; margin: 20px 0; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h1>🧪 Test Mesh Standalone</h1>
+  
+  <button onclick="testMesh()">🚀 Test Mesh</button>
+  <button onclick="clearConsole()">🧽 Clear Console</button>
+  
+  <div id="console">
+    <p><strong>Console de test :</strong></p>
+    <div id="output"></div>
+  </div>
+  
+  <script src="mesh_standalone.js"></script>
+  <script>
+    // Rediriger console.log vers notre div
+    const originalLog = console.log;
+    const outputDiv = document.getElementById('output');
+    
+    console.log = function(...args) {
+      originalLog.apply(console, args);
+      const message = args.join(' ');
+      outputDiv.innerHTML += '<div>' + message + '</div>';
+      outputDiv.scrollTop = outputDiv.scrollHeight;
+    };
+    
+    function testMesh() {
+      console.log('\n=== TEST MANUEL MESH ===');
+      
+      // Test maillage 5x3
+      const maillage = createMesh(5, 3);
+      debugMesh(maillage);
+      
+      // Afficher première et dernière case
+      debugCase(maillage.all[0], 0);
+      debugCase(maillage.all[maillage.all.length - 1], maillage.all.length - 1);
+      
+      // Test transformation avec rotation
+      const params = { 
+        scale: 30, 
+        offsetX: 200, 
+        offsetY: 100, 
+        rotationAngle: Math.PI / 4 // 45°
+      };
+      
+      const maillageTransforme = transformMesh(maillage, params);
+      debugMesh(maillageTransforme);
+      
+      console.log('=== TEST MANUEL TERMINÉ ===\n');
+    }
+    
+    function clearConsole() {
+      outputDiv.innerHTML = '';
+    }
+    
+    // Message de bienvenue
+    console.log('🎉 Mesh Standalone chargé avec succès !');
+    console.log('Cliquez sur "Test Mesh" pour lancer les tests.');
+  </script>
+</body>
+</html> 

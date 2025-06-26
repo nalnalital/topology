@@ -6,6 +6,12 @@
 // Logs:
 //   - Initial disk implementation with boundary
 
+// Icône topologique simple
+// Disque : surface simple sans flèches directionnelles
+export const topologyIcon = {
+  center: '💿'
+};
+
 export function disk(u, v) {
   const r = u; // Rayon de 0 à 1
   const theta = v * 2 * Math.PI;

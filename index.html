@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Visualisation de Surfaces Topologiques - Projection Isométrique</title>
+  <link rel="stylesheet" href="css.css">
+      <!-- Version 3.5.0 - Canvas réduit pour 2D optimisé -->
+</head>
+<body>
+  <h1>Surfaces topologiques - Projection 3D Isométrique</h1>
+  <div id="selectedTopology" class="selected-topology">Vue 2D Grille</div>
+  
+      <div class="main-container">
+      <div class="left-controls">
+        <label class="topology-option">
+          <input type="radio" name="topology" value="view2d" checked>
+          <span class="topology-visual">📐</span>
+        </label>
+        
+        <label class="topology-option">
+          <input type="radio" name="topology" value="plane">
+          <span class="topology-visual">🔷</span>
+        </label>
+        
+        <label class="topology-option">
+          <input type="radio" name="topology" value="disk">
+          <span class="topology-visual">💿</span>
+        </label>
+        
+        <label class="topology-option">
+          <input type="radio" name="topology" value="cylinder">
+          <span class="topology-visual cross-pattern">
+            <span class="cross-top"></span>
+            <span class="cross-left">🔼</span><span class="cross-center">🫙</span><span class="cross-right">🔼</span>
+            <span class="cross-bottom"></span>
+          </span>
+        </label>
+        
+        <label class="topology-option">
+          <input type="radio" name="topology" value="mobius">
+          <span class="topology-visual cross-pattern">
+            <span class="cross-top">▶️</span>
+            <span class="cross-left"></span><span class="cross-center">🎀</span><span class="cross-right"></span>
+            <span class="cross-bottom">◀️</span>
+          </span>
+        </label>
+      </div>
+    
+    <div class="center-area">
+      <!-- Debug + Vue 2D + Contrôles consolidés -->
+      <div class="top-controls">
+        <div class="debug-info">
+          <span>Rotation X: <input type="number" id="angleXInput" value="0" min="-180" max="180" step="1">° <button id="rotXLeft">↩️</button><button id="rotXRight">↪️</button></span>
+          <span>Rotation Y: <input type="number" id="angleYInput" value="135" min="-180" max="180" step="1">° <button id="rotYLeft">↩️</button><button id="rotYRight">↪️</button></span>
+          <span>FPS: <span id="fpsDisplay">--</span></span>
+        </div>
+        
+                <div class="controls-row">
+          <label>Grille: <input type="checkbox" id="showTexture" checked></label>
+          <label>Faces cachées: <input type="checkbox" id="hiddenFaces"></label>
+          <button id="reinitCamera">🔄 Reinit (0°, 135°)</button>
+          <button id="testMesh">🧪 Test Mesh</button>
+        </div>
+      </div>
+      
+              <canvas id="canvas" width="800" height="500"></canvas>
+    </div>
+    
+          <div class="right-controls">
+        <label class="topology-option">
+          <input type="radio" name="topology" value="torus">
+          <span class="topology-visual cross-pattern">
+            <span class="cross-top">▶️</span>
+            <span class="cross-left">⏫</span><span class="cross-center">🍩</span><span class="cross-right">⏫</span>
+            <span class="cross-bottom">▶️</span>
+          </span>
+        </label>
+        
+        <label class="topology-option">
+          <input type="radio" name="topology" value="projective">
+          <span class="topology-visual cross-pattern">
+            <span class="cross-top">▶️</span>
+            <span class="cross-left">⏬</span><span class="cross-center">🪩</span><span class="cross-right">🔼</span>
+            <span class="cross-bottom">⏪</span>
+          </span>
+        </label>
+        
+        <label class="topology-option">
+          <input type="radio" name="topology" value="klein">
+          <span class="topology-visual cross-pattern">
+            <span class="cross-top">▶️</span>
+            <span class="cross-left">⏫</span><span class="cross-center">🖇️</span><span class="cross-right">⏫</span>
+            <span class="cross-bottom">◀️</span>
+          </span>
+        </label>
+        
+        <label class="topology-option">
+          <input type="radio" name="topology" value="crosscap">
+          <span class="topology-visual cross-pattern">
+            <span class="cross-top">▶️</span>
+            <span class="cross-left">⏬</span><span class="cross-center">🪢</span><span class="cross-right">⏫</span>
+            <span class="cross-bottom">◀️</span>
+          </span>
+        </label>
+      </div>
+  </div>
+  
+  <div class="info-panel">
+    <div class="mouse-help">
+      <small>🖱️ Drag pour faire tourner • Molette pour zoomer</small>
+    </div>
+  </div>
+  <script type="module" src="main.js"></script>
+  <!-- Config chargé automatiquement via import ES6 -->
+</body>
+</html>

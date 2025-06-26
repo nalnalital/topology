@@ -1,3 +1,13 @@
+// Icône topologique avec flèches directionnelles
+// Non-orientable 2 : surface complexe non-orientable
+export const topologyIcon = {
+  center: '⊗',
+  top: '⊗',
+  left: '⊗',
+  right: '⊗',
+  bottom: '⊗'
+};
+
 export function createSurface() {
   const geometry = new THREE.ParametricGeometry((u, v, target) => {
     u *= 2 * Math.PI;

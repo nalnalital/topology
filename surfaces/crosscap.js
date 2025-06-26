@@ -6,6 +6,16 @@
 // Logs:
 //   - Initial cross-cap implementation with singularity
 
+// Icône topologique avec flèches directionnelles
+// Cross-cap [- -] : surface non-orientable avec singularité
+export const topologyIcon = {
+  center: '🪢',
+  top: '▶️',
+  left: '⏬',
+  right: '⏫',
+  bottom: '◀️'
+};
+
 export function crosscap(u, v) {
   u *= Math.PI;
   v *= 2 * Math.PI;

@@ -1,3 +1,13 @@
+// Icône topologique avec flèches directionnelles  
+// Cylindre [+ +] : bords horizontaux dans même sens
+export const topologyIcon = {
+  center: '🫙',
+  top: '',
+  left: '🔼',
+  right: '🔼', 
+  bottom: ''
+};
+
 export function createSurface() {
   const geometry = new THREE.CylinderGeometry(0.7, 0.7, 1.5, 32, 1, true);
   const material = new THREE.MeshStandardMaterial({ color: 0xff9933, side: THREE.DoubleSide });

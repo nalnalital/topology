@@ -1,6 +1,6 @@
 // File: config.js - Configuration for topology morphing animation
 // Desc: En français, dans l'architecture, je suis la configuration des animations morphing
-// Version 1.4.0 (ajout contrôles interface)
+// Version 1.6.0 (défaut rotY=135° optimal pour 2D)
 // Author: DNAvatar.org - Arnaud Maignan
 // Date: June 08, 2025 16:15 UTC+1
 // Logs:
@@ -32,7 +32,7 @@ export const config = {
   
   // Rotations par défaut (en degrés)
   defaultRotationX: 0,   // 0° vue horizontale
-  defaultRotationY: 22,  // 22° légère rotation
+  defaultRotationY: 135, // 135° rotation optimale
   
   // Sensibilité souris
   mouseSensitivity: 0.5,  // Facteur de sensibilité pour drag

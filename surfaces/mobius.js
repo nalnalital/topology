@@ -1,3 +1,13 @@
+// Icône topologique avec flèches directionnelles
+// Ruban de Möbius [+ -] : bords horizontaux opposés  
+export const topologyIcon = {
+  center: '🎀',
+  top: '▶️',
+  left: '',
+  right: '',
+  bottom: '◀️'
+};
+
 export function createSurface() {
   const geometry = new THREE.ParametricGeometry((u, t, target) => {
     u *= Math.PI * 2;
