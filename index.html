@@ -4,19 +4,16 @@
   <meta charset="UTF-8">
   <title>Visualisation de Surfaces Topologiques - Projection Isométrique</title>
   <link rel="stylesheet" href="css.css">
-      <!-- Version 2.16.0 - Alignement boutons textures avec reinit -->
+      <!-- Version 2.29.0 - Animation drag + offset centré -->
 </head>
 <body>
-  <h1>Surfaces topologiques - Projection 3D Isométrique</h1>
-  <div id="selectedTopology" class="selected-topology">Vue 2D Grille</div>
-  
+  <h1>Topologicon du Carré</h1>
   <!-- Contrôles rotations sortis de la div simulation -->
   <div class="external-controls">
     <div class="debug-info">
       <span>Rotation X: <input type="number" id="angleXInput" value="0" min="-180" max="180" step="1">° <button id="rotXLeft">↩️</button><button id="rotXRight">↪️</button></span>
       <span>Rotation Y: <input type="number" id="angleYInput" value="135" min="-180" max="180" step="1">° <button id="rotYLeft">↩️</button><button id="rotYRight">↪️</button></span>
       <span>Rotation Z: <input type="number" id="angleZInput" value="0" min="-180" max="180" step="1">° <button id="rotZLeft">↩️</button><button id="rotZRight">↪️</button></span>
-      <span>Scale: <span id="scaleDisplay">--</span></span>
     </div>
   </div>
   
@@ -58,6 +55,22 @@
       <canvas id="canvas" width="800" height="450"></canvas>
       <!-- CACHE MISÈRE : Overlay UNIQUEMENT sur le canvas -->
       <div id="loading-overlay"></div>
+      
+      <!-- Interface move positionnée relativement au canvas -->
+      <div class="camera-translation-floating" id="cameraTranslationFloating">
+        <div class="drag-handle">⋮⋮⋮</div>
+        <div class="translation-grid">
+          <button id="camUpLeft">↖️</button>
+          <button id="camUp">⬆️</button>
+          <button id="camUpRight">↗️</button>
+          <button id="camLeft">⬅️</button>
+          <button id="camCenter">⚫</button>
+          <button id="camRight">➡️</button>
+          <button id="camDownLeft">↙️</button>
+          <button id="camDown">⬇️</button>
+          <button id="camDownRight">↘️</button>
+        </div>
+      </div>
     </div>
     
     <!-- Boutons droite -->
@@ -99,42 +112,26 @@
       </label>
     </div>
   </div>
-  
-  <!-- Sélection des cartes sortie de la div simulation -->
+  <div id="selectedTopology" class="selected-topology"></div>
+  <!-- Ligne unique : Reinit - Steam Texture - Grille -->
   <div class="map-selection">
-    <div class="map-options">
+    <div class="control-row-single">
       <label class="topology-option">
         <input type="radio" name="topology" value="view2d" checked>
         <span class="topology-visual">🔄</span>
       </label>
+      
+      <div id="selectedProjection" class="selected-projection-inline">Steam Texture</div>
+      
       <label class="topology-option">
-        <input type="checkbox" id="showTexture" checked style="display: none;">
+        <input type="checkbox" id="showTexture" style="display: none;">
         <span class="topology-visual">🌐</span>
       </label>
-      <label class="map-option">
-        <input type="radio" name="mapChoice" value="map" checked>
-        <span class="map-name">Monde</span>
-      </label>
-      <label class="map-option">
-        <input type="radio" name="mapChoice" value="relief">
-        <span class="map-name">Relief</span>
-      </label>
-      <label class="map-option">
-        <input type="radio" name="mapChoice" value="night">
-        <span class="map-name">Nuit</span>
-      </label>
-      <label class="map-option">
-        <input type="radio" name="mapChoice" value="great">
-        <span class="map-name">Great</span>
-      </label>
-      <label class="map-option">
-        <input type="radio" name="mapChoice" value="sheet">
-        <span class="map-name">Sheet</span>
-      </label>
-      <label class="map-option">
-        <input type="radio" name="mapChoice" value="geoview">
-        <span class="map-name">GeoView</span>
-      </label>
+    </div>
+    
+    <!-- Ligne du bas : Textures dynamiques -->
+    <div class="map-options">
+      <!-- Les textures seront générées dynamiquement ici -->
     </div>
   </div>
   

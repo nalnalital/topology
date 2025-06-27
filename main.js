@@ -1,14 +1,13 @@
 // File: main.js - 3D Isometric Topology Engine with texture mapping
 // Desc: En français, dans l'architecture, je suis le moteur principal qui gère la projection 3D isométrique, les transformations topologiques, et le texture mapping avec système multi-cartes
-// Version 3.57.0 (3.56.0 → 3.57.0 overlay canvas uniquement)
+// Version 3.76.0 (Fix offset ⋮⋮⋮ + directions flèches)
 // Author: DNAvatar.org - Arnaud Maignan  
 // Date: [December 16, 2024] [00:20 UTC+1]
 // Logs:
-//   - OVERLAY CANVAS: Overlay uniquement sur canvas (position absolute) avec capture exacte
-//   - Scale dynamique par surface (cylindre: 180, torus: 120, autres: 150)
-//   - Import fonctions mathématiques depuis surfaces/cylinder.js, torus.js, plane.js
-//   - Configuration scale + rotations optimales dans chaque fichier surface
-//   - Réduction main.js: fonctions déplacées vers fichiers spécialisés
+//   - Fixed drag offset: ⋮⋮⋮ handle positioned under mouse (not div center)
+//   - Corrected arrow directions: Up=Y-, Down=Y+, Left=X-, Right=X+
+//   - Intuitive camera movement: arrows now move in expected directions
+//   - Proper handle positioning during drag
 
 // === IMPORTS ===
 import { config } from './config.js';
@@ -18,6 +17,7 @@ import { surface2D } from './surfaces/2D.js';
 import { config as cylinderConfig, cylinder } from './surfaces/cylinder.js';
 import { config as torusConfig, torus } from './surfaces/torus.js';
 import { config as mobiusConfig, mobius } from './surfaces/mobius.js';
+import { projective } from './surfaces/projective.js';
 import { plane } from './surfaces/plane.js';
 
 // === CONFIGURATION MAILLAGE ===
@@ -34,21 +34,146 @@ let textureRectangles = null; // Cache des rectangles textures pré-calculés (c
 // === DEBUG UV TRACKING ===
 let lastUVSnapshot = null; // Snapshot précédent des UV pour détection changements
 
-// === SYSTÈME MULTI-CARTES ===
-const availableMaps = [
-  { name: 'map', file: 'cartes/map.png', title: 'Carte Monde' },
-  { name: 'relief', file: 'cartes/relief.jpg', title: 'Relief' },
-  { name: 'night', file: 'cartes/night.jpg', title: 'Nuit' },
-  { name: 'great', file: 'cartes/great.png', title: 'Great' },
-  { name: 'sheet', file: 'cartes/sheet.jpg', title: 'Sheet' },
-  { name: 'geoview', file: 'cartes/geoview.jpg', title: 'GeoView' }
-];
+// === SYSTÈME MULTI-CARTES DYNAMIQUE ===
+let availableMaps = []; // Sera rempli dynamiquement
 
-let currentMapName = 'map'; // Carte par défaut
+// Détection automatique des textures disponibles (scan répertoire)
+async function detectAvailableTextures() {
+  try {
+    // Scanner le répertoire cartes/ via l'API du serveur Python
+    const response = await fetch('/api/list-textures');
+    if (!response.ok) {
+      throw new Error(`Erreur API: ${response.status}`);
+    }
+    
+    const files = await response.json();
+    pd('detectTextures', 'main.js', `📁 Scan répertoire: ${files.length} fichiers trouvés`);
+    
+    // Mapping des noms de fichiers vers titres (EN par défaut)
+    const fileToTitle = {
+      'map.png': 'World',
+      'relief.jpg': 'Relief', 
+      'night.jpg': 'Night',
+      'great.png': 'Great',
+      'sheet.jpg': 'Sheet',
+      'geoview.jpg': 'GeoView',
+      'Steam.png': 'Steam',
+      'scool.jpg': 'School',
+      'brick.jpg': 'Brick',
+      'eye.png': 'Eye',
+      'maze.png': 'Maze',
+      'room.jpg': 'Room',
+      'water.jpg': 'Water'
+    };
+    
+    availableMaps = [];
+    
+    // Convertir les fichiers trouvés en configuration de textures
+    for (const filename of files) {
+      // Ignorer les fichiers système
+      if (filename.startsWith('.') || !filename.match(/\.(jpg|jpeg|png)$/i)) {
+        continue;
+      }
+      
+      const name = filename.replace(/\.(jpg|jpeg|png)$/i, '').toLowerCase();
+      const title = fileToTitle[filename] || filename.replace(/\.(jpg|jpeg|png)$/i, '');
+      
+      availableMaps.push({
+        name: name,
+        file: `cartes/${filename}`,
+        title: title
+      });
+      
+      pd('detectTextures', 'main.js', `✅ Texture: ${title} (${filename})`);
+    }
+    
+    // Vérifier que la carte par défaut existe, sinon prendre la première
+    if (availableMaps.length > 0) {
+      const defaultExists = availableMaps.find(m => m.name === currentMapName);
+      if (!defaultExists) {
+        currentMapName = availableMaps[0].name;
+        pd('detectTextures', 'main.js', `🔄 Carte par défaut changée vers: ${currentMapName}`);
+      }
+    }
+    
+    pd('detectTextures', 'main.js', `🗺️ ${availableMaps.length} textures configurées`);
+    return availableMaps;
+    
+  } catch (error) {
+    pd('detectTextures', 'main.js', `❌ Erreur scan répertoire: ${error.message}`);
+    
+    // Fallback: configuration minimale avec map.png par défaut
+    availableMaps = [
+      { name: 'map', file: 'cartes/map.png', title: 'Monde' }
+    ];
+    
+    pd('detectTextures', 'main.js', `🔄 Fallback: 1 texture par défaut`);
+    return availableMaps;
+  }
+}
+
+let currentMapName = 'steam'; // Carte par défaut
+
+// Génération dynamique de l'interface textures
+function generateTextureInterface() {
+  const mapOptionsContainer = document.querySelector('.map-options');
+  if (!mapOptionsContainer) return;
+  
+  // Garder les boutons fixes (2D et grille)
+  const fixedButtons = mapOptionsContainer.querySelectorAll('.topology-option');
+  
+  // Vider les boutons de cartes existants
+  const existingMapButtons = mapOptionsContainer.querySelectorAll('.map-option');
+  existingMapButtons.forEach(btn => btn.remove());
+  
+  // Calculer combien de boutons par ligne (basé sur largeur disponible)
+  const maxButtonsPerRow = 6; // Lignes plus longues
+  let currentRow = 0;
+  
+  availableMaps.forEach((map, index) => {
+    // Créer le bouton de carte
+    const label = document.createElement('label');
+    label.className = 'map-option';
+    
+    const input = document.createElement('input');
+    input.type = 'radio';
+    input.name = 'mapChoice';
+    input.value = map.name;
+    if (map.name === currentMapName) input.checked = true;
+    
+    const span = document.createElement('span');
+    span.className = 'map-name';
+    span.textContent = map.title;
+    
+    label.appendChild(input);
+    label.appendChild(span);
+    
+    // Ajouter event listener
+    input.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        changeMap(e.target.value);
+      }
+    });
+    
+    // Ajouter à l'interface
+    mapOptionsContainer.appendChild(label);
+    
+    // Passage à la ligne si nécessaire
+    if ((index + 1) % maxButtonsPerRow === 0 && index < availableMaps.length - 1) {
+      const lineBreak = document.createElement('div');
+      lineBreak.style.width = '100%';
+      lineBreak.style.height = '0';
+      mapOptionsContainer.appendChild(lineBreak);
+    }
+  });
+  
+  pd('generateTextureInterface', 'main.js', `🎨 Interface générée avec ${availableMaps.length} textures`);
+}
 
 // === CHARGEMENT TEXTURE ===
 function loadTexture(mapName = currentMapName) {
-  pd('loadTexture', 'main.js', `🔍 TRACE → CALL loadTexture("${mapName}") | previousSurfaceBeforeMapChange="${previousSurfaceBeforeMapChange}"`);
+  pd('loadTexture', 'main.js', `🔍 Recherche carte: "${mapName}" dans ${availableMaps.length} disponibles`);
+  pd('loadTexture', 'main.js', `📋 Cartes disponibles: ${availableMaps.map(m => m.name).join(', ')}`);
   
   const mapConfig = availableMaps.find(m => m.name === mapName);
   if (!mapConfig) {
@@ -58,10 +183,11 @@ function loadTexture(mapName = currentMapName) {
   
   currentMapName = mapName;
   
+  // Mettre à jour l'affichage de la projection
+  updateProjectionName(mapName);
+  
   const img = new Image();
   img.onload = function() {
-    pd('loadTexture', 'main.js', `🔍 TRACE → Image onload event | previousSurfaceBeforeMapChange="${previousSurfaceBeforeMapChange}"`);
-    
     // Créer canvas hors-écran pour les transformations affines
     mapCanvas = document.createElement('canvas');
     mapCanvas.width = img.width;
@@ -77,17 +203,12 @@ function loadTexture(mapName = currentMapName) {
     // AUTO-RETOUR 3D avec petit timeout pour éviter mélange tuiles
     if (previousSurfaceBeforeMapChange && previousSurfaceBeforeMapChange !== 'view2d') {
       pd('loadTexture', 'main.js', `⚡ Auto-retour 3D vers: ${previousSurfaceBeforeMapChange} (timeout 20ms)`);
-      pd('loadTexture', 'main.js', `🔍 TRACE → Condition timeout TRUE | previousSurfaceBeforeMapChange="${previousSurfaceBeforeMapChange}" != null et != "view2d"`);
       
       // Petit timeout pour laisser le recalcul se stabiliser
       setTimeout(() => {
-        pd('loadTexture', 'main.js', `⏱️ TIMEOUT EXECUTED ! → Début auto-retour 3D vers "${previousSurfaceBeforeMapChange}"`);
-        
         // Retourner à la surface précédente SANS ANIMATION
         view2DMode = false;
         morphToSurface(previousSurfaceBeforeMapChange, true); // SKIP ANIMATION
-        
-        pd('loadTexture', 'main.js', `🔍 TRACE → morphToSurface("${previousSurfaceBeforeMapChange}", true) terminé`);
         
         // RÉINITIALISER les angles avec config de la surface 3D
         if (config.privilegedAngles[previousSurfaceBeforeMapChange]) {
@@ -96,27 +217,19 @@ function loadTexture(mapName = currentMapName) {
           rotY = (angles.rotY * Math.PI) / 180;
           rotZ = (angles.rotZ * Math.PI) / 180;
           scale = angles.scale;
-          pd('loadTexture', 'main.js', `🔍 TRACE → Angles depuis config privilégiés`);
         } else {
           // Angles par défaut si pas de config spécifique
           rotX = (config.defaultRotationX * Math.PI) / 180;
           rotY = (config.defaultRotationY * Math.PI) / 180;
           rotZ = 0;
           scale = getOptimalScale(previousSurfaceBeforeMapChange);
-          pd('loadTexture', 'main.js', `🔍 TRACE → Angles par défaut + scale optimal`);
         }
         updateAngleDisplay();
-        updateScaleDisplay();
-        
-        pd('loadTexture', 'main.js', `🔄 Angles réinitialisés pour ${previousSurfaceBeforeMapChange}: rotX=${Math.round(rotX * 180 / Math.PI)}°, rotY=${Math.round(rotY * 180 / Math.PI)}°, scale=${scale}`);
         
         // Mettre à jour l'interface
         const radioButton = document.querySelector(`input[value="${previousSurfaceBeforeMapChange}"]`);
         if (radioButton) {
           radioButton.checked = true;
-          pd('loadTexture', 'main.js', `🔍 TRACE → Radio button mis à jour pour "${previousSurfaceBeforeMapChange}"`);
-        } else {
-          pd('loadTexture', 'main.js', `❌ Radio button introuvable pour "${previousSurfaceBeforeMapChange}"`);
         }
         
         // CACHE MISÈRE : Masquer overlay après retour 3D
@@ -129,28 +242,22 @@ function loadTexture(mapName = currentMapName) {
         
         // Réinitialiser pour prochain changement
         previousSurfaceBeforeMapChange = null;
-        pd('loadTexture', 'main.js', `⏱️ TIMEOUT COMPLETE ! → previousSurfaceBeforeMapChange reset à null`);
       }, 20); // 20ms timeout pour stabilisation recalcul
     } else {
-      pd('loadTexture', 'main.js', `🔍 TRACE → Condition timeout FALSE | previousSurfaceBeforeMapChange="${previousSurfaceBeforeMapChange}" (null ou "view2d")`);
-      
       // MASQUER OVERLAY même en 2D après chargement texture
       const overlay = document.getElementById('loading-overlay');
       if (overlay) {
         overlay.classList.remove('active');
         overlay.innerHTML = ''; // Nettoyer capture
-        pd('loadTexture', 'main.js', `🎭 Cache misère désactivé (overlay masqué + capture nettoyée) - changement texture 2D`);
       }
     }
     
     // Redessiner la scène avec la nouvelle texture
     requestAnimationFrame(render);
-    pd('loadTexture', 'main.js', `🔍 TRACE → requestAnimationFrame(render) appelé`);
   };
   img.onerror = function() {
     pd('loadTexture', 'main.js', `❌ Erreur chargement carte: ${mapConfig.file}`);
   };
-  pd('loadTexture', 'main.js', `🔍 TRACE → img.src = "${mapConfig.file}" (début chargement)`);
   img.src = mapConfig.file;
 }
 
@@ -159,11 +266,7 @@ let previousSurfaceBeforeMapChange = null;
 
 // Changer de carte
 function changeMap(mapName) {
-  pd('changeMap', 'main.js', `🔍 TRACE → CALL changeMap("${mapName}") | currentMapName="${currentMapName}" | view2DMode=${view2DMode} | currentSurface="${currentSurface}"`);
-  
   if (mapName !== currentMapName) {
-    pd('changeMap', 'main.js', `🔍 TRACE → Changement nécessaire de ${currentMapName} vers ${mapName}`);
-    
     // CACHE MISÈRE : Capture canvas + afficher overlay
     const overlay = document.getElementById('loading-overlay');
     const canvas = document.getElementById('canvas');
@@ -183,14 +286,10 @@ function changeMap(mapName) {
     // Mémoriser surface précédente si on était en 3D
     if (!view2DMode) {
       previousSurfaceBeforeMapChange = currentSurface;
-      pd('changeMap', 'main.js', `🔍 TRACE → previousSurfaceBeforeMapChange = "${previousSurfaceBeforeMapChange}" (mémorisé depuis 3D)`);
-    } else {
-      pd('changeMap', 'main.js', `🔍 TRACE → Déjà en 2D, pas de mémorisation surface précédente`);
     }
     
     // FORCER le passage par 2D pour recalculer tout
     if (!view2DMode) {
-      pd('changeMap', 'main.js', `🔍 TRACE → Forcer passage 2D depuis 3D`);
       view2DMode = true;
       morphToSurface('view2d', true); // SKIP ANIMATION pour changement texture
       
@@ -208,22 +307,16 @@ function changeMap(mapName) {
         scale = 108;
       }
       updateAngleDisplay();
-      updateScaleDisplay();
-      
-      pd('changeMap', 'main.js', `⚡ Retour 2D (masqué par overlay) + angles réinitialisés`);
       
       // Mettre à jour l'interface pour refléter le passage en 2D
       document.querySelector('input[value="view2d"]').checked = true;
-      updateTopologyName('Vue 2D Grille');
+      updateTopologyName('');
     }
     
     // Charger la nouvelle texture (avec callback auto-retour 3D)
-    pd('changeMap', 'main.js', `🔍 TRACE → Appel loadTexture("${mapName}") avec previousSurfaceBeforeMapChange="${previousSurfaceBeforeMapChange}"`);
     loadTexture(mapName);
     
-    pd('changeMap', 'main.js', `🗺️ Changement vers carte: ${mapName} - Auto-retour 3D après chargement`);
-  } else {
-    pd('changeMap', 'main.js', `🔍 TRACE → Pas de changement nécessaire (même carte ${mapName})`);
+    pd('changeMap', 'main.js', `🗺️ Changement vers carte: ${mapName}`);
   }
 }
 
@@ -515,7 +608,7 @@ let view2DMode = true; // Mode vue 2D grille par défaut
 let mapCanvas = null;
 let mapContext = null;
 let showTexture = true;  // Afficher la texture (cartes)
-let showGrid = true;     // Afficher les lignes de grille
+let showGrid = false;    // Afficher les lignes de grille
 
 // === FACES CACHÉES DÉSACTIVÉES (contrôle supprimé) ===
 let showHiddenFaces = false;
@@ -526,6 +619,15 @@ const VIEW_DIRECTION = { x: -ISO_COS, y: 0, z: ISO_COS };
 function initializeMesh(surfaceFunc) {
   const vertices = [];
   const faces = [];
+  
+  // DEBUG SPÉCIFIQUE PROJECTIF - Test quelques points
+  if (currentSurface === 'projective') {
+    pd('projective_debug', 'main.js', `🪩 INIT PROJECTIF - Test coordonnées poles:`);
+    const testPole1 = surfaceFunc(0.1, 0.5); // Près pôle
+    const testPole2 = surfaceFunc(0.9, 0.5); // Près autre pôle
+    const testCenter = surfaceFunc(0.5, 0.5); // Centre
+    pd('projective_debug', 'main.js', `🪩 Pôle 1 (u=0.1): z=${testPole1.z.toFixed(3)} | Pôle 2 (u=0.9): z=${testPole2.z.toFixed(3)} | Centre: z=${testCenter.z.toFixed(3)}`);
+  }
   
   // Génération des sommets sur grille rectangulaire
   for (let i = 0; i <= MESH_U; i++) {
@@ -872,20 +974,8 @@ const surfaces = {
     };
   },
   
-  // Plan projectif - quotient de la sphère
-  projective: (u, v) => {
-    u *= Math.PI;
-    v *= 2 * Math.PI;
-    const x = Math.sin(u) * Math.cos(v);
-    const y = Math.sin(u) * Math.sin(v);
-    const z = Math.cos(u);
-    // Projection stéréographique modifiée
-    return {
-      x: x / (1 + Math.abs(z)) * 2,
-      y: y / (1 + Math.abs(z)) * 2,
-      z: Math.sign(z) * (1 - 1/(1 + Math.abs(z)))
-    };
-  },
+  // Plan projectif - quotient de la sphère (IMPORTÉ depuis projective.js)
+  projective: projective,
   
   // Disque - surface avec bord
   disk: (u, v) => {
@@ -928,6 +1018,18 @@ function rotate3D(x, y, z, rotX, rotY, rotZ) {
   };
 }
 
+// === ROTATION 3D PROJECTIF ===
+function rotate3DProjective(x, y, z, rotX, rotY, rotZ, rotShape) {
+  // D'abord rotation de forme autour de l'axe principal (axe Z local de la forme)
+  const cosShape = Math.cos(rotShape), sinShape = Math.sin(rotShape);
+  const xShape = x * cosShape - y * sinShape;
+  const yShape = x * sinShape + y * cosShape;
+  const zShape = z;
+  
+  // Puis rotation normale (vue caméra)
+  return rotate3D(xShape, yShape, zShape, rotX, rotY, rotZ);
+}
+
 // === PROJECTION ISOMÉTRIQUE ===
 function projectIso(x, y, z, scale) {
   return {
@@ -964,7 +1066,10 @@ const ctx = canvas.getContext('2d');
 let rotX = config.privilegedAngles['view2d'] ? (config.privilegedAngles['view2d'].rotX * Math.PI) / 180 : (config.defaultRotationX * Math.PI) / 180;
 let rotY = config.privilegedAngles['view2d'] ? (config.privilegedAngles['view2d'].rotY * Math.PI) / 180 : (config.defaultRotationY * Math.PI) / 180;
 let rotZ = config.privilegedAngles['view2d'] ? (config.privilegedAngles['view2d'].rotZ * Math.PI) / 180 : 0;
+let rotShape = 0; // Rotation autour de l'axe principal de la forme (pour projectif)
 let scale = config.privilegedAngles['view2d'] ? config.privilegedAngles['view2d'].scale : 108; // Scale initial 2D
+let cameraOffsetX = 0; // Translation caméra X
+let cameraOffsetY = 0; // Translation caméra Y
 
 // === GESTION SOURIS ===
 let isDragging = false;
@@ -982,9 +1087,18 @@ function updateAngleDisplay() {
   document.getElementById('angleZInput').value = angleZDeg;
 }
 
-// Affichage du scale
-function updateScaleDisplay() {
-  document.getElementById('scaleDisplay').textContent = Math.round(scale);
+// Fonctions de translation caméra
+function translateCamera(deltaX, deltaY) {
+  const moveSpeed = 10; // Vitesse de déplacement
+  cameraOffsetX += deltaX * moveSpeed;
+  cameraOffsetY += deltaY * moveSpeed;
+  pd('translateCamera', 'main.js', `📹 Caméra déplacée: X=${Math.round(cameraOffsetX)} Y=${Math.round(cameraOffsetY)}`);
+}
+
+function resetCameraPosition() {
+  cameraOffsetX = 0;
+  cameraOffsetY = 0;
+  pd('resetCamera', 'main.js', `📹 Position caméra réinitialisée`);
 }
 
 // DEBUG UV + PROJECTION - Traquer les coordonnées des sommets de référence
@@ -1013,10 +1127,12 @@ function debugUVCorners() {
       const vertex = vertices[index];
       
       // Calculer projection à l'écran pour ce sommet
-      const rotated = rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
+      const rotated = currentSurface === 'projective' 
+        ? rotate3DProjective(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ, rotShape)
+        : rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
       const projected = projectIso(rotated.x, rotated.y, rotated.z, scale);
-      const screenX = centerX + projected.x;
-      const screenY = centerY - projected.y;
+      const screenX = centerX + projected.x + cameraOffsetX;
+      const screenY = centerY - projected.y + cameraOffsetY;
       
       currentSnapshot[name] = {
         gridU: vertex.gridU,
@@ -1209,8 +1325,6 @@ function render2DGrid() {
 }
 
 function render() {
-  // Afficher le scale
-  updateScaleDisplay();
   
   // Debug UV désormais uniquement lors des rotations manuelles
   
@@ -1237,12 +1351,14 @@ function render() {
   // Rotation et projection des sommets (avec positions animées)
   const projectedVertices = currentMesh.vertices.map(vertex => {
     // MÊME SYSTÈME pour 2D et 3D : rotation puis projection isométrique
-    const rotated = rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
+    const rotated = currentSurface === 'projective' 
+      ? rotate3DProjective(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ, rotShape)
+      : rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
     const projected = projectIso(rotated.x, rotated.y, rotated.z, scale);
     
     return {
-      x: centerX + projected.x,
-      y: centerY - projected.y,
+      x: centerX + projected.x + cameraOffsetX,
+      y: centerY - projected.y + cameraOffsetY,
       z: rotated.z, // Profondeur normale pour tri
       originalIndex: vertex.index
     };
@@ -1259,7 +1375,9 @@ function render() {
       
       // MÊME CALCUL de profondeur pour 2D et 3D
       const vertex = currentMesh.vertices[vertexIndex];
-      const rotated = rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
+      const rotated = currentSurface === 'projective' 
+        ? rotate3DProjective(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ, rotShape)
+        : rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
       centerZ += rotated.z;
     });
     
@@ -1279,10 +1397,7 @@ function render() {
     pd('render', 'main.js', '🔧 Rectangles texture pré-calculés UNE SEULE FOIS');
   }
   
-  // DEBUG: Vérifier que mapCanvas existe bien
-  if (showTexture && render.frameCount % 120 === 0) {
-    pd('render', 'main.js', `🔍 TRACE → mapCanvas=${mapCanvas ? `${mapCanvas.width}x${mapCanvas.height}` : 'NULL'} | currentMapName="${currentMapName}" | textureRectangles=${textureRectangles ? 'OK' : 'NULL'}`);
-  }
+  // Debug périodique supprimé pour éviter spam console
   
   // Rendu avec texture ET grille si activé
   if (showTexture) {
@@ -1298,10 +1413,7 @@ function render() {
       const rectangle = textureRectangles ? textureRectangles[face.originalIndex] : null;
       const success = drawTransformedRectangle(ctx, rectangle, quadProjected);
       
-      // DEBUG: Tracer les échecs de texture
-      if (!success && sortedIndex < 5) { // Seulement les 5 premières faces pour éviter spam
-        pd('render', 'main.js', `🔍 TRACE → drawTransformedRectangle FAILED pour face ${face.originalIndex} (rectangle=${rectangle ? 'OK' : 'NULL'})`);
-      }
+
       
       // Si la projection échoue ou pour les contours, dessiner un contour léger
       if (success) {
@@ -1393,22 +1505,123 @@ function animate() {
   requestAnimationFrame(animate);
 }
 
-// Démarrer l'animation et charger la texture
-loadTexture();
+// === INTERFACE MOVE DRAGGABLE ===
+let isInterfaceDragging = false;
+let dragOffset = { x: 0, y: 0 };
+
+const floatingInterface = document.getElementById('cameraTranslationFloating');
+const dragHandle = floatingInterface.querySelector('.drag-handle');
+
+dragHandle.addEventListener('mousedown', (e) => {
+  isInterfaceDragging = true;
+  
+  // Positionner instantanément le div sous la souris (coordonnées globales)
+  const container = floatingInterface.parentElement;
+  const containerRect = container.getBoundingClientRect();
+  
+  // Position de la souris relative au container
+  const mouseX = e.clientX - containerRect.left;
+  const mouseY = e.clientY - containerRect.top;
+  
+  // Positionner les ⋮⋮⋮ sous la souris (pas le centre de la div)
+  const interfaceWidth = floatingInterface.offsetWidth;
+  const interfaceHeight = floatingInterface.offsetHeight;
+  const handleHeight = dragHandle.offsetHeight;
+  
+  dragOffset.x = interfaceWidth / 2;  // Centre horizontal
+  dragOffset.y = handleHeight / 2;    // Centre de la bande ⋮⋮⋮
+  
+  // Positionner immédiatement l'interface sous la souris
+  const newX = mouseX - dragOffset.x;
+  const newY = mouseY - dragOffset.y;
+  
+  // Contraintes pour rester dans le container
+  const maxX = containerRect.width - interfaceWidth;
+  const maxY = containerRect.height - interfaceHeight;
+  
+  const constrainedX = Math.max(0, Math.min(newX, maxX));
+  const constrainedY = Math.max(0, Math.min(newY, maxY));
+  
+  floatingInterface.style.left = constrainedX + 'px';
+  floatingInterface.style.top = constrainedY + 'px';
+  floatingInterface.style.right = 'auto';
+  floatingInterface.style.bottom = 'auto';
+  
+  // Ajouter classe de drag pour animation
+  floatingInterface.classList.add('dragging');
+  
+  // Empêcher la sélection de texte
+  e.preventDefault();
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!isInterfaceDragging) return;
+  
+  // Optimisation: utiliser requestAnimationFrame pour éviter les ralentissements
+  requestAnimationFrame(() => {
+    const container = floatingInterface.parentElement;
+    const containerRect = container.getBoundingClientRect();
+    
+    // Position de la souris relative au container
+    const mouseX = e.clientX - containerRect.left;
+    const mouseY = e.clientY - containerRect.top;
+    
+    // Positionner l'interface centrée sous la souris
+    const newX = mouseX - dragOffset.x;
+    const newY = mouseY - dragOffset.y;
+    
+    // Contraintes pour rester dans le container
+    const maxX = containerRect.width - floatingInterface.offsetWidth;
+    const maxY = containerRect.height - floatingInterface.offsetHeight;
+    
+    const constrainedX = Math.max(0, Math.min(newX, maxX));
+    const constrainedY = Math.max(0, Math.min(newY, maxY));
+    
+    floatingInterface.style.left = constrainedX + 'px';
+    floatingInterface.style.top = constrainedY + 'px';
+    floatingInterface.style.right = 'auto';
+    floatingInterface.style.bottom = 'auto';
+  });
+});
+
+document.addEventListener('mouseup', () => {
+  if (isInterfaceDragging) {
+    isInterfaceDragging = false;
+    
+    // Retirer classe de drag pour restaurer les transitions
+    floatingInterface.classList.remove('dragging');
+  }
+});
+
+// Démarrer l'animation
 animate();
 
+// === INITIALISATION DYNAMIQUE DES TEXTURES ===
+(async function initializeTextures() {
+  await detectAvailableTextures();
+  generateTextureInterface();
+  
+  // Charger la texture APRÈS détection
+  loadTexture();
+  
+  // Initialiser l'affichage de la projection
+  updateProjectionName(currentMapName);
+  
+  pd('initTextures', 'main.js', '🎨 Interface de textures initialisée dynamiquement');
+})();
+
 // === CONTRÔLES ===
-// Noms des topologies pour affichage
+// Noms des topologies pour affichage (EN par défaut)
 const topologyNames = {
-  'torus': 'Tore',
-  'klein': 'Klein',
-  'cylinder': 'Cylindre', 
-  'mobius': 'Möbius',
+  'torus': 'Torus',
+  'klein': 'Klein Bottle',
+  'cylinder': 'Cylinder', 
+  'mobius': 'Möbius Strip',
   'crosscap': 'Cross-cap',
-  'projective': 'Projectif',
-  'disk': 'Disque',
-  'plane': 'Plan',
-  'view2d': 'Vue 2D Grille'
+  'projective': 'Projective Plane',
+  'disk': 'Disk',
+  'plane': 'Plane',
+  'view2d': 'Texture'
 };
 
 // Pictos des topologies (séparés pour réutilisation)
@@ -1428,13 +1641,25 @@ function updateTopologyName(surfaceName) {
   document.getElementById('selectedTopology').textContent = topologyNames[surfaceName] || surfaceName;
 }
 
+// Fonction pour mettre à jour l'affichage compact topologie + texture
+function updateProjectionName(mapName) {
+  const mapConfig = availableMaps.find(m => m.name === mapName);
+  const textureName = mapConfig ? mapConfig.title : mapName;
+  
+  // Récupérer la topologie actuelle
+  const currentTopology = view2DMode ? 'Texture' : (topologyNames[currentSurface] || currentSurface);
+  
+  // Affichage compact sur une ligne : "Steam Texture", "Eye Cylinder", etc.
+  const displayText = view2DMode ? `${textureName} Texture` : `${textureName} ${currentTopology}`;
+  document.getElementById('selectedProjection').textContent = displayText;
+  pd('updateProjection', 'main.js', `📊 Affichage: ${displayText}`);
+}
+
 // Boutons radio pour sélection de topologie
 document.querySelectorAll('input[name="topology"]').forEach(radio => {
   radio.addEventListener('change', (e) => {
-    pd('topology_event', 'main.js', `🔍 TRACE → Radio topology event | checked=${e.target.checked} | value="${e.target.value}"`);
     if (e.target.checked) {
       const newValue = e.target.value;
-      pd('topology_event', 'main.js', `🔍 TRACE → Topologie sélectionnée: "${newValue}"`);
       
       if (newValue === 'view2d') {
         // NOUVEAU: Bouton 2D = Reinit caméra avec config 2D complète
@@ -1452,11 +1677,23 @@ document.querySelectorAll('input[name="topology"]').forEach(radio => {
           scale = 108; // Scale 2D correct
         }
         updateAngleDisplay();
-        updateScaleDisplay();
         
         // Rester en mode 2D après reinit
         view2DMode = true;
-        updateTopologyName('Vue 2D Grille');
+        updateTopologyName('');
+        
+        // Mettre à jour l'affichage combiné
+        updateProjectionName(currentMapName);
+        
+        // Désactiver interface move et drag en mode 2D
+        const cameraInterface = document.getElementById('cameraTranslationFloating');
+        if (cameraInterface) {
+          cameraInterface.classList.add('disabled');
+        }
+        
+        // Mettre à jour cursor pour mode 2D
+        canvas.style.cursor = 'default';
+        pd('view2D', 'main.js', '🔒 Mode 2D: Drag souris désactivé + interface move grisée');
         if ('view2d' !== targetSurface) {
           morphToSurface('view2d');
         }
@@ -1468,6 +1705,14 @@ document.querySelectorAll('input[name="topology"]').forEach(radio => {
         view2DMode = false;
         updateTopologyName(newValue);
         
+        // Activer interface move et drag en mode 3D
+        const cameraInterface = document.getElementById('cameraTranslationFloating');
+        if (cameraInterface) {
+          cameraInterface.classList.remove('disabled');
+        }
+        
+        pd('view3D', 'main.js', '🔓 Mode 3D: Drag souris activé + interface move fonctionnelle');
+        
         // Appliquer les angles privilégiés de cette topologie
         if (config.privilegedAngles[newValue]) {
           const angles = config.privilegedAngles[newValue];
@@ -1476,14 +1721,31 @@ document.querySelectorAll('input[name="topology"]').forEach(radio => {
           rotZ = (angles.rotZ * Math.PI) / 180;
           scale = angles.scale;
           updateAngleDisplay();
-          updateScaleDisplay();
           pd('privilegedAngles', 'main.js', `📐 Angles privilégiés appliqués pour ${newValue}: X=${angles.rotX}° Y=${angles.rotY}° Z=${angles.rotZ}° Scale=${angles.scale}`);
         }
         
         if (newValue !== targetSurface) {
           morphToSurface(newValue);
         }
+        
+        // Mettre à jour l'affichage combiné texture + topologie
+        updateProjectionName(currentMapName);
+        
         pd('topology', 'main.js', `Mode de vue: 3D ${topologyNames[newValue] || newValue}`);
+        
+        // DEBUG SPÉCIFIQUE PROJECTIF
+        if (newValue === 'projective') {
+          pd('projective_debug', 'main.js', `🪩 PROJECTIF ACTIVÉ - Debug coordonnées activé`);
+        }
+        
+        // DEBUG DRAG COMPORTEMENT
+        if (newValue === 'cylinder') {
+          pd('drag_behavior', 'main.js', `🫙 CYLINDRE - Drag X inversé, Drag Y bloqué`);
+        } else if (newValue === 'torus') {
+          pd('drag_behavior', 'main.js', `🍩 TORE - Drag X = rotY, Drag Y = rotZ (inclinaison)`);
+        } else if (newValue === 'projective') {
+          pd('drag_behavior', 'main.js', `🪩 PROJECTIF - Drag X = rotation forme (pomme autour axe), Drag Y = rotation X`);
+        }
       }
     }
   });
@@ -1492,10 +1754,8 @@ document.querySelectorAll('input[name="topology"]').forEach(radio => {
 // Boutons radio pour sélection de cartes
 document.querySelectorAll('input[name="mapChoice"]').forEach(radio => {
   radio.addEventListener('change', (e) => {
-    pd('mapChoice_event', 'main.js', `🔍 TRACE → Radio mapChoice event | checked=${e.target.checked} | value="${e.target.value}"`);
     if (e.target.checked) {
       const mapName = e.target.value;
-      pd('mapChoice_event', 'main.js', `🔍 TRACE → Appel changeMap("${mapName}") depuis événement radio`);
       changeMap(mapName);
     }
   });
@@ -1592,7 +1852,7 @@ document.getElementById('rotZRight').addEventListener('click', () => {
 
 // === ÉVÉNEMENTS SOURIS ===
 canvas.addEventListener('mousedown', (e) => {
-  if (dragEnabled) {
+  if (dragEnabled && !view2DMode) {
     isDragging = true;
     lastMouseX = e.clientX;
     lastMouseY = e.clientY;
@@ -1601,7 +1861,7 @@ canvas.addEventListener('mousedown', (e) => {
 });
 
 canvas.addEventListener('mousemove', (e) => {
-  if (!isDragging || !dragEnabled) return;
+  if (!isDragging || !dragEnabled || view2DMode) return;
   
   const deltaX = e.clientX - lastMouseX;
   const deltaY = e.clientY - lastMouseY;
@@ -1615,12 +1875,34 @@ canvas.addEventListener('mousemove', (e) => {
     // SHIFT + Drag = Rotation Z (inclinaison Diablo/Civilization)
     rotZ += deltaX * config.mouseSensitivity * 0.01;
   } else {
-    // Drag normal = Rotation Y (horizontal) et X (vertical)
-  rotY += deltaX * config.mouseSensitivity * 0.01;
-  rotX += deltaY * config.mouseSensitivity * 0.01;
-  
-  // Garder les angles dans une plage raisonnable
-  rotX = Math.max(-Math.PI, Math.min(Math.PI, rotX));
+    // DRAG ADAPTATIF PAR SURFACE
+    if (currentSurface === 'projective') {
+      // PROJECTIF : Drag X = rotation autour axe principal de la forme
+      rotShape += deltaX * config.mouseSensitivity * 0.01;
+      // Drag Y = rotation X INVERSÉE (vertical opposé)
+      rotX -= deltaY * config.mouseSensitivity * 0.01;
+      rotX = Math.max(-Math.PI, Math.min(Math.PI, rotX));
+    } else {
+      // Rotation Y (horizontal) - normale pour autres surfaces
+      let rotYMultiplier = 1;
+      if (currentSurface === 'cylinder') {
+        rotYMultiplier = -1; // Inverser le sens pour cylindre
+      }
+      rotY += deltaX * config.mouseSensitivity * 0.01 * rotYMultiplier;
+      
+      // Rotation X (vertical) - adaptée par surface
+      if (currentSurface === 'cylinder') {
+        // Cylindre : pas de rotation verticale
+      } else if (currentSurface === 'torus') {
+        // Tore : dragY = rotZ (inclinaison autour de l'axe Z)
+        rotZ += deltaY * config.mouseSensitivity * 0.01;
+      } else {
+        // Autres surfaces : rotation X normale
+        rotX += deltaY * config.mouseSensitivity * 0.01;
+        // Garder les angles dans une plage raisonnable
+        rotX = Math.max(-Math.PI, Math.min(Math.PI, rotX));
+      }
+    }
   }
   
   lastMouseX = e.clientX;
@@ -1651,7 +1933,7 @@ canvas.addEventListener('mouseleave', () => {
 // Update cursor style based on drag state
 setInterval(() => {
   if (!isDragging) {
-    canvas.style.cursor = dragEnabled ? 'grab' : 'default';
+    canvas.style.cursor = (dragEnabled && !view2DMode) ? 'grab' : 'default';
   }
 }, 100);
 
@@ -1659,9 +1941,20 @@ setInterval(() => {
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
   const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-  scale = Math.max(50, Math.min(500, scale * zoomFactor));
-  updateScaleDisplay();
+  scale = Math.max(10, Math.min(500, scale * zoomFactor)); // ScaleMin à 10 !
 });
+
+// === CONTRÔLES TRANSLATION CAMÉRA (DIRECTIONS CORRIGÉES) ===
+// Interface flottante - directions intuitives
+document.getElementById('camUp').addEventListener('click', () => translateCamera(0, -1));      // Haut = Y négatif
+document.getElementById('camUpRight').addEventListener('click', () => translateCamera(1, -1));  // Haut-droite
+document.getElementById('camRight').addEventListener('click', () => translateCamera(1, 0));     // Droite = X positif
+document.getElementById('camDownRight').addEventListener('click', () => translateCamera(1, 1)); // Bas-droite
+document.getElementById('camDown').addEventListener('click', () => translateCamera(0, 1));      // Bas = Y positif
+document.getElementById('camDownLeft').addEventListener('click', () => translateCamera(-1, 1)); // Bas-gauche
+document.getElementById('camLeft').addEventListener('click', () => translateCamera(-1, 0));     // Gauche = X négatif
+document.getElementById('camUpLeft').addEventListener('click', () => translateCamera(-1, -1));  // Haut-gauche
+document.getElementById('camCenter').addEventListener('click', () => resetCameraPosition());
 
 // Initialiser l'affichage des angles
 updateAngleDisplay();
