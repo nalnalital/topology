@@ -18,7 +18,7 @@ import { config as cylinderConfig, cylinder } from './surfaces/cylinder.js';
 import { config as torusConfig, torus } from './surfaces/torus.js';
 import { config as mobiusConfig, mobius } from './surfaces/mobius.js';
 import { projective } from './surfaces/projective.js';
-import { sphere } from './surfaces/sphere.js';
+import { plane } from './surfaces/plane.js';
 
 // === CONFIGURATION MAILLAGE ===
 const MESH_U = 30; // Résolution en U (plus en X)
@@ -325,10 +325,6 @@ function changeMap(mapName) {
 }
 
 // PRE-CALCUL des rectangles textures à plat (O(1) par frame après init)
-// ⚠️ ARCHITECTURE CRITIQUE : Cette fonction est le point d'entrée pour résoudre les gaps blancs
-// Elle est appelée UNIQUEMENT lors du changement de texture (passage forcé 2D → recalcul référence)
-// Les swaps 3D↔3D utilisent directement ces rectangles pré-calculés sans repasser par ici
-// 🔧 SOLUTION GAPS : Étendre srcX-1, srcY-1, srcW+2, srcH+2 pour overlap tuiles ici
 function precalculateTextureRectangles() {
   if (!mapCanvas || !currentMesh) return null;
   
@@ -372,35 +368,26 @@ function precalculateTextureRectangles() {
       return;
     }
     
-    // 🔧 OVERLAP ANTI-GAPS : Étendre source ET destination de 1px pour éliminer gaps blancs
-    const overlapSize = 1;
-    const srcXOverlap = Math.max(0, srcX - overlapSize);
-    const srcYOverlap = Math.max(0, srcY - overlapSize);
-    const srcWOverlap = Math.min(srcW + (2 * overlapSize), texW - srcXOverlap);
-    const srcHOverlap = Math.min(srcH + (2 * overlapSize), texH - srcYOverlap);
-    
-    // Créer canvas rectangle à plat avec overlap (performance: copie unique)
+    // Créer canvas rectangle à plat (performance: copie unique)
     const rectCanvas = document.createElement('canvas');
-    rectCanvas.width = srcWOverlap;
-    rectCanvas.height = srcHOverlap;
+    rectCanvas.width = srcW;
+    rectCanvas.height = srcH;
     const rectCtx = rectCanvas.getContext('2d');
     
-    // Copier portion de texture AVEC OVERLAP (une seule fois)
+    // Copier portion de texture (une seule fois)
     try {
       rectCtx.drawImage(mapCanvas, 
-        srcXOverlap, srcYOverlap, 
-        srcWOverlap, srcHOverlap,
-        0, 0, srcWOverlap, srcHOverlap
+        Math.max(0, srcX), Math.max(0, srcY), 
+        Math.min(srcW, texW - srcX), Math.min(srcH, texH - srcY),
+        0, 0, srcW, srcH
       );
       
       rectangles.push({
         canvas: rectCanvas,
-        width: srcWOverlap,
-        height: srcHOverlap,
+        width: srcW,
+        height: srcH,
         originalIndex: face.originalIndex
       });
-      
-      // Debug gaps supprimé - solution implémentée avec succès
     } catch (e) {
       rectangles.push(null);
     }
@@ -425,23 +412,17 @@ function drawTransformedRectangle(ctx, rectangle, projectedQuad) {
   const area = Math.abs((p1.x - p0.x) * (p3.y - p0.y) - (p3.x - p0.x) * (p1.y - p0.y));
   if (area < 1) return false;
   
-  // 🔧 ÉTENDRE LE QUAD pour overlap anti-gaps (1px dans chaque direction)
-  const overlapExtend = 0.5; // Extension en pixels pour éliminer gaps
-  
-  // Calculer vecteurs d'extension
-  const extendX = overlapExtend;
-  const extendY = overlapExtend;
-  
-  // Étendre chaque coin du quad
-  const p0Extended = { x: p0.x - extendX, y: p0.y - extendY };
-  const p1Extended = { x: p1.x + extendX, y: p1.y - extendY };
-  const p2Extended = { x: p2.x + extendX, y: p2.y + extendY };
-  const p3Extended = { x: p3.x - extendX, y: p3.y + extendY };
+  // 🔧 ÉTENDRE les quads de 1 pixel tout autour pour éliminer gaps
+  const extend = 1;
+  const p0Extended = { x: p0.x - extend, y: p0.y - extend };
+  const p1Extended = { x: p1.x + extend, y: p1.y - extend };
+  const p2Extended = { x: p2.x + extend, y: p2.y + extend };
+  const p3Extended = { x: p3.x - extend, y: p3.y + extend };
   
   // Sauvegarder l'état du contexte
   ctx.save();
   
-  // Clipping avec quad ÉTENDU pour overlap
+  // Clipping avec quad ÉTENDU
   ctx.beginPath();
   ctx.moveTo(p0Extended.x, p0Extended.y);
   ctx.lineTo(p1Extended.x, p1Extended.y);
@@ -471,7 +452,7 @@ function drawTransformedRectangle(ctx, rectangle, projectedQuad) {
       const v0 = v / subdivisions;
       const v1 = (v + 1) / subdivisions;
       
-      // Interpolation bilinéaire pour les 4 coins du sous-quad AVEC POINTS ÉTENDUS
+      // Interpolation bilinéaire pour les 4 coins du sous-quad (avec points étendus)
       const corner00 = bilinearInterpolation(p0Extended, p1Extended, p2Extended, p3Extended, u0, v0);
       const corner10 = bilinearInterpolation(p0Extended, p1Extended, p2Extended, p3Extended, u1, v0);
       const corner11 = bilinearInterpolation(p0Extended, p1Extended, p2Extended, p3Extended, u1, v1);
@@ -652,7 +633,11 @@ function initializeMesh(surfaceFunc) {
   
   // DEBUG SPÉCIFIQUE PROJECTIF - Test quelques points
   if (currentSurface === 'projective') {
-    // DEBUG SPÉCIFIQUE PROJECTIF - supprimé pour éviter spam console
+    pd('projective_debug', 'main.js', `🪩 INIT PROJECTIF - Test coordonnées poles:`);
+    const testPole1 = surfaceFunc(0.1, 0.5); // Près pôle
+    const testPole2 = surfaceFunc(0.9, 0.5); // Près autre pôle
+    const testCenter = surfaceFunc(0.5, 0.5); // Centre
+    pd('projective_debug', 'main.js', `🪩 Pôle 1 (u=0.1): z=${testPole1.z.toFixed(3)} | Pôle 2 (u=0.9): z=${testPole2.z.toFixed(3)} | Centre: z=${testCenter.z.toFixed(3)}`);
   }
   
   // Génération des sommets sur grille rectangulaire
@@ -1014,8 +999,8 @@ const surfaces = {
     };
   },
   
-  // Sphère - surface fermée (IMPORTÉ)
-  sphere: sphere,
+  // Plan - surface plate infinie (IMPORTÉ)
+  plane: plane,
 
   // Vue 2D - grille plate pour morphing 2D ↔ 3D (avec inversion Y)
   view2d: surface2D
@@ -1071,7 +1056,7 @@ function getOptimalScale(surfaceName) {
     'torus': torusConfig,
     'mobius': mobiusConfig,
     'view2d': { scale: 108 }, // Scale par défaut pour 2D
-    'sphere': { scale: 120 },  // Scale par défaut pour sphère
+    'plane': { scale: 150 },  // Scale par défaut pour plan
     // Autres surfaces utilisent scale par défaut
     'klein': { scale: 150 },
     'crosscap': { scale: 150 },
@@ -1286,11 +1271,11 @@ function render2DGrid() {
          const texW = Math.ceil(mapCanvas.width / MESH_U);
          const texH = Math.ceil(mapCanvas.height / MESH_V);
         
-                 // Dessiner la portion de texture
-         ctx.drawImage(mapCanvas, 
-           texX, texY, texW, texH,
-           x, y, cellWidth, cellHeight
-         );
+        // Dessiner la portion de texture
+        ctx.drawImage(mapCanvas, 
+          texX, texY, texW, texH,
+          x, y, cellWidth, cellHeight
+        );
       }
     }
   }
@@ -1437,9 +1422,6 @@ function render() {
       
       // CORRECTION CRITIQUE: Utiliser l'index ORIGINAL de la face, pas l'index trié
       const rectangle = textureRectangles ? textureRectangles[face.originalIndex] : null;
-      
-      // Debug rendu supprimé - solution gaps implémentée avec succès
-      
       const success = drawTransformedRectangle(ctx, rectangle, quadProjected);
       
 
@@ -1649,13 +1631,13 @@ const topologyNames = {
   'crosscap': 'Cross-cap',
   'projective': 'Projective Plane',
   'disk': 'Disk',
-  'sphere': 'Sphère',
+  'plane': 'Plane',
   'view2d': 'Texture'
 };
 
 // Pictos des topologies (séparés pour réutilisation)
 const topologyIcons = {
-  'sphere': '🌍',
+  'plane': '🔷',
   'disk': '💿', 
   'cylinder': '🫙',
   'mobius': '🎀',
@@ -1773,7 +1755,10 @@ document.querySelectorAll('input[name="topology"]').forEach(radio => {
         
         pd('topology', 'main.js', `Mode de vue: 3D ${topologyNames[newValue] || newValue}`);
         
-        // DEBUG SPÉCIFIQUE PROJECTIF - supprimé
+        // DEBUG SPÉCIFIQUE PROJECTIF
+        if (newValue === 'projective') {
+          pd('projective_debug', 'main.js', `🪩 PROJECTIF ACTIVÉ - Debug coordonnées activé`);
+        }
         
         // DEBUG DRAG COMPORTEMENT
         if (newValue === 'cylinder') {
