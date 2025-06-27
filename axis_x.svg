@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrowX" markerWidth="4" markerHeight="4" refX="3" refY="2" orient="auto" markerUnits="strokeWidth">
+      <polygon points="0,0 0,4 4,2" fill="#e74c3c" stroke="none"/>
+    </marker>
+  </defs>
+  <line x1="2" y1="8" x2="14" y2="8" stroke="#e74c3c" stroke-width="3" marker-end="url(#arrowX)"/>
+</svg> 

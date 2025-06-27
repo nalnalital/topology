@@ -4,18 +4,24 @@
   <meta charset="UTF-8">
   <title>Visualisation de Surfaces Topologiques - Projection Isométrique</title>
   <link rel="stylesheet" href="css.css">
-      <!-- Version 2.29.0 - Animation drag + offset centré -->
+      <!-- Version 2.38.0 - SVG axes en fichiers séparés (plus de base64) -->
 </head>
 <body>
-  <h1>Topologicon du Carré</h1>
-  <!-- Contrôles rotations sortis de la div simulation -->
-  <div class="external-controls">
-    <div class="debug-info">
-      <span>Rotation X: <input type="number" id="angleXInput" value="0" min="-180" max="180" step="1">° <button id="rotXLeft">↩️</button><button id="rotXRight">↪️</button></span>
-      <span>Rotation Y: <input type="number" id="angleYInput" value="135" min="-180" max="180" step="1">° <button id="rotYLeft">↩️</button><button id="rotYRight">↪️</button></span>
-      <span>Rotation Z: <input type="number" id="angleZInput" value="0" min="-180" max="180" step="1">° <button id="rotZLeft">↩️</button><button id="rotZRight">↪️</button></span>
-    </div>
+  <h1>Square Topologicon</h1>
+  <div class="control-row-single">
+    <label class="map-option">
+      <input type="radio" name="topology" value="view2d" checked>
+      <span class="map-name">🔄</span>
+    </label>
+    
+    <div id="selectedProjection" class="selected-projection-inline">Steam Texture</div>
+    
+    <label class="map-option">
+      <input type="checkbox" id="showTexture" style="display: none;">
+      <span class="map-name">🌐</span>
+    </label>
   </div>
+
   
   <!-- Nouvelle structure avec grille CSS pour alignement parfait -->
   <div class="simulation-grid">
@@ -59,6 +65,10 @@
       <!-- Interface move positionnée relativement au canvas -->
       <div class="camera-translation-floating" id="cameraTranslationFloating">
         <div class="drag-handle">⋮⋮⋮</div>
+        <!-- Overlay pour désactiver contenu en mode 2D -->
+        <div class="move-overlay" id="moveOverlay"></div>
+        
+        <!-- Section Translation -->
         <div class="translation-grid">
           <button id="camUpLeft">↖️</button>
           <button id="camUp">⬆️</button>
@@ -69,6 +79,39 @@
           <button id="camDownLeft">↙️</button>
           <button id="camDown">⬇️</button>
           <button id="camDownRight">↘️</button>
+        </div>
+        
+        <!-- Séparateur -->
+        <div class="separator"></div>
+        
+        <!-- Section Rotations -->
+        <div class="rotation-controls">
+          <div class="rotation-axis">
+            <img src="axis_x.svg" class="axis-icon" alt="X">
+            <span class="angle-display" id="angleXDisplay">0°</span>
+            <div class="rotation-buttons-vertical">
+              <button id="rotXRight">↪️</button>
+              <button id="rotXLeft">↩️</button>
+            </div>
+          </div>
+          
+          <div class="rotation-axis">
+            <img src="axis_y.svg" class="axis-icon" alt="Y">
+            <span class="angle-display" id="angleYDisplay">135°</span>
+            <div class="rotation-buttons-vertical">
+              <button id="rotYRight">↪️</button>
+              <button id="rotYLeft">↩️</button>
+            </div>
+          </div>
+          
+          <div class="rotation-axis">
+            <img src="axis_z.svg" class="axis-icon" alt="Z">
+            <span class="angle-display" id="angleZDisplay">0°</span>
+            <div class="rotation-buttons-vertical">
+              <button id="rotZRight">↪️</button>
+              <button id="rotZLeft">↩️</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -112,22 +155,9 @@
       </label>
     </div>
   </div>
-  <div id="selectedTopology" class="selected-topology"></div>
   <!-- Ligne unique : Reinit - Steam Texture - Grille -->
   <div class="map-selection">
-    <div class="control-row-single">
-      <label class="topology-option">
-        <input type="radio" name="topology" value="view2d" checked>
-        <span class="topology-visual">🔄</span>
-      </label>
-      
-      <div id="selectedProjection" class="selected-projection-inline">Steam Texture</div>
-      
-      <label class="topology-option">
-        <input type="checkbox" id="showTexture" style="display: none;">
-        <span class="topology-visual">🌐</span>
-      </label>
-    </div>
+    
     
     <!-- Ligne du bas : Textures dynamiques -->
     <div class="map-options">

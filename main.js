@@ -1,13 +1,13 @@
 // File: main.js - 3D Isometric Topology Engine with texture mapping
 // Desc: En français, dans l'architecture, je suis le moteur principal qui gère la projection 3D isométrique, les transformations topologiques, et le texture mapping avec système multi-cartes
-// Version 3.76.0 (Fix offset ⋮⋮⋮ + directions flèches)
+// Version 3.79.0 (Angles en lecture seule + selectedTopology supprimé)
 // Author: DNAvatar.org - Arnaud Maignan  
-// Date: [December 16, 2024] [00:20 UTC+1]
+// Date: [December 16, 2024] [00:30 UTC+1]
 // Logs:
-//   - Fixed drag offset: ⋮⋮⋮ handle positioned under mouse (not div center)
-//   - Corrected arrow directions: Up=Y-, Down=Y+, Left=X-, Right=X+
-//   - Intuitive camera movement: arrows now move in expected directions
-//   - Proper handle positioning during drag
+//   - Fixed angle display: now read-only with ° symbol
+//   - Removed selectedTopology element, all info in selectedProjection
+//   - Fixed button event listeners compatibility
+//   - Cleaned up unused input event handlers
 
 // === IMPORTS ===
 import { config } from './config.js';
@@ -311,6 +311,10 @@ function changeMap(mapName) {
       // Mettre à jour l'interface pour refléter le passage en 2D
       document.querySelector('input[value="view2d"]').checked = true;
       updateTopologyName('');
+      
+      // Activer overlay pour mode 2D
+      const moveOverlay = document.getElementById('moveOverlay');
+      if (moveOverlay) moveOverlay.classList.add('active');
     }
     
     // Charger la nouvelle texture (avec callback auto-retour 3D)
@@ -1082,9 +1086,9 @@ function updateAngleDisplay() {
   const angleYDeg = Math.round((rotY * 180) / Math.PI);
   const angleZDeg = Math.round((rotZ * 180) / Math.PI);
   
-  document.getElementById('angleXInput').value = angleXDeg;
-  document.getElementById('angleYInput').value = angleYDeg;
-  document.getElementById('angleZInput').value = angleZDeg;
+  document.getElementById('angleXDisplay').textContent = angleXDeg + '°';
+  document.getElementById('angleYDisplay').textContent = angleYDeg + '°';
+  document.getElementById('angleZDisplay').textContent = angleZDeg + '°';
 }
 
 // Fonctions de translation caméra
@@ -1638,7 +1642,8 @@ const topologyIcons = {
 
 // Fonction pour mettre à jour l'affichage du nom
 function updateTopologyName(surfaceName) {
-  document.getElementById('selectedTopology').textContent = topologyNames[surfaceName] || surfaceName;
+  // La topologie est maintenant affichée dans selectedProjection via updateProjectionName
+  // Cette fonction ne fait plus rien mais est gardée pour compatibilité
 }
 
 // Fonction pour mettre à jour l'affichage compact topologie + texture
@@ -1685,10 +1690,15 @@ document.querySelectorAll('input[name="topology"]').forEach(radio => {
         // Mettre à jour l'affichage combiné
         updateProjectionName(currentMapName);
         
-        // Désactiver interface move et drag en mode 2D
+        // Désactiver interface move en mode 2D
         const cameraInterface = document.getElementById('cameraTranslationFloating');
+        const moveOverlay = document.getElementById('moveOverlay');
+        
         if (cameraInterface) {
           cameraInterface.classList.add('disabled');
+        }
+        if (moveOverlay) {
+          moveOverlay.classList.add('active');
         }
         
         // Mettre à jour cursor pour mode 2D
@@ -1705,10 +1715,15 @@ document.querySelectorAll('input[name="topology"]').forEach(radio => {
         view2DMode = false;
         updateTopologyName(newValue);
         
-        // Activer interface move et drag en mode 3D
+        // Activer interface move en mode 3D
         const cameraInterface = document.getElementById('cameraTranslationFloating');
+        const moveOverlay = document.getElementById('moveOverlay');
+        
         if (cameraInterface) {
           cameraInterface.classList.remove('disabled');
+        }
+        if (moveOverlay) {
+          moveOverlay.classList.remove('active');
         }
         
         pd('view3D', 'main.js', '🔓 Mode 3D: Drag souris activé + interface move fonctionnelle');
@@ -1775,33 +1790,7 @@ document.getElementById('showTexture').addEventListener('change', (e) => {
 
 // Ancien bouton reinit supprimé - fonction intégrée au bouton 2D
 
-// Inputs manuels pour les angles
-document.getElementById('angleXInput').addEventListener('input', (e) => {
-  const newAngle = parseInt(e.target.value);
-  if (!isNaN(newAngle)) {
-    rotX = (newAngle * Math.PI) / 180;
-    pd('angleXInput', 'main.js', `Rotation X manuelle: ${newAngle}°`);
-    if (!view2DMode) debugUVCorners();
-  }
-});
-
-document.getElementById('angleYInput').addEventListener('input', (e) => {
-  const newAngle = parseInt(e.target.value);
-  if (!isNaN(newAngle)) {
-    rotY = (newAngle * Math.PI) / 180;
-    pd('angleYInput', 'main.js', `Rotation Y manuelle: ${newAngle}°`);
-    if (!view2DMode) debugUVCorners();
-  }
-});
-
-document.getElementById('angleZInput').addEventListener('input', (e) => {
-  const newAngle = parseInt(e.target.value);
-  if (!isNaN(newAngle)) {
-    rotZ = (newAngle * Math.PI) / 180;
-    pd('angleZInput', 'main.js', `Rotation Z manuelle: ${newAngle}°`);
-    if (!view2DMode) debugUVCorners();
-  }
-});
+// Les angles sont maintenant affichés en lecture seule (plus d'inputs manuels)
 
 // Boutons fine-tuning rotation X
 document.getElementById('rotXLeft').addEventListener('click', () => {

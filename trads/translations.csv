@@ -1,6 +1,7 @@
 # File: translations.csv - Traductions interface topologie 3D
 # Format: ID,FR,EN,ES,IT,DE
 """topologyTitle""","""Surfaces topologiques - Projection 3D Isométrique""","""Topological Surfaces - 3D Isometric Projection""","""Superficies Topológicas - Proyección 3D Isométrica""","""Superfici Topologiche - Proiezione 3D Isometrica""","""Topologische Oberflächen - 3D Isometrische Projektion"""
+"""mainTitle""","""Topologicon du Carré""","""Square Topologicon""","""Topologicón del Cuadrado""","""Topologicon del Quadrato""","""Quadrat Topologicon"""
 """view2d""","""Texture""","""Texture""","""Textura""","""Texture""","""Textur"""
 """plane""","""Plan""","""Plane""","""Plano""","""Piano""","""Ebene"""
 """disk""","""Disque""","""Disk""","""Disco""","""Disco""","""Scheibe"""
