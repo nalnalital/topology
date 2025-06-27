@@ -60,3 +60,11 @@ export function createSurface() {
   const material = new THREE.MeshStandardMaterial({ color: 0x009999, side: THREE.DoubleSide });
   return new THREE.Mesh(geometry, material);
 }
+
+// Configuration spécifique bouteille de Klein
+export const config = {
+  scale: 100,                       // Scale adapté à la géométrie Klein
+  defaultRotation: { x: 30, y: 60 }, // Vue 3/4 optimale pour Klein
+  name: 'Bouteille de Klein',
+  emoji: '🖇️'
+};

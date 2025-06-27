@@ -31,7 +31,7 @@ export function sphere(u, v) {
 
 // Configuration spécifique sphère
 export const config = {
-  scale: 120,                       // Scale optimal pour sphère
+  scale: 80,                        // Scale réduit par rapport au tore
   defaultRotation: { x: 25, y: 45 }, // Vue 3/4 par défaut
   name: 'Sphère',
   emoji: '🌍'

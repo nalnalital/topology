@@ -411,9 +411,98 @@ function drawTransformedRectangle(ctx, rectangle, projectedQuad) {
   // Éviter les quads trop petits
   const area = Math.abs((p1.x - p0.x) * (p3.y - p0.y) - (p3.x - p0.x) * (p1.y - p0.y));
   if (area < 1) return false;
+
+  // 📊 ANALYSE PRODUITS SCALAIRES 3D pour tuiles spécifiques (cylindre uniquement)
+  if (currentSurface === 'cylinder' && window.debug3DScalars && rectangle.originalIndex !== undefined) {
+    // Identifier position de la tuile dans la grille
+    const MESH_U = 30; // Constante locale pour éviter les erreurs
+    const gridU = Math.floor(rectangle.originalIndex % MESH_U);
+    const gridV = Math.floor(rectangle.originalIndex / MESH_U);
+    
+    // Tuiles cibles : fond haut (gridU ≈ 15, gridV ≈ 2-3) et devant haut (gridU ≈ 0, gridV ≈ 2-3)
+    const isTargetTile = (
+      (gridU >= 13 && gridU <= 17 && gridV >= 1 && gridV <= 4) || // Fond haut (élargi)
+      (gridU >= 0 && gridU <= 3 && gridV >= 1 && gridV <= 4)      // Devant haut (élargi)
+    );
+    
+    if (isTargetTile) {
+      // CALCULER LA VRAIE NORMALE 3D de la face (avant projection)
+      if (currentMesh && currentMesh.faces && currentMesh.faces[rectangle.originalIndex]) {
+        const face = currentMesh.faces[rectangle.originalIndex];
+        const vertices = currentMesh.vertices;
+        
+        // Prendre 3 vertices pour calculer la normale 3D
+        const v0 = vertices[face.vertices[0]];
+        const v1 = vertices[face.vertices[1]];
+        const v2 = vertices[face.vertices[2]];
+        
+        // Vecteurs des arêtes 3D
+        const edge3D_1 = { x: v1.x - v0.x, y: v1.y - v0.y, z: v1.z - v0.z };
+        const edge3D_2 = { x: v2.x - v0.x, y: v2.y - v0.y, z: v2.z - v0.z };
+        
+        // Normale 3D (produit vectoriel)
+        const normal3D = {
+          x: edge3D_1.y * edge3D_2.z - edge3D_1.z * edge3D_2.y,
+          y: edge3D_1.z * edge3D_2.x - edge3D_1.x * edge3D_2.z,
+          z: edge3D_1.x * edge3D_2.y - edge3D_1.y * edge3D_2.x
+        };
+        
+        // Normaliser la normale 3D
+        const normal3DLength = Math.sqrt(normal3D.x * normal3D.x + normal3D.y * normal3D.y + normal3D.z * normal3D.z);
+        if (normal3DLength > 0) {
+          normal3D.x /= normal3DLength;
+          normal3D.y /= normal3DLength;
+          normal3D.z /= normal3DLength;
+        }
+        
+        // Direction de vue 3D (isométrique)
+        const ISO_COS = 0.866; // Math.cos(30°)
+        const viewDirection = { x: -ISO_COS, y: 0, z: ISO_COS }; // Vers le fond
+        
+        // PRODUITS SCALAIRES 3D
+        const dotX = normal3D.x * viewDirection.x; // Produit scalaire composante X
+        const dotY = normal3D.y * viewDirection.y; // Produit scalaire composante Y  
+        const dotZ = normal3D.z * viewDirection.z; // Produit scalaire composante Z
+        const dotTotal = dotX + dotY + dotZ;       // Produit scalaire total
+        
+        // Position dans la grille
+        const position = gridU <= 3 ? 'DEVANT' : 'FOND';
+        
+        // Stocker les données
+        if (!window.scalar3DData) window.scalar3DData = [];
+        window.scalar3DData.push({
+          position: position,
+          gridPos: `(${gridU},${gridV})`,
+          originalIndex: rectangle.originalIndex,
+          normal3D: { x: normal3D.x.toFixed(3), y: normal3D.y.toFixed(3), z: normal3D.z.toFixed(3) },
+          dotProducts: { x: dotX.toFixed(3), y: dotY.toFixed(3), z: dotZ.toFixed(3), total: dotTotal.toFixed(3) },
+          angle: Math.acos(Math.abs(dotTotal)) * 180 / Math.PI // Angle en degrés
+        });
+      }
+    }
+  }
   
-  // 🔧 ÉTENDRE les quads de 1 pixel tout autour pour éliminer gaps
-  const extend = 1;
+  // 🔧 EXTENSION ADAPTATIVE basée sur la position dans la grille (cylindre)
+  let extend = 1; // Extension par défaut
+  
+  if (currentSurface === 'cylinder' && rectangle.originalIndex !== undefined) {
+    const MESH_U = 30;
+    const gridU = Math.floor(rectangle.originalIndex % MESH_U);
+    const gridV = Math.floor(rectangle.originalIndex / MESH_U);
+    
+    // Extension différentielle selon la zone du cylindre
+    if (gridU >= 0 && gridU <= 7) {
+      // Zone DEVANT (gridU 0-7) : extension normale
+      extend = 1;
+    } else if (gridU >= 13 && gridU <= 22) {
+      // Zone FOND (gridU 13-22) : extension réduite
+      extend = 0.5;
+    } else {
+      // Zones latérales : extension intermédiaire
+      extend = 0.75;
+    }
+  }
+  
   const p0Extended = { x: p0.x - extend, y: p0.y - extend };
   const p1Extended = { x: p1.x + extend, y: p1.y - extend };
   const p2Extended = { x: p2.x + extend, y: p2.y + extend };
@@ -1405,6 +1494,8 @@ function render() {
   // Pré-calculer rectangles textures si nécessaire (SEULEMENT si pas encore fait)
   if (showTexture && !textureRectangles) {
     textureRectangles = precalculateTextureRectangles();
+    // Rendre les rectangles globaux pour l'analyse
+    window.textureRectangles = textureRectangles;
     pd('render', 'main.js', '🔧 Rectangles texture pré-calculés UNE SEULE FOIS');
   }
   
@@ -1956,3 +2047,140 @@ document.getElementById('camCenter').addEventListener('click', () => resetCamera
 updateAngleDisplay();
 
 // Plus besoin d'appeler render() manuellement - animation automatique !
+
+// === FONCTIONS D'ANALYSE DEBUG ===
+
+// Fonction d'analyse basique du maillage
+function debugMeshBasics() {
+  console.log('\n🔍 === DEBUG MESH BASICS ===');
+  
+  if (!currentMesh) {
+    console.log('❌ Pas de maillage actuel');
+    return;
+  }
+  
+  console.log(`📊 Mesh: ${currentMesh.vertices.length} vertices, ${currentMesh.faces.length} faces`);
+  console.log(`📊 Surface actuelle: ${currentSurface}`);
+  
+  // Échantillon de faces
+  console.log('\n📍 Échantillon de faces:');
+  for (let i = 0; i < Math.min(5, currentMesh.faces.length); i++) {
+    const face = currentMesh.faces[i];
+    console.log(`Face ${i}: originalIndex=${face.originalIndex}, vertices=[${face.vertices.join(',')}]`);
+  }
+  
+  // Vérifier les rectangles de texture
+  if (window.textureRectangles) {
+    console.log(`\n📦 TextureRectangles: ${window.textureRectangles.length} rectangles`);
+    
+    let validRectangles = 0;
+    for (let i = 0; i < Math.min(3, window.textureRectangles.length); i++) {
+      const rect = window.textureRectangles[i];
+      if (rect && rect.originalIndex !== undefined) {
+        console.log(`Rectangle ${i}: originalIndex=${rect.originalIndex}, size=${rect.width}x${rect.height}`);
+        validRectangles++;
+      }
+    }
+    console.log(`✅ ${validRectangles} rectangles avec originalIndex valide`);
+  } else {
+    console.log('\n❌ window.textureRectangles n\'existe pas');
+    
+    // Chercher d'autres variables globales de texture
+    console.log('🔍 Variables globales disponibles:');
+    const globals = ['currentTextureRectangles', 'textureRectangles', 'precomputedRectangles'];
+    globals.forEach(varName => {
+      if (window[varName]) {
+        console.log(`✅ window.${varName} existe: ${window[varName].length} éléments`);
+      } else {
+        console.log(`❌ window.${varName} n'existe pas`);
+      }
+    });
+    
+         // Vérifier si les rectangles sont dans le render
+     console.log('🔍 Recherche dans les variables locales du render...');
+   }
+   
+   // Constantes importantes
+   const MESH_U = 30;
+   const MESH_V = 20;
+   const ISO_COS = 0.866;
+   console.log(`\n📐 Constantes: MESH_U=${MESH_U}, MESH_V=${MESH_V}, ISO_COS=${ISO_COS}`);
+ }
+
+// Exposer la fonction debugMeshBasics globalement
+window.debugMeshBasics = debugMeshBasics;
+
+// Version simplifiée qui force la collecte de données 3D
+function forceAnalyze3DScalars() {
+  console.log('\n🚀 === ANALYSE FORCÉE PRODUITS SCALAIRES 3D ===');
+  
+  if (currentSurface !== 'cylinder') {
+    console.log('❌ Cette analyse fonctionne seulement sur le cylindre');
+    return;
+  }
+  
+  // Réinitialiser les données
+  window.debug3DScalars = true;
+  window.scalar3DData = [];
+  
+  console.log('🔍 Forçage du rendu pour collecter les données...');
+  console.log(`📐 Angle actuel: X=${Math.round(rotX * 180 / Math.PI)}°, Y=${Math.round(rotY * 180 / Math.PI)}°, Z=${Math.round(rotZ * 180 / Math.PI)}°`);
+  
+  // Forcer plusieurs rendus pour être sûr de capturer les données
+  for (let i = 0; i < 3; i++) {
+    setTimeout(() => {
+      // Force le rendu immédiatement
+      render();
+      
+      if (i === 2) {
+        // Après le dernier rendu, analyser les résultats
+        setTimeout(() => {
+          window.debug3DScalars = false;
+          
+          console.log(`\n📊 === RÉSULTATS APRÈS RENDU FORCÉ ===`);
+          console.log(`Données collectées: ${window.scalar3DData ? window.scalar3DData.length : 0} tuiles`);
+          
+          if (window.scalar3DData && window.scalar3DData.length > 0) {
+            // Grouper par position
+            const devantTiles = window.scalar3DData.filter(d => d.position === 'DEVANT');
+            const fondTiles = window.scalar3DData.filter(d => d.position === 'FOND');
+            
+            console.log(`\n🔵 TUILES DEVANT (${devantTiles.length}):`);
+            devantTiles.slice(0, 5).forEach(data => {
+              console.log(`  ${data.gridPos}: normale3D(${data.normal3D.x}, ${data.normal3D.y}, ${data.normal3D.z}) | dots(X:${data.dotProducts.x}, Y:${data.dotProducts.y}, Z:${data.dotProducts.z}) | total=${data.dotProducts.total} | angle=${data.angle.toFixed(1)}°`);
+            });
+            
+            console.log(`\n🔴 TUILES FOND (${fondTiles.length}):`);
+            fondTiles.slice(0, 5).forEach(data => {
+              console.log(`  ${data.gridPos}: normale3D(${data.normal3D.x}, ${data.normal3D.y}, ${data.normal3D.z}) | dots(X:${data.dotProducts.x}, Y:${data.dotProducts.y}, Z:${data.dotProducts.z}) | total=${data.dotProducts.total} | angle=${data.angle.toFixed(1)}°`);
+            });
+            
+            // Analyse comparative
+            if (devantTiles.length > 0 && fondTiles.length > 0) {
+              const avgDevantTotal = devantTiles.reduce((sum, d) => sum + parseFloat(d.dotProducts.total), 0) / devantTiles.length;
+              const avgFondTotal = fondTiles.reduce((sum, d) => sum + parseFloat(d.dotProducts.total), 0) / fondTiles.length;
+              
+              console.log(`\n🔬 COMPARAISON:`);
+              console.log(`  Devant: dotTotal moyen = ${avgDevantTotal.toFixed(3)}`);
+              console.log(`  Fond: dotTotal moyen = ${avgFondTotal.toFixed(3)}`);
+              console.log(`  Différence = ${(avgFondTotal - avgDevantTotal).toFixed(3)}`);
+              
+              // Conclusion
+              if (Math.abs(avgFondTotal - avgDevantTotal) > 0.1) {
+                console.log(`\n✅ CONFIRMATION: Les normales 3D sont différentes entre devant et fond !`);
+                console.log(`Cette différence peut être utilisée pour adapter l'extension adaptative.`);
+              } else {
+                console.log(`\n⚠️ Les normales sont similaires - il faut une autre approche.`);
+              }
+            }
+          } else {
+            console.log('❌ Aucune donnée collectée - problème dans la détection');
+          }
+        }, 50);
+      }
+    }, i * 30);
+  }
+}
+
+// Exposer la fonction globalement
+window.forceAnalyze3DScalars = forceAnalyze3DScalars;
