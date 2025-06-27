@@ -18,7 +18,7 @@ import { config as cylinderConfig, cylinder } from './surfaces/cylinder.js';
 import { config as torusConfig, torus } from './surfaces/torus.js';
 import { config as mobiusConfig, mobius } from './surfaces/mobius.js';
 import { projective } from './surfaces/projective.js';
-import { plane } from './surfaces/plane.js';
+import { sphere } from './surfaces/sphere.js';
 
 // === CONFIGURATION MAILLAGE ===
 const MESH_U = 30; // Résolution en U (plus en X)
@@ -325,6 +325,10 @@ function changeMap(mapName) {
 }
 
 // PRE-CALCUL des rectangles textures à plat (O(1) par frame après init)
+// ⚠️ ARCHITECTURE CRITIQUE : Cette fonction est le point d'entrée pour résoudre les gaps blancs
+// Elle est appelée UNIQUEMENT lors du changement de texture (passage forcé 2D → recalcul référence)
+// Les swaps 3D↔3D utilisent directement ces rectangles pré-calculés sans repasser par ici
+// 🔧 SOLUTION GAPS : Étendre srcX-1, srcY-1, srcW+2, srcH+2 pour overlap tuiles ici
 function precalculateTextureRectangles() {
   if (!mapCanvas || !currentMesh) return null;
   
@@ -992,8 +996,8 @@ const surfaces = {
     };
   },
   
-  // Plan - surface plate infinie (IMPORTÉ)
-  plane: plane,
+  // Sphère - surface fermée (IMPORTÉ)
+  sphere: sphere,
 
   // Vue 2D - grille plate pour morphing 2D ↔ 3D (avec inversion Y)
   view2d: surface2D
@@ -1049,7 +1053,7 @@ function getOptimalScale(surfaceName) {
     'torus': torusConfig,
     'mobius': mobiusConfig,
     'view2d': { scale: 108 }, // Scale par défaut pour 2D
-    'plane': { scale: 150 },  // Scale par défaut pour plan
+    'sphere': { scale: 120 },  // Scale par défaut pour sphère
     // Autres surfaces utilisent scale par défaut
     'klein': { scale: 150 },
     'crosscap': { scale: 150 },
@@ -1264,11 +1268,11 @@ function render2DGrid() {
          const texW = Math.ceil(mapCanvas.width / MESH_U);
          const texH = Math.ceil(mapCanvas.height / MESH_V);
         
-        // Dessiner la portion de texture
-        ctx.drawImage(mapCanvas, 
-          texX, texY, texW, texH,
-          x, y, cellWidth, cellHeight
-        );
+                 // Dessiner la portion de texture
+         ctx.drawImage(mapCanvas, 
+           texX, texY, texW, texH,
+           x, y, cellWidth, cellHeight
+         );
       }
     }
   }
@@ -1624,13 +1628,13 @@ const topologyNames = {
   'crosscap': 'Cross-cap',
   'projective': 'Projective Plane',
   'disk': 'Disk',
-  'plane': 'Plane',
+  'sphere': 'Sphère',
   'view2d': 'Texture'
 };
 
 // Pictos des topologies (séparés pour réutilisation)
 const topologyIcons = {
-  'plane': '🔷',
+  'sphere': '🌍',
   'disk': '💿', 
   'cylinder': '🫙',
   'mobius': '🎀',
