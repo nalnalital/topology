@@ -667,8 +667,8 @@ canvas:active {
 /* === INTERFACE MOVE FLOTTANTE === */
 .camera-translation-floating {
   position: absolute;
-  bottom: 10px;
-  right: 10px;
+  bottom: 20px;
+  left: 20px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 12px;
@@ -678,6 +678,8 @@ canvas:active {
   cursor: move;
   transition: all 0.3s ease;
   width: 80px;
+  height: 30px;
+  overflow: visible;
 }
 
 .camera-translation-floating.dragging {
@@ -686,6 +688,7 @@ canvas:active {
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
   background: rgba(52, 152, 219, 0.1);
   border-color: #3498db;
+  height: auto;
 }
 
 .camera-translation-floating.dragging .drag-handle {
@@ -697,18 +700,71 @@ canvas:active {
 .camera-translation-floating:hover {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
   transform: translateY(-2px);
+  height: auto;
+}
+
+/* MODE ROLLOUT : Par défaut seule la zone de drag visible */
+.camera-translation-floating .translation-grid,
+.camera-translation-floating .separator,
+.camera-translation-floating .rotation-controls {
+  opacity: 0;
+  transform: scale(0.8);
+  pointer-events: none;
+  transition: all 0.3s ease;
+  max-height: 0;
+  overflow: hidden;
+}
+
+/* Au survol du panneau : dépliage des actions */
+.camera-translation-floating:hover .translation-grid,
+.camera-translation-floating:hover .separator,
+.camera-translation-floating:hover .rotation-controls {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+  max-height: 200px;
+}
+
+/* Zone de drag ultra-compacte par défaut */
+.camera-translation-floating .drag-handle {
+  padding: 4px 8px;
+  height: 22px;
+  background: rgba(52, 152, 219, 0.15);
+  border-radius: 8px;
+  opacity: 1;
+  font-weight: bold;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Au survol, drag handle redevient normal */
+.camera-translation-floating:hover .drag-handle {
+  background: rgba(52, 152, 219, 0.15);
+  border-bottom: 1px solid rgba(52, 152, 219, 0.3);
+  border-radius: 10px 10px 0 0;
+  height: auto;
+  padding: 8px 12px;
+  font-size: 12px;
 }
 
 .camera-translation-floating.disabled {
   opacity: 0.3;
-  pointer-events: none;
   filter: grayscale(100%);
+}
+
+/* En mode disabled, seule la zone de drag reste interactive */
+.camera-translation-floating.disabled .drag-handle {
+  pointer-events: auto;
+  opacity: 1;
+  filter: none;
 }
 
 .drag-handle {
   text-align: center;
-  padding: 0;
-  height: 0;
   background: transparent;
   border-radius: 10px 10px 0 0;
   font-size: 12px;
@@ -716,18 +772,10 @@ canvas:active {
   cursor: grab;
   user-select: none;
   border-bottom: none;
-  overflow: hidden;
   transition: all 0.3s ease;
-  opacity: 0;
 }
 
-.camera-translation-floating:hover .drag-handle {
-  padding: 4px 8px;
-  height: auto;
-  background: rgba(52, 152, 219, 0.1);
-  border-bottom: 1px solid rgba(52, 152, 219, 0.2);
-  opacity: 1;
-}
+/* Règle remplacée par la nouvelle logique de rollout ci-dessus */
 
 .drag-handle:active {
   cursor: grabbing;
@@ -857,7 +905,7 @@ canvas:active {
 
 .move-overlay {
   position: absolute;
-  top: 0;
+  top: 22px;
   left: 0;
   right: 0;
   bottom: 0;
@@ -865,7 +913,15 @@ canvas:active {
   z-index: 5;
   display: none;
   cursor: not-allowed;
-  border-radius: 12px;
+  border-radius: 0 0 12px 12px;
+  pointer-events: auto;
+}
+
+/* En mode 2D grisé, la zone de drag reste accessible */
+.move-overlay.active ~ .drag-handle {
+  pointer-events: auto;
+  z-index: 10;
+  position: relative;
 }
 
 .move-overlay.active {

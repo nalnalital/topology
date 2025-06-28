@@ -283,13 +283,13 @@ function loadTexture(mapName = currentMapName) {
     if (previousSurfaceBeforeMapChange && previousSurfaceBeforeMapChange !== 'view2d') {
       pd('loadTexture', 'main.js', `⚡ Auto-retour 3D vers: ${previousSurfaceBeforeMapChange}`);
       
-      // Petit timeout pour laisser le recalcul se stabiliser
-      setTimeout(() => {
-        // Retourner à la surface précédente SANS ANIMATION
-        view2DMode = false;
+                    // Petit timeout pour laisser le recalcul se stabiliser
+       setTimeout(() => {
+         // Retourner à la surface précédente SANS ANIMATION
+         view2DMode = false;
         currentSurface = previousSurfaceBeforeMapChange; // FORCER la surface cible
-        morphToSurface(previousSurfaceBeforeMapChange, true); // SKIP ANIMATION
-        
+         morphToSurface(previousSurfaceBeforeMapChange, true); // SKIP ANIMATION
+         
         // RESTAURER les angles mémorisés (au lieu des angles privilégiés)
         if (previousAnglesBeforeMapChange) {
           rotX = previousAnglesBeforeMapChange.rotX;
@@ -299,33 +299,33 @@ function loadTexture(mapName = currentMapName) {
           pd('loadTexture', 'main.js', `📐 Angles restaurés: X=${Math.round(rotX * 180 / Math.PI)}° Y=${Math.round(rotY * 180 / Math.PI)}° Z=${Math.round(rotZ * 180 / Math.PI)}° Scale=${scale.toFixed(1)}`);
         } else if (config.privilegedAngles[previousSurfaceBeforeMapChange]) {
           // Fallback : angles privilégiés si pas de mémorisation
-          const angles = config.privilegedAngles[previousSurfaceBeforeMapChange];
-          rotX = (angles.rotX * Math.PI) / 180;
-          rotY = (angles.rotY * Math.PI) / 180;
-          rotZ = (angles.rotZ * Math.PI) / 180;
-          scale = angles.scale;
+           const angles = config.privilegedAngles[previousSurfaceBeforeMapChange];
+           rotX = (angles.rotX * Math.PI) / 180;
+           rotY = (angles.rotY * Math.PI) / 180;
+           rotZ = (angles.rotZ * Math.PI) / 180;
+           scale = angles.scale;
           pd('loadTexture', 'main.js', `📐 Angles privilégiés appliqués (fallback)`);
-        } else {
-          // Angles par défaut si pas de config spécifique
-          rotX = (config.defaultRotationX * Math.PI) / 180;
-          rotY = (config.defaultRotationY * Math.PI) / 180;
-          rotZ = 0;
-          scale = getOptimalScale(previousSurfaceBeforeMapChange);
+         } else {
+           // Angles par défaut si pas de config spécifique
+           rotX = (config.defaultRotationX * Math.PI) / 180;
+           rotY = (config.defaultRotationY * Math.PI) / 180;
+           rotZ = 0;
+           scale = getOptimalScale(previousSurfaceBeforeMapChange);
           pd('loadTexture', 'main.js', `📐 Angles par défaut appliqués (fallback)`);
-        }
-        updateAngleDisplay();
-        
-        // Mettre à jour l'interface
-        const radioButton = document.querySelector(`input[value="${previousSurfaceBeforeMapChange}"]`);
-        if (radioButton) {
-          radioButton.checked = true;
-        }
-        
-        // CACHE MISÈRE : Masquer overlay après retour 3D
-        const overlay = document.getElementById('loading-overlay');
-        if (overlay) {
-          overlay.classList.remove('active');
-          overlay.innerHTML = ''; // Nettoyer capture
+         }
+         updateAngleDisplay();
+         
+         // Mettre à jour l'interface
+         const radioButton = document.querySelector(`input[value="${previousSurfaceBeforeMapChange}"]`);
+         if (radioButton) {
+           radioButton.checked = true;
+         }
+         
+         // CACHE MISÈRE : Masquer overlay après retour 3D
+         const overlay = document.getElementById('loading-overlay');
+         if (overlay) {
+           overlay.classList.remove('active');
+           overlay.innerHTML = ''; // Nettoyer capture
           pd('loadTexture', 'main.js', `🎭 Cache misère désactivé`);
         }
         
@@ -338,11 +338,11 @@ function loadTexture(mapName = currentMapName) {
         
         // FORCER rendu pour afficher le retour 3D immédiatement
         requestAnimationFrame(render);
-        
-        // Réinitialiser pour prochain changement
-        previousSurfaceBeforeMapChange = null;
+         
+         // Réinitialiser pour prochain changement
+         previousSurfaceBeforeMapChange = null;
         previousAnglesBeforeMapChange = null;
-      }, 20); // 20ms timeout pour stabilisation recalcul
+        }, 20); // 20ms timeout pour stabilisation recalcul
     } else {
       // MASQUER OVERLAY même en 2D après chargement texture
       const overlay = document.getElementById('loading-overlay');
@@ -1193,7 +1193,7 @@ function morphToSurface(newSurfaceName, skipAnimation = false) {
   }
   
   // Remplacer le maillage corrompu par un nouveau propre
-      currentMesh = newMesh;
+  currentMesh = newMesh;
     window.currentMesh = currentMesh; // Export pour debug.js
   
   // PLUS BESOIN de réinitialiser le cache rectangles - structure UV identique !
@@ -1209,7 +1209,7 @@ function morphToSurface(newSurfaceName, skipAnimation = false) {
     isAnimating = false;
     pd('morphToSurface', 'main.js', `⚡ Animation skippée - transition immédiate vers ${newSurfaceName}`);
   } else {
-    isAnimating = true;
+  isAnimating = true;
     startAnimation(); // CORRECTION: Redémarrer la boucle d'animation
     pd('morphToSurface', 'main.js', `🔄 Animation démarrée vers ${newSurfaceName}`);
   }
@@ -1456,8 +1456,8 @@ function resetToDefaultConfiguration() {
       rotY = (angles.rotY * Math.PI) / 180;
       rotZ = (angles.rotZ * Math.PI) / 180;
       scale = angles.scale;
-    }
-  } else {
+     }
+     } else {
     // Mode 3D : utiliser config de la surface courante
     if (config.privilegedAngles[currentSurface]) {
       const angles = config.privilegedAngles[currentSurface];
@@ -1612,7 +1612,7 @@ function render() {
   
   // Update animation (seulement si morphing actif)
   if (isAnimating) {
-    updateMorphing();
+  updateMorphing();
   }
   
   // Calculer visibilité des faces si activé
@@ -1764,13 +1764,13 @@ function render() {
           ctx.strokeStyle = 'rgba(0,0,0,0.6)';
           ctx.lineWidth = 1;
           const indices = face.vertices;
-          ctx.beginPath();
-          ctx.moveTo(projectedVertices[indices[0]].x, projectedVertices[indices[0]].y);
-          ctx.lineTo(projectedVertices[indices[1]].x, projectedVertices[indices[1]].y);
-          ctx.lineTo(projectedVertices[indices[2]].x, projectedVertices[indices[2]].y);
-          ctx.lineTo(projectedVertices[indices[3]].x, projectedVertices[indices[3]].y);
-          ctx.closePath();
-          ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(projectedVertices[indices[0]].x, projectedVertices[indices[0]].y);
+        ctx.lineTo(projectedVertices[indices[1]].x, projectedVertices[indices[1]].y);
+        ctx.lineTo(projectedVertices[indices[2]].x, projectedVertices[indices[2]].y);
+        ctx.lineTo(projectedVertices[indices[3]].x, projectedVertices[indices[3]].y);
+        ctx.closePath();
+        ctx.stroke();
         } else {
           // GRILLE COLORÉE : Segments avec couleur moyenne des bords (masque gaps)
           // CORRECTION: Toujours active quand grille désactivée pour masquer gaps
@@ -1901,12 +1901,23 @@ dragHandle.addEventListener('mousedown', (e) => {
   const newX = mouseX - dragOffset.x;
   const newY = mouseY - dragOffset.y;
   
-  // Contraintes pour rester dans le container
-  const maxX = containerRect.width - interfaceWidth;
-  const maxY = containerRect.height - interfaceHeight;
+  // CONTRAINTE INTELLIGENTE : Seule la zone de drag doit rester dans le container
+  // Calculer la position de la zone de drag
+  const dragHandleX = newX + dragOffset.x;
+  const dragHandleY = newY + dragOffset.y;
   
-  const constrainedX = Math.max(0, Math.min(newX, maxX));
-  const constrainedY = Math.max(0, Math.min(newY, maxY));
+  // Contraintes pour que la zone de drag reste dans le container
+  const minDragX = dragOffset.x;
+  const maxDragX = containerRect.width - dragOffset.x;
+  const minDragY = dragOffset.y;
+  const maxDragY = containerRect.height - dragOffset.y;
+  
+  const constrainedDragX = Math.max(minDragX, Math.min(dragHandleX, maxDragX));
+  const constrainedDragY = Math.max(minDragY, Math.min(dragHandleY, maxDragY));
+  
+  // Recalculer la position du panneau depuis la zone de drag contrainte
+  const constrainedX = constrainedDragX - dragOffset.x;
+  const constrainedY = constrainedDragY - dragOffset.y;
   
   floatingInterface.style.left = constrainedX + 'px';
   floatingInterface.style.top = constrainedY + 'px';
@@ -1936,12 +1947,23 @@ document.addEventListener('mousemove', (e) => {
     const newX = mouseX - dragOffset.x;
     const newY = mouseY - dragOffset.y;
     
-    // Contraintes pour rester dans le container
-    const maxX = containerRect.width - floatingInterface.offsetWidth;
-    const maxY = containerRect.height - floatingInterface.offsetHeight;
+    // CONTRAINTE INTELLIGENTE : Seule la zone de drag doit rester dans le container
+    // Calculer la position de la zone de drag
+    const dragHandleX = newX + dragOffset.x;
+    const dragHandleY = newY + dragOffset.y;
     
-    const constrainedX = Math.max(0, Math.min(newX, maxX));
-    const constrainedY = Math.max(0, Math.min(newY, maxY));
+    // Contraintes pour que la zone de drag reste dans le container
+    const minDragX = dragOffset.x;
+    const maxDragX = containerRect.width - dragOffset.x;
+    const minDragY = dragOffset.y;
+    const maxDragY = containerRect.height - dragOffset.y;
+    
+    const constrainedDragX = Math.max(minDragX, Math.min(dragHandleX, maxDragX));
+    const constrainedDragY = Math.max(minDragY, Math.min(dragHandleY, maxDragY));
+    
+    // Recalculer la position du panneau depuis la zone de drag contrainte
+    const constrainedX = constrainedDragX - dragOffset.x;
+    const constrainedY = constrainedDragY - dragOffset.y;
     
     floatingInterface.style.left = constrainedX + 'px';
     floatingInterface.style.top = constrainedY + 'px';
@@ -1968,7 +1990,7 @@ startAnimation();
   generateTextureInterface();
   
   // Charger la texture APRÈS détection
-  loadTexture();
+loadTexture();
   
   // Initialiser l'affichage de la projection
   updateProjectionName(currentMapName);
@@ -2317,8 +2339,8 @@ canvas.addEventListener('mousemove', (e) => {
       } else {
         // Autres surfaces : rotation X normale
         rotX += deltaY * config.mouseSensitivity * 0.01;
-        // Garder les angles dans une plage raisonnable
-        rotX = Math.max(-Math.PI, Math.min(Math.PI, rotX));
+  // Garder les angles dans une plage raisonnable
+  rotX = Math.max(-Math.PI, Math.min(Math.PI, rotX));
       }
     }
   }
