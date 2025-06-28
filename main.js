@@ -1,18 +1,20 @@
 // File: main.js - 3D Isometric Topology Engine with texture mapping
 // Desc: En français, dans l'architecture, je suis le moteur principal qui gère la projection 3D isométrique, les transformations topologiques, et le texture mapping avec système multi-cartes
-// Version 3.79.0 (Angles en lecture seule + selectedTopology supprimé)
+// Version 3.89.0 (Fix fonctions géométriques pour clic debug)
 // Author: DNAvatar.org - Arnaud Maignan  
-// Date: [December 16, 2024] [00:30 UTC+1]
+// Date: [December 16, 2024] [01:40 UTC+1]
 // Logs:
-//   - Fixed angle display: now read-only with ° symbol
-//   - Removed selectedTopology element, all info in selectedProjection
-//   - Fixed button event listeners compatibility
-//   - Cleaned up unused input event handlers
+//   - Fixed ReferenceError: moved geometric functions back to main.js
+//   - findTileAtPosition, isPointInQuad, isPointInTriangle needed for click events
+//   - Debug analysis functions remain in debug.js module
+//   - Click-to-debug system now functional
 
 // === IMPORTS ===
 import { config } from './config.js';
 import { createMesh, createSurface, transformCase, transformMesh, debugCase, debugMesh } from './mesh.js';
 import { surface2D } from './surfaces/2D.js';
+import { drawColorGrid } from './3Diso.js';
+import './debug.js'; // Module de debug séparé
 // Import configurations des surfaces
 import { config as cylinderConfig, cylinder } from './surfaces/cylinder.js';
 import { config as torusConfig, torus } from './surfaces/torus.js';
@@ -25,8 +27,32 @@ import { klein } from './surfaces/klein.js';
 import { crosscap } from './surfaces/crosscap.js';
 
 // === CONFIGURATION MAILLAGE ===
-const MESH_U = 30; // Résolution en U (plus en X)
-const MESH_V = 20; // Résolution en V (moins en Y)
+// ========================================================================
+// ⚠️ SYSTÈME DE COORDONNÉES ULTRA CRITIQUE - NE JAMAIS MODIFIER ! ⚠️
+// ========================================================================
+// Cette section définit la BASE ABSOLUE de tout le système 3D isométrique
+// Toute modification ici CASSE TOUT le mapping texture/géométrie/debug
+// ========================================================================
+
+const MESH_U = 30; // ⚠️ CRITIQUE: Résolution en U → X horizontal (0-29) - NE PAS CHANGER
+const MESH_V = 20; // ⚠️ CRITIQUE: Résolution en V → Y vertical (0-19) - NE PAS CHANGER
+
+// ========================================================================
+// MAPPING COORDONNÉES CORRIGÉ (pour 30 horizontales × 20 verticales) :
+// 
+// Boucles: for(x=0; x<width; x++) for(y=0; y<height; y++) → index = (x%30) + y*30
+// face.originalIndex = (x % MESH_U) + y * MESH_U (modulo sur X seulement)
+// gridX = face.originalIndex % MESH_U              → X (horizontal, 0-29)
+// gridY = Math.floor(face.originalIndex / MESH_U) → Y (vertical, 0-19)
+//
+// DONC : X = gridX, Y = gridY
+//
+// CONVENTION FINALE :
+// - X augmente HORIZONTALEMENT (gauche → droite) : 0 à 29 (30 cases)
+// - Y augmente VERTICALEMENT (haut → bas) : 0 à 19 (20 cases)
+// - (5,0) est À DROITE de (0,0), PAS en dessous !
+// - (0,5) est EN DESSOUS de (0,0), PAS à droite !
+// ========================================================================
 
 // === PROJECTION ISOMÉTRIQUE ===
 const ISO_COS = Math.cos(Math.PI / 6); // cos(30°)
@@ -34,6 +60,57 @@ const ISO_SIN = Math.sin(Math.PI / 6); // sin(30°)
 
 // === OPTIMISATION RENDU RECTANGLES ===
 let textureRectangles = null; // Cache des rectangles textures pré-calculés (calculé UNE SEULE FOIS)
+
+// === FONCTION CENTRALE RÉCUPÉRATION TEXTURE ===
+/**
+ * Récupère le morceau de texture pour une tuile donnée
+ * @param {number} x - Coordonnée X (horizontal, 0-29)
+ * @param {number} y - Coordonnée Y (vertical, 0-19)
+ * @returns {Object|null} Rectangle texture avec canvas, width, height
+ */
+function getBmp(x, y) {
+  // Vérification préalable que les rectangles sont initialisés
+  if (!textureRectangles) {
+    // Pas de log ici pour éviter spam - l'erreur est gérée en amont
+    return null;
+  }
+  
+  // ⚠️ PROTECTION: Appliquer limites sur X ET Y pour éviter débordements
+  const wrappedX = x % MESH_U;                    // Modulo pour X (0-29), MESH_U=30
+  const clampedY = Math.max(0, Math.min(y, MESH_V - 1)); // Clamp Y (0-19), MESH_V=20
+  
+  // Calculer l'index selon votre formule: x%30 + y*30
+  const index = wrappedX + clampedY * MESH_U;  // index = (x%30) + y*30
+  
+  // Vérifier que l'index est valide
+  if (index >= textureRectangles.length) {
+    pd('getBmp', 'main.js', `❌ Index invalide: ${index} (max: ${textureRectangles.length - 1})`);
+    return null;
+  }
+  
+  const rectangle = textureRectangles[index];
+  
+  // DEBUG DÉSACTIVÉ pour éviter spam dans updateMorphing
+  // if (x === 1 && y === 8) {
+  //   pd('getBmp18', 'main.js', `🎯 getBmp(1,8) → index=${index} → ${rectangle ? `${rectangle.width}x${rectangle.height}` : 'NULL'}`);
+  // } else if (index < 10 || (x === 15 && y === 10) || y !== clampedY || x >= MESH_U) {
+  //   // Debug pour quelques tuiles et détection de dépassements
+  //   const overflow = y !== clampedY ? ` ⚠️Y-CLAMP(${y}→${clampedY})` : '';
+  //   const xOverflow = x >= MESH_U ? ` ⚠️X-WRAP(${x}→${wrappedX})` : '';
+  //   pd('getBmp', 'main.js', `🎯 getBmp(${x},${y}) → wrappedX=${wrappedX}, clampedY=${clampedY} → index=${index}${overflow}${xOverflow} → ${rectangle ? `${rectangle.width}x${rectangle.height}` : 'null'}`);
+  // }
+  
+  return rectangle;
+}
+
+// Exposer getBmp et constantes globalement pour debug.js
+window.getBmp = getBmp;
+window.MESH_U = MESH_U;
+window.MESH_V = MESH_V;
+
+// === MODE COULEUR DEBUG ===
+let showColorDebug = false; // Mode couleur coordonnées (bouton 🎨)
+let showCoordinates = false; // Mode affichage coordonnées texte (bouton 📍)
 
 // === DEBUG UV TRACKING ===
 let lastUVSnapshot = null; // Snapshot précédent des UV pour détection changements
@@ -202,6 +279,9 @@ function loadTexture(mapName = currentMapName) {
     // Réinitialiser le cache des rectangles pour nouvelle texture
     textureRectangles = null;
     
+    // Debug: forcer recalcul pour tester système fallback robuste
+    pd('loadTexture', 'main.js', `🔧 Cache rectangles réinitialisé - prochaine render() recalculera avec système fallback robuste`);
+    
     pd('loadTexture', 'main.js', `🟢 Carte "${mapConfig.title}" chargée: ${img.width}x${img.height} pixels`);
     
     // AUTO-RETOUR 3D avec petit timeout pour éviter mélange tuiles
@@ -332,7 +412,8 @@ function changeMap(mapName) {
 function precalculateTextureRectangles() {
   if (!mapCanvas || !currentMesh) return null;
   
-  const rectangles = [];
+  // Créer tableau indexé par originalIndex (pas par position de face)
+  const rectangles = new Array(MESH_U * MESH_V);
   const texW = mapCanvas.width;
   const texH = mapCanvas.height;
   
@@ -366,9 +447,91 @@ function precalculateTextureRectangles() {
   const srcW = Math.ceil((maxU - minU) * texW);
   const srcH = Math.ceil((maxV - minV) * texH);
   
-    // Éviter les rectangles trop petits
+    // Debug supprimé pour éviter boucle infinie
+    
+    // SOLUTION: Créer rectangle fallback pour tuiles trop petites
     if (srcW < 2 || srcH < 2) {
-      rectangles.push(null);
+      // Debug pour tuiles problématiques
+      if (face.originalIndex === 271 || face.originalIndex === 272) {
+        pd('precalculateDebug', 'main.js', `🔧 Rectangle fallback face ${face.originalIndex}: ${srcW}x${srcH} → 4x4 pixels (UV: ${minU.toFixed(3)}-${maxU.toFixed(3)}, ${minV.toFixed(3)}-${maxV.toFixed(3)})`);
+      }
+      
+      // Créer rectangle 4x4 minimal avec échantillon robuste
+      const fallbackCanvas = document.createElement('canvas');
+      fallbackCanvas.width = 4;
+      fallbackCanvas.height = 4;
+      const fallbackCtx = fallbackCanvas.getContext('2d', { willReadFrequently: true });
+      
+      // Échantillonner plusieurs points pour trouver une couleur valide
+      const centerU = (minU + maxU) / 2;
+      const centerV = (minV + maxV) / 2;
+      let validColor = null;
+      
+      // Essayer plusieurs positions pour trouver un pixel non-transparent
+      const testPositions = [
+        { u: centerU, v: centerV },
+        { u: minU + 0.1, v: minV + 0.1 },
+        { u: maxU - 0.1, v: maxV - 0.1 },
+        { u: centerU, v: minV + 0.1 },
+        { u: centerU, v: maxV - 0.1 }
+      ];
+      
+      for (const pos of testPositions) {
+        const testX = Math.max(0, Math.min(Math.round(pos.u * texW), texW-1));
+        const testY = Math.max(0, Math.min(Math.round(pos.v * texH), texH-1));
+        
+        try {
+          const testData = mapCanvas.getContext('2d').getImageData(testX, testY, 1, 1);
+          const [r, g, b, a] = testData.data;
+          
+          // Si le pixel n'est pas transparent, l'utiliser
+          if (a > 0) {
+            validColor = testData;
+            if (face.originalIndex === 271) {
+              pd('precalculateDebug', 'main.js', `🎨 Couleur trouvée pour face ${face.originalIndex} à (${testX},${testY}): rgba(${r},${g},${b},${a})`);
+            }
+            break;
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      // Si aucune couleur valide trouvée, utiliser bleu océan par défaut
+      if (!validColor) {
+        validColor = new ImageData(new Uint8ClampedArray([20, 50, 80, 255]), 1, 1);
+        if (face.originalIndex === 271) {
+          pd('precalculateDebug', 'main.js', `🌊 Aucune couleur valide trouvée, utilisation bleu océan par défaut pour face ${face.originalIndex}`);
+        }
+      }
+      
+      try {
+        // Remplir le canvas 4x4 avec la couleur trouvée
+        for (let x = 0; x < 4; x++) {
+          for (let y = 0; y < 4; y++) {
+            fallbackCtx.putImageData(validColor, x, y);
+          }
+        }
+        
+        // PRÉ-CALCULER LES SEGMENTS 1D pour fallback aussi
+        const fallbackSegments = {
+          top: validColor,
+          bottom: validColor, 
+          left: validColor,
+          right: validColor
+        };
+
+        rectangles[face.originalIndex] = {
+          canvas: fallbackCanvas,
+          width: 4,
+          height: 4,
+          originalIndex: face.originalIndex,
+          isFallback: true,
+          segments: fallbackSegments  // 🎯 SEGMENTS 1D FALLBACK
+        };
+      } catch (e) {
+        rectangles[face.originalIndex] = null;
+      }
       return;
     }
     
@@ -376,41 +539,122 @@ function precalculateTextureRectangles() {
     const rectCanvas = document.createElement('canvas');
     rectCanvas.width = srcW;
     rectCanvas.height = srcH;
-    const rectCtx = rectCanvas.getContext('2d');
+    const rectCtx = rectCanvas.getContext('2d', { willReadFrequently: true });
     
-    // Copier portion de texture (une seule fois)
+    // Copier portion de texture avec extension des bords pour éviter transparence
     try {
+      // D'abord copier la zone principale
       rectCtx.drawImage(mapCanvas, 
         Math.max(0, srcX), Math.max(0, srcY), 
         Math.min(srcW, texW - srcX), Math.min(srcH, texH - srcY),
         0, 0, srcW, srcH
       );
       
-      rectangles.push({
+      // Étendre les bords pour éliminer toute transparence résiduelle
+      const imageData = rectCtx.getImageData(0, 0, srcW, srcH);
+      const data = imageData.data;
+      
+      // Remplir les pixels transparents avec la couleur du pixel voisin le plus proche
+      for (let y = 0; y < srcH; y++) {
+        for (let x = 0; x < srcW; x++) {
+          const index = (y * srcW + x) * 4;
+          
+          // Si pixel transparent, remplacer par couleur voisine
+          if (data[index + 3] === 0) {
+            // Chercher le pixel non-transparent le plus proche
+            let found = false;
+            for (let radius = 1; radius <= 3 && !found; radius++) {
+              for (let dy = -radius; dy <= radius && !found; dy++) {
+                for (let dx = -radius; dx <= radius && !found; dx++) {
+                  const nx = x + dx;
+                  const ny = y + dy;
+                  
+                  if (nx >= 0 && nx < srcW && ny >= 0 && ny < srcH) {
+                    const nIndex = (ny * srcW + nx) * 4;
+                    if (data[nIndex + 3] > 0) {
+                      data[index] = data[nIndex];         // R
+                      data[index + 1] = data[nIndex + 1]; // G
+                      data[index + 2] = data[nIndex + 2]; // B
+                      data[index + 3] = 255;              // A (opaque)
+                      found = true;
+                    }
+                  }
+                }
+              }
+            }
+            
+            // Si aucun voisin trouvé, utiliser bleu océan par défaut
+            if (!found) {
+              data[index] = 20;      // R
+              data[index + 1] = 50;  // G  
+              data[index + 2] = 80;  // B
+              data[index + 3] = 255; // A
+            }
+          }
+        }
+      }
+      
+      // Remettre les données corrigées
+      rectCtx.putImageData(imageData, 0, 0);
+      
+      // PRÉ-CALCULER SEULEMENT LES SEGMENTS RIGHT et BOTTOM (logique optimisée)
+      const segments = {};
+      
+      try {
+        // Segment BOTTOM (horizontal 35x1) - CORRECTION: utiliser srcY au lieu de srcY + srcH - 1
+        segments.bottom = mapCanvas.getContext('2d').getImageData(
+          Math.max(0, srcX), Math.max(0, srcY),
+          Math.min(srcW, texW - srcX), 1
+        );
+        
+        // Segment RIGHT (vertical 1x40) - toujours calculé
+        segments.right = mapCanvas.getContext('2d').getImageData(
+          Math.max(0, srcX + srcW - 1), Math.max(0, srcY),
+          1, Math.min(srcH, texH - srcY)
+        );
+        
+        // TOP et LEFT ne sont PAS calculés (économie mémoire et CPU)
+        // Ils seront fournis par les tuiles voisines (HAUT et GAUCHE)
+        
+      } catch (e) {
+        // Fallback si erreur
+        const fallbackData = new ImageData(new Uint8ClampedArray([20, 50, 80, 255]), 1, 1);
+        segments.bottom = segments.right = fallbackData;
+      }
+
+      rectangles[face.originalIndex] = {
         canvas: rectCanvas,
         width: srcW,
         height: srcH,
-        originalIndex: face.originalIndex
-      });
+        originalIndex: face.originalIndex,
+        segments: segments  // 🎯 SEGMENTS 1D PRÉ-CALCULÉS
+      };
     } catch (e) {
-      rectangles.push(null);
+      rectangles[face.originalIndex] = null;
     }
   });
   
-  pd('precalculateTextureRectangles', 'main.js', `🟢 ${rectangles.filter(r => r !== null).length}/${rectangles.length} rectangles pré-calculés (UV stables)`);
+  const validRects = rectangles.filter(r => r !== null && r !== undefined).length;
+  const fallbackRects = rectangles.filter(r => r && r.isFallback).length;
+  pd('precalculateTextureRectangles', 'main.js', `🟢 ${validRects}/${rectangles.length} rectangles pré-calculés (${fallbackRects} fallbacks 4x4)`);
   
   return rectangles;
 }
 
 // RENDU rectangle transformé avec VRAIE TRANSFORMATION PERSPECTIVE (trapèze)
 // Basé sur perspective.js - subdivision intelligente pour vrais trapèzes
-function drawTransformedRectangle(ctx, rectangle, projectedQuad) {
+function drawTransformedRectangle(ctx, rectangle, projectedQuad, faceOriginalIndex = null) {
   if (!rectangle) return false;
   
-  const p0 = projectedQuad[0]; // Top-left
-  const p1 = projectedQuad[1]; // Top-right  
-  const p2 = projectedQuad[2]; // Bottom-right
-  const p3 = projectedQuad[3]; // Bottom-left
+  // ⚠️ ORDRE CORRIGÉ selon debugVertexOrder(1,8) ⚠️
+  const p0 = projectedQuad[0]; // Bottom-left  (UV min,min)
+  const p1 = projectedQuad[1]; // Bottom-right (UV max,min)
+  const p2 = projectedQuad[2]; // Top-right    (UV max,max)
+  const p3 = projectedQuad[3]; // Top-left     (UV min,max)
+  
+  // DEBUG COORDONNÉES AVEC COULEURS (seulement si mode debug activé)
+  // Ce code est maintenant géré par le module 3Diso.js via showColorDebug
+  // La fonction drawTransformedRectangle se contente du rendu texture normal
   
   // Éviter les quads trop petits
   const area = Math.abs((p1.x - p0.x) * (p3.y - p0.y) - (p3.x - p0.x) * (p1.y - p0.y));
@@ -554,6 +798,8 @@ function pd(func, file, msg) {
     icon = '🔍'; // Debug trace
   } else if (msg.includes('🔴') || msg.includes('ERREUR') || msg.includes('ERROR')) {
     icon = '🔴'; // Erreur explicite
+  } else if (msg.includes('SKIP') || msg.includes('⏸️')) {
+    icon = '⏸️'; // Skip/Pause normal
   } else if (msg.includes('STABLE') || msg.includes('MORPHING') || msg.includes('Mode de vue')) {
     icon = '📊'; // Messages d'état
   }
@@ -646,16 +892,16 @@ function initializeMesh(surfaceFunc) {
   }
   
   // Génération des sommets sur grille rectangulaire
-  for (let i = 0; i <= MESH_U; i++) {
-    for (let j = 0; j <= MESH_V; j++) {
-      const u = i / MESH_U; // Paramètre U normalisé [0,1]
-      const v = j / MESH_V; // Paramètre V normalisé [0,1]
+  for (let x = 0; x <= MESH_U; x++) {
+    for (let y = 0; y <= MESH_V; y++) {
+      const u = x / MESH_U; // Paramètre U normalisé [0,1]
+      const v = y / MESH_V; // Paramètre V normalisé [0,1]
       
       const point = surfaceFunc(u, v);
       
       // STRUCTURE 2D UNIVERSELLE - Copier TOUJOURS la structure 2D avant projection
       // Toutes les surfaces utilisent la même base UV que 2D (cohérence morphing garantie)
-      const gridU = 1 - u;  // Inversion X comme 2D (TOUJOURS)
+      const gridU = u;      // ⚠️ CORRIGÉ: Pas d'inversion X pour correspondance texture
       const gridV = v;      // Pas d'inversion Y comme 2D (TOUJOURS)
       
       vertices.push({
@@ -672,20 +918,20 @@ function initializeMesh(surfaceFunc) {
         // Coordonnées UV STABLES de grille (pour texture mapping cohérent)
         gridU: gridU,  // UV avec inversions spécifiques à la surface
         gridV: gridV,
-        index: i * (MESH_V + 1) + j
+        index: x * (MESH_V + 1) + y
       });
     }
   }
   
   // Génération des faces (quads) - chaque carré = 4 sommets
-  for (let i = 0; i < MESH_U; i++) {
-    for (let j = 0; j < MESH_V; j++) {
+  for (let x = 0; x < MESH_U; x++) {
+    for (let y = 0; y < MESH_V; y++) {
       // Indices des 4 sommets du quad (ORDRE CORRIGÉ pour texture mapping)
       // Ordre cohérent avec grille UV : Bottom-left → Bottom-right → Top-right → Top-left
-      const i0 = i * (MESH_V + 1) + j;         // Bottom-left  (u=i/30, v=j/20)
-      const i1 = (i + 1) * (MESH_V + 1) + j;   // Bottom-right (u=(i+1)/30, v=j/20)
-      const i2 = (i + 1) * (MESH_V + 1) + j + 1; // Top-right    (u=(i+1)/30, v=(j+1)/20)
-      const i3 = i * (MESH_V + 1) + j + 1;     // Top-left     (u=i/30, v=(j+1)/20)
+      const i0 = x * (MESH_V + 1) + y;         // Bottom-left  (u=x/30, v=y/20)
+      const i1 = (x + 1) * (MESH_V + 1) + y;   // Bottom-right (u=(x+1)/30, v=y/20)
+      const i2 = (x + 1) * (MESH_V + 1) + y + 1; // Top-right    (u=(x+1)/30, v=(y+1)/20)
+      const i3 = x * (MESH_V + 1) + y + 1;     // Top-left     (u=x/30, v=(y+1)/20)
       
       faces.push({
         vertices: [i0, i1, i2, i3], // 4 indices DANS L'ORDRE CORRECT
@@ -696,10 +942,10 @@ function initializeMesh(surfaceFunc) {
         hiddenCorners: 0, // Nombre de coins cachés (0-4)
         visibility: 'visible', // 'visible', 'partial', 'hidden'
         // Index original pour texture mapping stable
-        originalIndex: i * MESH_V + j,
+        originalIndex: (x % MESH_U) + y * MESH_U,  // CORRIGÉ: (x%30) + y*30
         // COORDONNÉES FIXES DU CENTRE DE LA CASE [x,y] pour mapping texture stable
-        textureCenterX: i + 0.5,  // Centre en X de la case (0.5 à 29.5)
-        textureCenterY: j + 0.5   // Centre en Y de la case (0.5 à 19.5)
+        textureCenterX: x + 0.5,  // Centre en X de la case (0.5 à 29.5)
+        textureCenterY: y + 0.5   // Centre en Y de la case (0.5 à 19.5)
       });
     }
   }
@@ -912,7 +1158,7 @@ function morphToSurface(newSurfaceName, skipAnimation = false) {
 // Update animation barycentrique
 function updateMorphing() {
   if (!isAnimating || !currentMesh) {
-    pd('updateMorphing', 'main.js', `🔴 SKIP: isAnimating=${isAnimating}, currentMesh=${!!currentMesh}`);
+    pd('updateMorphing', 'main.js', `⏸️ SKIP: isAnimating=${isAnimating}, currentMesh=${!!currentMesh}`);
     return;
   }
   
@@ -1130,116 +1376,7 @@ function resetCameraPosition() {
   pd('resetCamera', 'main.js', `📹 Position caméra réinitialisée`);
 }
 
-// DEBUG UV + PROJECTION - Traquer les coordonnées des sommets de référence
-function debugUVCorners() {
-  if (!currentMesh) return;
-  
-  const vertices = currentMesh.vertices;
-  const totalVertices = vertices.length;
-  const centerX = canvas.width / 2;
-  const centerY = canvas.height / 2;
-  
-  // Indices des sommets de référence dans un maillage 30x20
-  // Organisation: index = i * (MESH_V + 1) + j
-  const cornerIndices = {
-    'TopLeft': 0 * (MESH_V + 1) + MESH_V,           // (0,20) - coin haut-gauche
-    'TopRight': MESH_U * (MESH_V + 1) + MESH_V,     // (30,20) - coin haut-droite
-    'BottomLeft': 0 * (MESH_V + 1) + 0,             // (0,0) - coin bas-gauche
-    'BottomRight': MESH_U * (MESH_V + 1) + 0,       // (30,0) - coin bas-droite
-    'Center': Math.floor(MESH_U/2) * (MESH_V + 1) + Math.floor(MESH_V/2) // (~15,~10)
-  };
-  
-  // Snapshot actuel des UV + coordonnées projetées
-  const currentSnapshot = {};
-  Object.entries(cornerIndices).forEach(([name, index]) => {
-    if (index < totalVertices) {
-      const vertex = vertices[index];
-      
-      // Calculer projection à l'écran pour ce sommet
-      const rotated = currentSurface === 'projective' 
-        ? rotate3DProjective(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ, rotShape)
-        : rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
-      const projected = projectIso(rotated.x, rotated.y, rotated.z, scale);
-      const screenX = centerX + projected.x + cameraOffsetX;
-      const screenY = centerY - projected.y + cameraOffsetY;
-      
-      currentSnapshot[name] = {
-        gridU: vertex.gridU,
-        gridV: vertex.gridV,
-        u: vertex.u,
-        v: vertex.v,
-        // Nouvelles coordonnées projetées
-        screenX: screenX,
-        screenY: screenY,
-        rotatedZ: rotated.z
-      };
-    }
-  });
-  
-  // Comparer avec le snapshot précédent
-  if (lastUVSnapshot) {
-    let hasChanged = false;
-    let debugInfo = '🚨 UV CHANGES DETECTED:\n';
-    
-    Object.entries(currentSnapshot).forEach(([name, current]) => {
-      const previous = lastUVSnapshot[name];
-      if (previous) {
-        const gridUChange = Math.abs(current.gridU - previous.gridU);
-        const gridVChange = Math.abs(current.gridV - previous.gridV);
-        
-        if (gridUChange > 0.001 || gridVChange > 0.001) {
-          hasChanged = true;
-          debugInfo += `${name}: gridU ${previous.gridU.toFixed(3)}→${current.gridU.toFixed(3)} gridV ${previous.gridV.toFixed(3)}→${current.gridV.toFixed(3)}\n`;
-        }
-      }
-    });
-    
-         if (hasChanged) {
-       console.error(debugInfo);
-     }
-     } else {
-     // Premier snapshot - juste afficher l'état initial
-     console.log('🔍 État initial:');
-   }
-   
-   // Toujours afficher les coordonnées projetées à chaque rotation
-   console.log(`📍 Coordonnées projetées (3D → écran) - Surface: ${targetSurface}:`);
-   Object.entries(currentSnapshot).forEach(([name, data]) => {
-     console.log(`${name}: gridU=${data.gridU?.toFixed(3)} gridV=${data.gridV?.toFixed(3)} u=${data.u?.toFixed(3)} v=${data.v?.toFixed(3)} → screenX=${Math.round(data.screenX)} screenY=${Math.round(data.screenY)} z=${data.rotatedZ?.toFixed(2)}`);
-   });
-   
-   // Vérifier si on est sur une surface fermée (cylindre, torus, etc.)
-   const closedSurfaces = ['cylinder', 'torus', 'mobius', 'klein'];
-   if (closedSurfaces.includes(targetSurface)) {
-     console.log(`ℹ️ SURFACE FERMÉE (${targetSurface}): Les bords u=0 et u=1 se rejoignent mathématiquement - coordonnées identiques NORMALES`);
-   }
-   
-   // Afficher aussi les coordonnées 2D de référence (grille plate)
-   console.log('📐 Coordonnées 2D référence (grille plate):');
-   const gridWidth = canvas.width * 0.8;
-   const gridHeight = canvas.height * 0.8;
-   const startX = (canvas.width - gridWidth) / 2;
-   const startY = (canvas.height - gridHeight) / 2;
-   const cellWidth = gridWidth / MESH_U;
-   const cellHeight = gridHeight / MESH_V;
-   
-   const corner2D = {
-     'TopLeft': {i: 0, j: 0},
-     'TopRight': {i: 0, j: MESH_V},
-     'BottomLeft': {i: MESH_U, j: 0},
-     'BottomRight': {i: MESH_U, j: MESH_V},
-     'Center': {i: Math.floor(MESH_U/2), j: Math.floor(MESH_V/2)}
-   };
-   
-   Object.entries(corner2D).forEach(([name, {i, j}]) => {
-     const x2D = startX + i * cellWidth;
-     const y2D = startY + j * cellHeight;
-     console.log(`${name}: grid(${i},${j}) → 2D(${Math.round(x2D)},${Math.round(y2D)})`);
-   });
-  
-  // Sauvegarder le snapshot pour la prochaine fois
-  lastUVSnapshot = JSON.parse(JSON.stringify(currentSnapshot));
-}
+
 
 // RENDU 2D GRILLE - Vue texture mapping de référence (PLEIN ÉCRAN OPTIMISÉ)
 function render2DGrid() {
@@ -1274,14 +1411,14 @@ function render2DGrid() {
   // Dessiner la texture 2D si activée
   if (showTexture && mapCanvas) {
     // Dessiner chaque cellule avec sa texture
-    for (let i = 0; i < MESH_U; i++) {
-      for (let j = 0; j < MESH_V; j++) {
-        const x = startX + i * cellWidth;
-        const y = startY + j * cellHeight;
+    for (let x = 0; x < MESH_U; x++) {
+      for (let y = 0; y < MESH_V; y++) {
+        const cellX = startX + x * cellWidth;
+        const cellY = startY + y * cellHeight;
         
                  // Coordonnées UV de cette cellule
-         const u = i / MESH_U;
-         const v = j / MESH_V;
+         const u = x / MESH_U;
+         const v = y / MESH_V;
          
          // Portion de texture correspondante
                const texX = Math.round(u * mapCanvas.width);
@@ -1292,7 +1429,7 @@ function render2DGrid() {
         // Dessiner la portion de texture
         ctx.drawImage(mapCanvas, 
           texX, texY, texW, texH,
-          x, y, cellWidth, cellHeight
+          cellX, cellY, cellWidth, cellHeight
         );
       }
     }
@@ -1304,46 +1441,46 @@ function render2DGrid() {
     ctx.lineWidth = 1;
     
     // Lignes verticales
-    for (let i = 0; i <= MESH_U; i++) {
-      const x = startX + i * cellWidth;
+    for (let x = 0; x <= MESH_U; x++) {
+      const lineX = startX + x * cellWidth;
       ctx.beginPath();
-      ctx.moveTo(x, startY);
-      ctx.lineTo(x, startY + gridHeight);
+      ctx.moveTo(lineX, startY);
+      ctx.lineTo(lineX, startY + gridHeight);
       ctx.stroke();
     }
     
     // Lignes horizontales
-    for (let j = 0; j <= MESH_V; j++) {
-      const y = startY + j * cellHeight;
+    for (let y = 0; y <= MESH_V; y++) {
+      const lineY = startY + y * cellHeight;
       ctx.beginPath();
-      ctx.moveTo(startX, y);
-      ctx.lineTo(startX + gridWidth, y);
+      ctx.moveTo(startX, lineY);
+      ctx.lineTo(startX + gridWidth, lineY);
       ctx.stroke();
     }
   }
   
   // Marquer les 5 points de référence
   const cornerIndices = {
-    'TopLeft': {i: 0, j: 0, color: 'red'},
-    'TopRight': {i: 0, j: MESH_V, color: 'blue'},
-    'BottomLeft': {i: MESH_U, j: 0, color: 'green'},
-    'BottomRight': {i: MESH_U, j: MESH_V, color: 'orange'},
-    'Center': {i: Math.floor(MESH_U/2), j: Math.floor(MESH_V/2), color: 'purple'}
+    'TopLeft': {x: 0, y: 0, color: 'red'},
+    'TopRight': {x: 0, y: MESH_V, color: 'blue'},
+    'BottomLeft': {x: MESH_U, y: 0, color: 'green'},
+    'BottomRight': {x: MESH_U, y: MESH_V, color: 'orange'},
+    'Center': {x: Math.floor(MESH_U/2), y: Math.floor(MESH_V/2), color: 'purple'}
   };
   
-  Object.entries(cornerIndices).forEach(([name, {i, j, color}]) => {
-    const x = startX + i * cellWidth;
-    const y = startY + j * cellHeight;
+  Object.entries(cornerIndices).forEach(([name, {x, y, color}]) => {
+    const pointX = startX + x * cellWidth;
+    const pointY = startY + y * cellHeight;
     
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(x, y, 8, 0, 2 * Math.PI);
+    ctx.arc(pointX, pointY, 8, 0, 2 * Math.PI);
     ctx.fill();
     
     // Label
     ctx.fillStyle = 'black';
     ctx.font = '12px Arial';
-    ctx.fillText(name, x + 10, y - 10);
+    ctx.fillText(name, pointX + 10, pointY - 10);
   });
   
   // Info mode 2D avec optimisation
@@ -1393,8 +1530,11 @@ function render() {
     };
   });
   
+  // Sauvegarder les projectedVertices pour le système de clic
+  currentMesh.projectedVertices = projectedVertices;
+  
   // Calcul centres et profondeurs des faces
-  currentMesh.faces.forEach(face => {
+  currentMesh.faces.forEach((face, faceIndex) => {
     let centerX = 0, centerY = 0, centerZ = 0;
     
     face.vertices.forEach(vertexIndex => {
@@ -1414,11 +1554,16 @@ function render() {
       x: centerX / 4,
       y: centerY / 4
     };
-    face.avgZ = centerZ / 4;
+    
+    // CORRECTION Z-ORDER : Ajouter petit décalage basé sur l'index pour préserver l'ordre logique
+    // Les faces avec index plus élevé sont légèrement plus proches (Z plus grand)
+    const zOffset = faceIndex * 0.001; // Très petit décalage pour préserver l'ordre
+    face.avgZ = (centerZ / 4) + zOffset;
   });
   
-  // Tri des faces par profondeur (painter's algorithm)
+  // Tri des faces par profondeur (painter's algorithm) - RÉACTIVÉ avec Z-order corrigé
   const sortedFaces = currentMesh.faces.sort((a, b) => a.avgZ - b.avgZ);
+  // L'ordre logique est préservé grâce au zOffset basé sur faceIndex
   
   // Pré-calculer rectangles textures si nécessaire (SEULEMENT si pas encore fait)
   if (showTexture && !textureRectangles) {
@@ -1438,12 +1583,48 @@ function render() {
       // Construire quad projeté pour cette face
       const quadProjected = face.vertices.map(vertexIndex => projectedVertices[vertexIndex]);
       
-      // CORRECTION CRITIQUE: Utiliser l'index ORIGINAL de la face, pas l'index trié
-      const rectangle = textureRectangles ? textureRectangles[face.originalIndex] : null;
-      const success = drawTransformedRectangle(ctx, rectangle, quadProjected);
+      // Récupérer coordonnées X,Y pour cette face
+      const gridX = face.originalIndex % MESH_U;             // X (horizontal, 0-29)
+      const gridY = Math.floor(face.originalIndex / MESH_U); // Y (vertical, 0-19)
       
-      // Si la projection échoue ou pour les contours, dessiner un contour léger
-      if (success) {
+      // NOUVELLE APPROCHE: Utiliser getBmp(x,y) pour récupérer la texture
+      // Vérifier que les rectangles sont initialisés avant d'appeler getBmp
+      const rectangle = textureRectangles ? getBmp(gridX, gridY) : null;
+      
+      // Mode couleur coordonnées ou texture normale
+      let success = false;
+      if (showColorDebug) {
+        // Mode couleur : affichage couleurs coordonnées sans texte
+        success = drawColorGrid(ctx, quadProjected, face.originalIndex);
+      } else {
+        // Mode normal : texture récupérée via getBmp(x,y)
+        success = drawTransformedRectangle(ctx, rectangle, quadProjected, face.originalIndex);
+      }
+      
+      // Affichage coordonnées texte si activé
+      if (showCoordinates) {
+        const centerX = (quadProjected[0].x + quadProjected[1].x + quadProjected[2].x + quadProjected[3].x) / 4;
+        const centerY = (quadProjected[0].y + quadProjected[1].y + quadProjected[2].y + quadProjected[3].y) / 4;
+        
+        ctx.save();
+        ctx.fillStyle = 'white';
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.font = 'bold 10px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        const coordText = `${gridX},${gridY}`;
+        // Contour noir pour lisibilité
+        ctx.strokeText(coordText, centerX, centerY);
+        // Texte blanc par-dessus
+        ctx.fillText(coordText, centerX, centerY);
+        
+        ctx.restore();
+      }
+      
+      // TOUJOURS traiter la grille, même si texture échoue
+      {
         const indices = face.vertices;
         
         // Contour selon visibilité
@@ -1467,13 +1648,14 @@ function render() {
           lineWidth = isAnimating ? 0.3 : 0.1;
         }
         
-        // Grille simple restaurée (performance optimisée)
+        // Grille intelligente : visible si activée, colorée si désactivée (masque gaps)
         if (showGrid) {
+          // GRILLE VISIBLE : Contours noirs classiques
           if (Math.random() < 0.01) { // Debug 1% des faces
-            pd('renderGrid', 'main.js', `🔲 Rendu grille face ${face.originalIndex}: showGrid=${showGrid}`);
+            pd('renderGrid', 'main.js', `🔲 Rendu grille visible face ${face.originalIndex}`);
           }
-          ctx.strokeStyle = 'rgba(0,0,0,0.8)'; // Plus visible pour debug
-          ctx.lineWidth = 2; // Plus épais pour debug
+          ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+          ctx.lineWidth = 1;
           const indices = face.vertices;
           ctx.beginPath();
           ctx.moveTo(projectedVertices[indices[0]].x, projectedVertices[indices[0]].y);
@@ -1482,6 +1664,10 @@ function render() {
           ctx.lineTo(projectedVertices[indices[3]].x, projectedVertices[indices[3]].y);
           ctx.closePath();
           ctx.stroke();
+        } else {
+          // GRILLE COLORÉE : Segments avec couleur moyenne des bords (masque gaps)
+          // CORRECTION: Toujours active quand grille désactivée pour masquer gaps
+          drawColoredGrid(ctx, face, projectedVertices, rectangle);
         }
       }
     });
@@ -1861,6 +2047,41 @@ document.querySelector('label[for="showTexture"], .map-option:has(#showTexture)'
 document.getElementById('showTexture').addEventListener('change', (e) => {
   showGrid = e.target.checked;
   pd('showGrid', 'main.js', `Lignes de grille: ${showGrid ? 'ACTIVÉES' : 'DÉSACTIVÉES'} - Scale actuel: ${scale.toFixed(1)}`);
+  
+  // CORRECTION: Forcer recalcul grille colorée quand toggle grille
+  if (!showGrid && typeof colorCache !== 'undefined') {
+    colorCache.clear(); // Vider cache pour recalcul complet
+    pd('gridToggle', 'main.js', '🔄 Cache grille colorée vidé pour recalcul');
+  }
+  
+  render(); // Rendu direct pour voir changement
+});
+
+// Gestionnaire pour le bouton couleur 🎨 (toggle du checkbox caché)
+document.querySelector('label[for="showColorDebug"], .map-option:has(#showColorDebug)').addEventListener('click', (e) => {
+  e.preventDefault();
+  const checkbox = document.getElementById('showColorDebug');
+  checkbox.checked = !checkbox.checked;
+  checkbox.dispatchEvent(new Event('change'));
+});
+
+document.getElementById('showColorDebug').addEventListener('change', (e) => {
+  showColorDebug = e.target.checked;
+  pd('showColorDebug', 'main.js', `Mode couleur coordonnées: ${showColorDebug ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`);
+  render(); // Rendu direct pour voir changement
+});
+
+// Gestionnaire pour le bouton coordonnées 📍 (toggle du checkbox caché)
+document.querySelector('label[for="showCoordinates"], .map-option:has(#showCoordinates)').addEventListener('click', (e) => {
+  e.preventDefault();
+  const checkbox = document.getElementById('showCoordinates');
+  checkbox.checked = !checkbox.checked;
+  checkbox.dispatchEvent(new Event('change'));
+});
+
+document.getElementById('showCoordinates').addEventListener('change', (e) => {
+  showCoordinates = e.target.checked;
+  pd('showCoordinates', 'main.js', `Mode affichage coordonnées: ${showCoordinates ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`);
   render(); // Rendu direct pour voir changement
 });
 
@@ -1919,6 +2140,27 @@ document.getElementById('rotZRight').addEventListener('click', () => {
 
 // === ÉVÉNEMENTS SOURIS ===
 canvas.addEventListener('mousedown', (e) => {
+  // MODE 2D : Clic pour debug tuile
+  if (view2DMode) {
+    const rect = canvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    
+    // Trouver la tuile cliquée
+    const tileCoords = findTileAtPosition(clickX, clickY);
+    
+    if (tileCoords) {
+      console.log(`🎯 Clic tuile (${tileCoords.x}, ${tileCoords.y})`);
+      if (typeof debugTileClick === 'function') {
+        debugTileClick(tileCoords.x, tileCoords.y);
+      } else {
+        console.error('❌ debugTileClick non disponible');
+      }
+    }
+    return;
+  }
+  
+  // MODE 3D : Drag normal
   if (dragEnabled && !view2DMode) {
     isDragging = true;
     lastMouseX = e.clientX;
@@ -2046,6 +2288,139 @@ updateAngleDisplay();
 
 // Plus besoin d'appeler render() manuellement - animation automatique !
 
+// === FONCTION UTILITAIRE POUR DEBUG CLIC ===
+
+/**
+ * Trouve la tuile à une position donnée sur le canvas (mode 2D seulement)
+ * @param {number} clickX - Position X du clic sur le canvas
+ * @param {number} clickY - Position Y du clic sur le canvas
+ * @returns {Object|null} - {x, y} coordonnées de la tuile ou null si non trouvée
+ */
+function findTileAtPosition(clickX, clickY) {
+  if (!view2DMode || !currentMesh || !currentMesh.faces) {
+    console.log('❌ Conditions non remplies:', {view2DMode, currentMesh: !!currentMesh, faces: currentMesh?.faces?.length});
+    return null;
+  }
+  
+  // EN MODE 2D : Conversion directe coordonnées → grille (plus simple et fiable)
+  if (view2DMode) {
+    const tileWidth = canvas.width / MESH_U;   // Largeur d'une tuile = 800/30 ≈ 26.67
+    const tileHeight = canvas.height / MESH_V; // Hauteur d'une tuile = 450/20 = 22.5
+    
+    const gridX = Math.floor(clickX / tileWidth);
+    const gridY = Math.floor(clickY / tileHeight);
+    
+    // Vérifier que les coordonnées sont dans les limites
+    if (gridX >= 0 && gridX < MESH_U && gridY >= 0 && gridY < MESH_V) {
+      const originalIndex = gridX + gridY * MESH_U;
+      const face = currentMesh.faces.find(f => f.originalIndex === originalIndex);
+      
+      return { x: gridX, y: gridY, face: face };
+    } else {
+      console.log(`❌ Clic hors grille: (${gridX}, ${gridY}) max=(${MESH_U-1}, ${MESH_V-1})`);
+      return null;
+    }
+  }
+  
+  // MODE 3D : Méthode géométrique (code original conservé mais pas utilisé en 2D)
+  console.log(`📊 projectedVertices disponibles:`, !!currentMesh.projectedVertices, currentMesh.projectedVertices?.length);
+  
+  if (!currentMesh.projectedVertices) {
+    console.log('❌ projectedVertices manquants!');
+    return null;
+  }
+  
+  let visibleFaces = 0;
+  let testedFaces = 0;
+  
+  // En mode 3D, parcourir toutes les faces visibles et vérifier si le clic est dedans
+  for (const face of currentMesh.faces) {
+    if (!face.visible) continue;
+    visibleFaces++;
+    
+    const indices = face.vertices;
+    const projectedQuad = [
+      currentMesh.projectedVertices[indices[0]], // Bottom-left
+      currentMesh.projectedVertices[indices[1]], // Bottom-right  
+      currentMesh.projectedVertices[indices[2]], // Top-right
+      currentMesh.projectedVertices[indices[3]]  // Top-left
+    ];
+    
+    // Vérifier que tous les vertices sont définis
+    if (!projectedQuad[0] || !projectedQuad[1] || !projectedQuad[2] || !projectedQuad[3]) {
+      if (testedFaces < 3) console.log(`⚠️ Face ${face.originalIndex}: vertices manquants`, projectedQuad);
+      continue;
+    }
+    
+    testedFaces++;
+    
+    // Debug pour les premières faces
+    if (testedFaces <= 3) {
+      console.log(`🔍 Test face ${face.originalIndex}: quad=`, projectedQuad.map(p => `(${p.x?.toFixed(1)}, ${p.y?.toFixed(1)})`));
+    }
+    
+    // Vérifier si le point de clic est dans ce quadrilatère
+    if (isPointInQuad(clickX, clickY, projectedQuad)) {
+      // Calculer les coordonnées de grille
+      const gridX = face.originalIndex % MESH_U;
+      const gridY = Math.floor(face.originalIndex / MESH_U);
+      
+      console.log(`✅ Tuile trouvée: (${gridX}, ${gridY}) face=${face.originalIndex}`);
+      return { x: gridX, y: gridY, face: face };
+    }
+  }
+  
+  console.log(`❌ Aucune tuile trouvée. Faces visibles: ${visibleFaces}, testées: ${testedFaces}`);
+  return null;
+}
+
+/**
+ * Vérifie si un point est dans un quadrilatère
+ * @param {number} px - X du point
+ * @param {number} py - Y du point  
+ * @param {Array} quad - Array de 4 points {x, y}
+ * @returns {boolean}
+ */
+function isPointInQuad(px, py, quad) {
+  // Utiliser la méthode du ray casting pour chaque triangle du quad
+  // Diviser le quad en 2 triangles et tester chacun
+  
+  // Triangle 1: p0, p1, p2
+  if (isPointInTriangle(px, py, quad[0], quad[1], quad[2])) {
+    return true;
+  }
+  
+  // Triangle 2: p0, p2, p3  
+  if (isPointInTriangle(px, py, quad[0], quad[2], quad[3])) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Vérifie si un point est dans un triangle
+ * @param {number} px - X du point
+ * @param {number} py - Y du point
+ * @param {Object} p1 - Point 1 {x, y}
+ * @param {Object} p2 - Point 2 {x, y}
+ * @param {Object} p3 - Point 3 {x, y}
+ * @returns {boolean}
+ */
+function isPointInTriangle(px, py, p1, p2, p3) {
+  // Méthode des coordonnées barycentriques
+  const denom = (p2.y - p3.y) * (p1.x - p3.x) + (p3.x - p2.x) * (p1.y - p3.y);
+  if (Math.abs(denom) < 0.001) return false; // Triangle dégénéré
+  
+  const a = ((p2.y - p3.y) * (px - p3.x) + (p3.x - p2.x) * (py - p3.y)) / denom;
+  const b = ((p3.y - p1.y) * (px - p3.x) + (p1.x - p3.x) * (py - p3.y)) / denom;
+  const c = 1 - a - b;
+  
+  return a >= 0 && b >= 0 && c >= 0;
+}
+
+ 
+
 // 🔍 DEBUG Z-FIGHTING : compter les chevauchements
 function debugOverlaps() {
   console.log('=== DEBUG OVERLAPS ===');
@@ -2137,75 +2512,58 @@ function getBoundingBox(rect) {
 // Exposer la fonction pour test dans console
 window.debugOverlaps = debugOverlaps;
 
-// 🎨 GRILLE COLORÉE - moyenne des couleurs des tuiles adjacentes
+// 🎨 GRILLE COLORÉE - moyenne des couleurs des bords communs entre tuiles
 function drawColoredGrid(ctx, face, projectedVertices, rectangle) {
-  if (!rectangle || !rectangle.canvas) return;
-  
-  const indices = face.vertices;
+  // DEBUG: Analyser le problème avant de retourner
   const MESH_U = 30;
   const MESH_V = 20;
-  
-  // Calculer position grille de cette face
   const gridU = face.originalIndex % MESH_U;
   const gridV = Math.floor(face.originalIndex / MESH_U);
   
-  // Plus besoin d'échantillonner le centre - on échantillonne les bords
+  // DEBUG NETTOYÉ - RIEN
   
-  ctx.lineWidth = 1; // Épaisseur fine pour subtilité
+  if (!rectangle || !rectangle.canvas) return;
   
-  // Dessiner chaque segment avec couleur appropriée
+  const indices = face.vertices;
+  
+  // CORRECTION: Pas de throttling - tous les segments doivent être calculés pour masquer gaps
+  // (L'optimisation se fera par cache des couleurs dans sampleTextureColor)
+  
+  ctx.lineWidth = 1; // Épaisseur fine pour masquer gaps
+  
+  // Dessiner SEULEMENT bord DROITE et BAS pour éviter doublons et conflits
+  // ⚠️ ORDRE CORRIGÉ selon debugVertexOrder(1,8) ⚠️
   const points = [
-    projectedVertices[indices[0]], // Bottom-left
-    projectedVertices[indices[1]], // Bottom-right  
-    projectedVertices[indices[2]], // Top-right
-    projectedVertices[indices[3]]  // Top-left
+    projectedVertices[indices[0]], // Bottom-left  (P0)
+    projectedVertices[indices[1]], // Bottom-right (P1)
+    projectedVertices[indices[2]], // Top-right    (P2)
+    projectedVertices[indices[3]]  // Top-left     (P3)
   ];
   
-  // Segment bas (entre bottom-left et bottom-right)
-  if (gridV > 0) { // Pas le bord inférieur
-    const neighborRect = getNeighborRect(gridU, gridV - 1);
-    const avgColor = sampleBorderColors(rectangle.canvas, neighborRect, 'bottom');
-    drawColoredSegment(ctx, points[0], points[1], avgColor);
-  }
-  
-  // Segment droite (entre bottom-right et top-right)
+  // SEULEMENT Segment droite (entre bottom-right et top-right)
   if (gridU < MESH_U - 1) { // Pas le bord droit
     const neighborRect = getNeighborRect(gridU + 1, gridV);
-    const avgColor = sampleBorderColors(rectangle.canvas, neighborRect, 'right');
-    
-    // DEBUG SPÉCIFIQUE TUILE 1,1 BORD DROIT
-    if (gridU === 1 && gridV === 1) {
-      console.log(`🔍 DEBUG Tuile (1,1) bord droit:`);
-      console.log(`  - Rectangle actuel:`, rectangle.canvas ? `${rectangle.canvas.width}x${rectangle.canvas.height}` : 'null');
-      console.log(`  - Rectangle voisin:`, neighborRect ? `${neighborRect.canvas?.width}x${neighborRect.canvas?.height}` : 'null');
-      console.log(`  - Couleur calculée:`, avgColor);
+    if (neighborRect && neighborRect.canvas) {
+      // Utiliser directement le segment pré-calculé au lieu de la couleur moyennée
+      const segmentData = rectangle.segments ? rectangle.segments.right : null;
       
-      // Test couleur centrale des deux tuiles
-      if (rectangle.canvas) {
-        const centerColor1 = sampleTextureColor(rectangle.canvas, 0.5, 0.5);
-        console.log(`  - Couleur centre tuile (1,1):`, centerColor1);
-      }
-      if (neighborRect?.canvas) {
-        const centerColor2 = sampleTextureColor(neighborRect.canvas, 0.5, 0.5);
-        console.log(`  - Couleur centre tuile (2,1):`, centerColor2);
-      }
+      // DEBUG NETTOYÉ - RIEN
+      
+      drawColoredSegment(ctx, points[1], points[2], segmentData);
     }
-    
-    drawColoredSegment(ctx, points[1], points[2], avgColor);
   }
   
-  // Segment haut (entre top-right et top-left)
-  if (gridV < MESH_V - 1) { // Pas le bord supérieur
+  // SEULEMENT Segment bas (entre bottom-left et bottom-right)  
+  if (gridV < MESH_V - 1) { // Pas le bord inférieur
     const neighborRect = getNeighborRect(gridU, gridV + 1);
-    const avgColor = sampleBorderColors(rectangle.canvas, neighborRect, 'top');
-    drawColoredSegment(ctx, points[2], points[3], avgColor);
-  }
-  
-  // Segment gauche (entre top-left et bottom-left)
-  if (gridU > 0) { // Pas le bord gauche
-    const neighborRect = getNeighborRect(gridU - 1, gridV);
-    const avgColor = sampleBorderColors(rectangle.canvas, neighborRect, 'left');
-    drawColoredSegment(ctx, points[3], points[0], avgColor);
+    if (neighborRect && neighborRect.canvas) {
+      // Utiliser directement le segment pré-calculé au lieu de la couleur moyennée
+      const segmentData = rectangle.segments ? rectangle.segments.bottom : null;
+      
+      // DEBUG NETTOYÉ - RIEN
+      
+      drawColoredSegment(ctx, points[0], points[1], segmentData);
+    }
   }
 }
 
@@ -2229,6 +2587,9 @@ function sampleTextureColor(canvas, u, v) {
   try {
     const imageData = ctx.getImageData(x, y, 1, 1);
     const [r, g, b, a] = imageData.data;
+    
+    // DEBUG NETTOYÉ - RIEN
+    
     const color = { r, g, b, a: a / 255 };
     
     // Cache le résultat
@@ -2257,61 +2618,74 @@ function getNeighborRect(gridU, gridV) {
 }
 
 // Échantillonner couleurs le long du bord commun entre deux tuiles
-function sampleBorderColors(canvas1, canvas2, borderSide) {
-  if (!canvas1 || !canvas2 || !canvas2.canvas) {
-    console.log(`🔴 sampleBorderColors: canvas manquant`, { canvas1: !!canvas1, canvas2: !!canvas2, canvas2_canvas: !!canvas2?.canvas });
+function sampleBorderColors(canvas1, rectangle2, borderSide) {
+  if (!textureRectangles) {
     return { r: 128, g: 128, b: 128, a: 1 };
   }
   
-  const samples = 5; // Nombre d'échantillons le long du bord
-  let totalR = 0, totalG = 0, totalB = 0, totalA = 0;
-  
-  for (let i = 0; i < samples; i++) {
-    const t = i / (samples - 1); // Position le long du bord (0 à 1)
-    
-    // Coordonnées UV selon le côté du bord
-    let u1, v1, u2, v2;
-    
-    switch (borderSide) {
-      case 'bottom': // Bord bas de canvas1 vs bord haut de canvas2
-        u1 = t; v1 = 1.0; // Bord bas de canvas1
-        u2 = t; v2 = 0.0; // Bord haut de canvas2
-        break;
-      case 'right': // Bord droit de canvas1 vs bord gauche de canvas2
-        u1 = 1.0; v1 = t; // Bord droit de canvas1
-        u2 = 0.0; v2 = t; // Bord gauche de canvas2
-        break;
-      case 'top': // Bord haut de canvas1 vs bord bas de canvas2
-        u1 = t; v1 = 0.0; // Bord haut de canvas1
-        u2 = t; v2 = 1.0; // Bord bas de canvas2
-        break;
-      case 'left': // Bord gauche de canvas1 vs bord droit de canvas2
-        u1 = 0.0; v1 = t; // Bord gauche de canvas1
-        u2 = 1.0; v2 = t; // Bord droit de canvas2
-        break;
-      default:
-        u1 = 0.5; v1 = 0.5; u2 = 0.5; v2 = 0.5;
+  // OPTIMISATION: Utiliser les segments 1D pré-calculés !
+  // Récupérer l'index de la tuile actuelle depuis canvas1
+  let currentTileIndex = -1;
+  for (let i = 0; i < textureRectangles.length; i++) {
+    if (textureRectangles[i] && textureRectangles[i].canvas === canvas1) {
+      currentTileIndex = i;
+      break;
     }
-    
-    // Échantillonner les deux bords
-    const color1 = sampleTextureColor(canvas1, u1, v1);
-    const color2 = sampleTextureColor(canvas2.canvas, u2, v2);
-    
-    // Moyenne des deux couleurs pour ce point
-    const avgColor = averageColors(color1, color2);
-    
-    totalR += avgColor.r;
-    totalG += avgColor.g;
-    totalB += avgColor.b;
-    totalA += avgColor.a;
   }
   
-  // Moyenne finale de tous les échantillons
+  if (currentTileIndex === -1 || !textureRectangles[currentTileIndex]) {
+    return { r: 128, g: 128, b: 128, a: 1 };
+  }
+  
+  const rectangle = textureRectangles[currentTileIndex];
+  
+  // Vérifier que les segments sont disponibles
+  if (!rectangle.segments) {
+    return { r: 128, g: 128, b: 128, a: 1 };
+  }
+  
+  // Récupérer le segment pré-calculé selon borderSide
+  let segmentData;
+  
+  switch (borderSide) {
+    case 'bottom':
+      segmentData = rectangle.segments.bottom;
+      break;
+    case 'right':
+      segmentData = rectangle.segments.right;
+      break;
+    case 'top':
+      segmentData = rectangle.segments.top;
+      break;
+    case 'left':
+      segmentData = rectangle.segments.left;
+      break;
+    default:
+      // Fallback: utiliser segment top
+      segmentData = rectangle.segments.top;
+  }
+  
+  if (!segmentData || !segmentData.data) {
+    return { r: 128, g: 128, b: 128, a: 1 };
+  }
+  
+  // Moyenner tous les pixels du segment pré-calculé
+  const data = segmentData.data;
+  const pixelCount = data.length / 4;
+  let totalR = 0, totalG = 0, totalB = 0, totalA = 0;
+  
+  for (let i = 0; i < data.length; i += 4) {
+    totalR += data[i];
+    totalG += data[i + 1];
+    totalB += data[i + 2];
+    totalA += data[i + 3];
+  }
+  
   return {
-    r: Math.round(totalR / samples),
-    g: Math.round(totalG / samples),
-    b: Math.round(totalB / samples),
-    a: totalA / samples
+    r: Math.round(totalR / pixelCount),
+    g: Math.round(totalG / pixelCount),
+    b: Math.round(totalB / pixelCount),
+    a: (totalA / pixelCount) / 255
   };
 }
 
@@ -2326,10 +2700,2111 @@ function averageColors(color1, color2) {
 }
 
 // Dessiner un segment avec une couleur spécifique
-function drawColoredSegment(ctx, point1, point2, color) {
-  ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`;
-  ctx.beginPath();
-  ctx.moveTo(point1.x, point1.y);
-  ctx.lineTo(point2.x, point2.y);
-  ctx.stroke();
+function drawColoredSegment(ctx, point1, point2, segmentImageData) {
+  // Si pas de données de segment, fallback vers ligne colorée simple
+  if (!segmentImageData || !segmentImageData.data) {
+    ctx.strokeStyle = 'rgba(128,128,128,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(point1.x, point1.y);
+    ctx.lineTo(point2.x, point2.y);
+    ctx.stroke();
+    return;
+  }
+  
+  // Calculer la longueur et direction du segment
+  const deltaX = point2.x - point1.x;
+  const deltaY = point2.y - point1.y;
+  const segmentLength = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+  
+  if (segmentLength < 1) return; // Segment trop petit
+  
+  // Déterminer si c'est un segment horizontal ou vertical selon les données
+  const data = segmentImageData.data;
+  const pixelCount = data.length / 4;
+  const isHorizontal = segmentImageData.width > segmentImageData.height;
+  
+  // Configuration ligne épaisse comme la grille normale
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  
+  // Parcourir le segment pixel par pixel et copier les couleurs correspondantes
+  const steps = Math.max(1, Math.floor(segmentLength));
+  
+  for (let step = 0; step < steps; step++) {
+    // Position le long du segment (0 à 1)
+    const t = step / Math.max(1, steps - 1);
+    
+    // Coordonnées du pixel actuel sur le canvas
+    const currentX = Math.round(point1.x + t * deltaX);
+    const currentY = Math.round(point1.y + t * deltaY);
+    
+    // Index dans les données du segment (mapping linéaire)
+    const segmentIndex = Math.floor(t * (pixelCount - 1));
+    const pixelIndex = segmentIndex * 4;
+    
+    // Vérifier que l'index est valide
+    if (pixelIndex >= 0 && pixelIndex < data.length - 3) {
+      const r = data[pixelIndex];
+      const g = data[pixelIndex + 1];
+      const b = data[pixelIndex + 2];
+      const a = data[pixelIndex + 3] / 255;
+      
+      // Dessiner avec stroke épais au lieu de fillRect 1x1
+      ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
+      ctx.beginPath();
+      ctx.moveTo(currentX, currentY);
+      ctx.lineTo(currentX + 0.5, currentY + 0.5); // Micro-segment pour activer stroke
+      ctx.stroke();
+    }
+  }
+  
+  // Restaurer lineWidth par défaut
+  ctx.lineWidth = 1;
 }
+
+// DEBUG: Fonction pour forcer le recalcul des rectangles (accessible depuis console)
+window.forceRecalculateRectangles = function() {
+  textureRectangles = null;
+  pd('forceRecalculate', 'main.js', `🔧 FORCE RECALCUL: Cache rectangles vidé, prochaine render() recalculera`);
+  render();
+};
+
+// DEBUG: Fonction pour activer debug sur tuile océan
+window.debugOceanTile = function() {
+  window.debugCurrentTile = true;
+  pd('debugOcean', 'main.js', `🌊 DEBUG OCÉAN ACTIVÉ: Prochaine désactivation grille montrera détails tuile (1,9)`);
+};
+
+// DEBUG: Analyser la texture pour détecter pixels transparents
+window.analyzeTextureTransparency = function() {
+  if (!mapCanvas) {
+    console.log('❌ Aucune texture chargée');
+    return;
+  }
+  
+  const ctx = mapCanvas.getContext('2d');
+  const imageData = ctx.getImageData(0, 0, mapCanvas.width, mapCanvas.height);
+  const data = imageData.data;
+  
+  let transparentPixels = 0;
+  let semiTransparentPixels = 0;
+  let totalPixels = mapCanvas.width * mapCanvas.height;
+  
+  // Analyser quelques zones océan spécifiques
+  const oceanSamples = [];
+  const oceanZones = [
+    { name: 'Atlantique Nord', x: 0.1, y: 0.3 },
+    { name: 'Pacifique', x: 0.8, y: 0.5 },
+    { name: 'Océan Indien', x: 0.6, y: 0.7 },
+    { name: 'Zone problématique (1,9)', x: 1/30, y: 9/20 }
+  ];
+  
+  oceanZones.forEach(zone => {
+    const pixelX = Math.floor(zone.x * mapCanvas.width);
+    const pixelY = Math.floor(zone.y * mapCanvas.height);
+    const pixelIndex = (pixelY * mapCanvas.width + pixelX) * 4;
+    
+    const r = data[pixelIndex];
+    const g = data[pixelIndex + 1];
+    const b = data[pixelIndex + 2];
+    const a = data[pixelIndex + 3];
+    
+    oceanSamples.push({
+      zone: zone.name,
+      coords: `(${pixelX},${pixelY})`,
+      color: `rgba(${r},${g},${b},${a})`
+    });
+  });
+  
+  // Compter pixels transparents globalement
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] === 0) transparentPixels++;
+    else if (data[i] < 255) semiTransparentPixels++;
+  }
+  
+  console.log(`🔍 ANALYSE TRANSPARENCE TEXTURE "${currentMapName}":`);
+  console.log(`📊 Total pixels: ${totalPixels.toLocaleString()}`);
+  console.log(`🕳️ Pixels transparents (alpha=0): ${transparentPixels.toLocaleString()} (${(transparentPixels/totalPixels*100).toFixed(2)}%)`);
+  console.log(`👻 Pixels semi-transparents (0<alpha<255): ${semiTransparentPixels.toLocaleString()} (${(semiTransparentPixels/totalPixels*100).toFixed(2)}%)`);
+  console.log(`🌊 Échantillons océan:`);
+  oceanSamples.forEach(sample => {
+    console.log(`   ${sample.zone}: ${sample.coords} → ${sample.color}`);
+  });
+  
+  if (transparentPixels > 0) {
+    console.log(`⚠️ PROBLÈME DÉTECTÉ: La texture contient ${transparentPixels.toLocaleString()} pixels transparents !`);
+    console.log(`💡 SOLUTION: Remplacer les pixels transparents par du bleu océan`);
+  }
+};
+
+// DEBUG: Corriger les pixels transparents de la texture
+window.fixTransparentPixels = function() {
+  if (!mapCanvas) {
+    console.log('❌ Aucune texture chargée');
+    return;
+  }
+  
+  const ctx = mapCanvas.getContext('2d');
+  const imageData = ctx.getImageData(0, 0, mapCanvas.width, mapCanvas.height);
+  const data = imageData.data;
+  
+  let fixedPixels = 0;
+  const oceanBlue = [20, 50, 80, 255]; // RGBA bleu océan
+  
+  // Remplacer tous les pixels transparents par du bleu océan
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) { // Alpha = 0 (transparent)
+      data[i] = oceanBlue[0];     // R
+      data[i + 1] = oceanBlue[1]; // G
+      data[i + 2] = oceanBlue[2]; // B
+      data[i + 3] = oceanBlue[3]; // A
+      fixedPixels++;
+    }
+  }
+  
+  // Appliquer les corrections à la texture
+  ctx.putImageData(imageData, 0, 0);
+  
+  // Forcer recalcul des rectangles avec texture corrigée
+  textureRectangles = null;
+  
+  console.log(`🔧 CORRECTION APPLIQUÉE:`);
+  console.log(`   ${fixedPixels.toLocaleString()} pixels transparents → bleu océan`);
+  console.log(`   Cache rectangles vidé pour recalcul`);
+  console.log(`   Testez maintenant la grille colorée !`);
+  
+  // Re-render avec texture corrigée
+  render();
+};
+
+// === DEBUG SPÉCIFIQUE TUILE ===
+
+/**
+ * Debug des couleurs de bord pour une tuile spécifique et ses voisines
+ * @param {number} targetX - Coordonnée X de la tuile à analyser
+ * @param {number} targetY - Coordonnée Y de la tuile à analyser
+ * @param {string} borderSide - Côté à analyser ('right', 'left', 'top', 'bottom')
+ */
+function debugTileBorderColors(targetX, targetY, borderSide = 'right') {
+  if (!textureRectangles) {
+    pd('debugTileBorderColors', 'main.js', '❌ textureRectangles non initialisé');
+    return;
+  }
+  
+  // Récupérer la tuile cible
+  const targetRect = getBmp(targetX, targetY);
+  if (!targetRect) {
+    pd('debugTileBorderColors', 'main.js', `❌ Tuile (${targetX},${targetY}) introuvable`);
+    return;
+  }
+  
+  // Calculer coordonnées de la tuile voisine selon le côté
+  let neighborX = targetX;
+  let neighborY = targetY;
+  
+  switch (borderSide) {
+    case 'right':
+      neighborX = targetX + 1;
+      break;
+    case 'left':
+      neighborX = targetX - 1;
+      break;
+    case 'top':
+      neighborY = targetY - 1;
+      break;
+    case 'bottom':
+      neighborY = targetY + 1;
+      break;
+  }
+  
+  // Récupérer la tuile voisine (avec wrap-around pour X)
+  const neighborRect = getBmp(neighborX, neighborY);
+  
+  pd('debugTileBorderColors', 'main.js', `🔍 ANALYSE BORD ${borderSide.toUpperCase()} - Tuile (${targetX},${targetY}) vs Voisine (${neighborX},${neighborY})`);
+  pd('debugTileBorderColors', 'main.js', `📦 Tuile cible: ${targetRect.width}x${targetRect.height} | Voisine: ${neighborRect ? `${neighborRect.width}x${neighborRect.height}` : 'NULL'}`);
+  
+  // Analyser les couleurs du bord de la tuile cible
+  const targetColors = sampleBorderPixels(targetRect, borderSide, 5);
+  pd('debugTileBorderColors', 'main.js', `🎨 COULEURS BORD ${borderSide.toUpperCase()} tuile (${targetX},${targetY}):`);
+  targetColors.forEach((color, i) => {
+    pd('debugTileBorderColors', 'main.js', `   [${i}] rgba(${color.r},${color.g},${color.b},${color.a})`);
+  });
+  
+  // Analyser les couleurs du bord correspondant de la tuile voisine
+  if (neighborRect) {
+    const oppositeSide = getOppositeBorderSide(borderSide);
+    const neighborColors = sampleBorderPixels(neighborRect, oppositeSide, 5);
+    pd('debugTileBorderColors', 'main.js', `🎨 COULEURS BORD ${oppositeSide.toUpperCase()} voisine (${neighborX},${neighborY}):`);
+    neighborColors.forEach((color, i) => {
+      pd('debugTileBorderColors', 'main.js', `   [${i}] rgba(${color.r},${color.g},${color.b},${color.a})`);
+    });
+    
+    // Calculer différences de couleur
+    pd('debugTileBorderColors', 'main.js', `📊 DIFFÉRENCES DE COULEUR:`);
+    targetColors.forEach((targetColor, i) => {
+      if (i < neighborColors.length) {
+        const neighborColor = neighborColors[i];
+        const deltaR = Math.abs(targetColor.r - neighborColor.r);
+        const deltaG = Math.abs(targetColor.g - neighborColor.g);
+        const deltaB = Math.abs(targetColor.b - neighborColor.b);
+        const totalDelta = deltaR + deltaG + deltaB;
+        pd('debugTileBorderColors', 'main.js', `   [${i}] ΔR=${deltaR}, ΔG=${deltaG}, ΔB=${deltaB} | Total=${totalDelta}`);
+      }
+    });
+  } else {
+    pd('debugTileBorderColors', 'main.js', `⚠️ Voisine (${neighborX},${neighborY}) introuvable`);
+  }
+}
+
+/**
+ * Échantillonne les pixels d'un bord spécifique d'un rectangle
+ * @param {Object} rectangle - Rectangle de texture avec canvas
+ * @param {string} borderSide - Côté ('right', 'left', 'top', 'bottom')
+ * @param {number} sampleCount - Nombre d'échantillons à prendre
+ * @returns {Array} - Tableau de couleurs {r, g, b, a}
+ */
+function sampleBorderPixels(rectangle, borderSide, sampleCount = 5) {
+  if (!rectangle || !rectangle.canvas) return [];
+  
+  const canvas = rectangle.canvas;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const width = canvas.width;
+  const height = canvas.height;
+  
+  const colors = [];
+  
+  for (let i = 0; i < sampleCount; i++) {
+    let x, y;
+    
+    switch (borderSide) {
+      case 'right':
+        x = width - 1; // Bord droit
+        y = Math.round((i / (sampleCount - 1)) * (height - 1));
+        break;
+      case 'left':
+        x = 0; // Bord gauche
+        y = Math.round((i / (sampleCount - 1)) * (height - 1));
+        break;
+      case 'top':
+        x = Math.round((i / (sampleCount - 1)) * (width - 1));
+        y = 0; // Bord haut
+        break;
+      case 'bottom':
+        x = Math.round((i / (sampleCount - 1)) * (width - 1));
+        y = height - 1; // Bord bas
+        break;
+    }
+    
+    try {
+      const imageData = ctx.getImageData(x, y, 1, 1);
+      const [r, g, b, a] = imageData.data;
+      colors.push({ r, g, b, a });
+    } catch (e) {
+      colors.push({ r: 0, g: 0, b: 0, a: 0 });
+    }
+  }
+  
+  return colors;
+}
+
+/**
+ * Retourne le côté opposé d'un bord
+ * @param {string} borderSide - Côté original
+ * @returns {string} - Côté opposé
+ */
+function getOppositeBorderSide(borderSide) {
+  const opposites = {
+    'right': 'left',
+    'left': 'right',
+    'top': 'bottom',
+    'bottom': 'top'
+  };
+  return opposites[borderSide] || borderSide;
+}
+
+// === FIN DEBUG SPÉCIFIQUE TUILE ===
+
+// Exposer la fonction de debug globalement pour utilisation en console
+window.debugTileBorderColors = debugTileBorderColors;
+
+// Debug automatique de la tuile (1,8) bord droit au démarrage
+// Debug supprimé pour éviter boucle infinie
+
+// === DEBUG RENDU SPÉCIFIQUE TUILE ===
+
+/**
+ * Debug le rendu d'une tuile spécifique pour détecter les problèmes d'affichage
+ * @param {number} targetX - Coordonnée X de la tuile
+ * @param {number} targetY - Coordonnée Y de la tuile  
+ */
+function debugTileRendering(targetX, targetY) {
+  if (!currentMesh || !textureRectangles) {
+    pd('debugTileRendering', 'main.js', '❌ Mesh ou rectangles non initialisés');
+    return;
+  }
+  
+  // Trouver la face correspondante
+  const targetOriginalIndex = targetX + targetY * MESH_U;
+  const targetFace = currentMesh.faces.find(face => face.originalIndex === targetOriginalIndex);
+  
+  if (!targetFace) {
+    pd('debugTileRendering', 'main.js', `❌ Face (${targetX},${targetY}) introuvable, originalIndex=${targetOriginalIndex}`);
+    return;
+  }
+  
+  pd('debugTileRendering', 'main.js', `🔍 === DEBUG RENDU TUILE (${targetX},${targetY}) ===`);
+  pd('debugTileRendering', 'main.js', `📍 Face trouvée: originalIndex=${targetFace.originalIndex}`);
+  pd('debugTileRendering', 'main.js', `📍 Vertices indices: [${targetFace.vertices.join(', ')}]`);
+  
+  // Vérifier le rectangle de texture
+  const rectangle = getBmp(targetX, targetY);
+  pd('debugTileRendering', 'main.js', `📦 Rectangle texture: ${rectangle ? `${rectangle.width}x${rectangle.height}` : 'NULL'}`);
+  
+  if (rectangle) {
+    // Analyser le contenu du rectangle
+    const canvas = rectangle.canvas;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    
+    // Échantillonner quelques pixels pour vérifier le contenu
+    const samples = [];
+    for (let i = 0; i < 5; i++) {
+      const x = Math.floor((i / 4) * (canvas.width - 1));
+      const y = Math.floor(canvas.height / 2); // Milieu en Y
+      
+      try {
+        const imageData = ctx.getImageData(x, y, 1, 1);
+        const [r, g, b, a] = imageData.data;
+        samples.push({ x, y, r, g, b, a });
+      } catch (e) {
+        samples.push({ x, y, r: 0, g: 0, b: 0, a: 0 });
+      }
+    }
+    
+    pd('debugTileRendering', 'main.js', `🎨 Échantillons rectangle (ligne milieu):`);
+    samples.forEach((sample, i) => {
+      const isWhite = sample.r > 240 && sample.g > 240 && sample.b > 240;
+      const warning = isWhite ? ' ⚠️ BLANC!' : '';
+      pd('debugTileRendering', 'main.js', `   [${i}] (${sample.x},${sample.y}): rgba(${sample.r},${sample.g},${sample.b},${sample.a})${warning}`);
+    });
+  }
+  
+  // Vérifier les coordonnées UV des vertices
+  pd('debugTileRendering', 'main.js', `🗺️ Coordonnées UV des vertices:`);
+  targetFace.vertices.forEach((vertexIndex, i) => {
+    const vertex = currentMesh.vertices[vertexIndex];
+    pd('debugTileRendering', 'main.js', `   V${i}: gridU=${vertex.gridU.toFixed(3)}, gridV=${vertex.gridV.toFixed(3)}, u=${vertex.u.toFixed(3)}, v=${vertex.v.toFixed(3)}`);
+  });
+  
+  // Vérifier si la face est visible
+  pd('debugTileRendering', 'main.js', `👁️ Visibilité face: ${targetFace.visibility}, hiddenCorners=${targetFace.hiddenCorners}`);
+  
+  pd('debugTileRendering', 'main.js', `=== FIN DEBUG RENDU TUILE (${targetX},${targetY}) ===`);
+}
+
+// Exposer globalement
+window.debugTileRendering = debugTileRendering;
+
+// Debug automatique de la tuile (1,8) problématique - DÉSACTIVÉ
+// setTimeout(() => {
+//   if (currentMesh && textureRectangles) {
+//     console.log('\n🚨 === DEBUG TUILE BLANCHE (1,8) ===');
+//     debugTileRendering(1, 8);
+//     console.log('=== FIN DEBUG TUILE BLANCHE ===\n');
+//   }
+// }, 4000);
+
+// === FIN DEBUG RENDU SPÉCIFIQUE ===
+
+/**
+ * Debug complet du contenu d'une tuile (centre + bords + coins)
+ * @param {number} targetX - Coordonnée X de la tuile
+ * @param {number} targetY - Coordonnée Y de la tuile
+ */
+function debugTileContent(targetX, targetY) {
+  const rectangle = getBmp(targetX, targetY);
+  if (!rectangle || !rectangle.canvas) {
+    pd('debugTileContent', 'main.js', `❌ Rectangle (${targetX},${targetY}) introuvable`);
+    return;
+  }
+  
+  const canvas = rectangle.canvas;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const width = canvas.width;
+  const height = canvas.height;
+  
+  pd('debugTileContent', 'main.js', `🔍 === CONTENU COMPLET TUILE (${targetX},${targetY}) ${width}x${height} ===`);
+  
+  // Échantillonner différentes zones
+  const zones = [
+    { name: 'Centre', x: Math.floor(width/2), y: Math.floor(height/2) },
+    { name: 'Coin TL', x: 0, y: 0 },
+    { name: 'Coin TR', x: width-1, y: 0 },
+    { name: 'Coin BL', x: 0, y: height-1 },
+    { name: 'Coin BR', x: width-1, y: height-1 },
+    { name: 'Bord L', x: 0, y: Math.floor(height/2) },
+    { name: 'Bord R', x: width-1, y: Math.floor(height/2) },
+    { name: 'Bord T', x: Math.floor(width/2), y: 0 },
+    { name: 'Bord B', x: Math.floor(width/2), y: height-1 }
+  ];
+  
+  zones.forEach(zone => {
+    try {
+      const imageData = ctx.getImageData(zone.x, zone.y, 1, 1);
+      const [r, g, b, a] = imageData.data;
+      
+      // Détecter les couleurs problématiques
+      const isWhite = r > 240 && g > 240 && b > 240;
+      const isBeige = r > 200 && g > 180 && b > 150 && r > g && g > b;
+      const isOcean = r < 50 && g > 40 && b > 30 && g > r;
+      
+      let type = '';
+      if (isWhite) type = ' ⚠️ BLANC!';
+      else if (isBeige) type = ' 🏖️ BEIGE';
+      else if (isOcean) type = ' 🌊 OCÉAN';
+      
+      pd('debugTileContent', 'main.js', `   ${zone.name.padEnd(8)}: rgba(${r},${g},${b},${a})${type}`);
+    } catch (e) {
+      pd('debugTileContent', 'main.js', `   ${zone.name.padEnd(8)}: ERREUR`);
+    }
+  });
+  
+  // Statistiques globales
+  let whitePixels = 0, beigePixels = 0, oceanPixels = 0, totalPixels = 0;
+  
+  try {
+    const fullData = ctx.getImageData(0, 0, width, height);
+    const data = fullData.data;
+    
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i], g = data[i+1], b = data[i+2];
+      totalPixels++;
+      
+      if (r > 240 && g > 240 && b > 240) whitePixels++;
+      else if (r > 200 && g > 180 && b > 150 && r > g && g > b) beigePixels++;
+      else if (r < 50 && g > 40 && b > 30 && g > r) oceanPixels++;
+    }
+    
+    const whitePercent = ((whitePixels / totalPixels) * 100).toFixed(1);
+    const beigePercent = ((beigePixels / totalPixels) * 100).toFixed(1);
+    const oceanPercent = ((oceanPixels / totalPixels) * 100).toFixed(1);
+    
+    pd('debugTileContent', 'main.js', `📊 STATISTIQUES:`);
+    pd('debugTileContent', 'main.js', `   🌊 Océan: ${oceanPercent}% (${oceanPixels}/${totalPixels})`);
+    pd('debugTileContent', 'main.js', `   🏖️ Beige: ${beigePercent}% (${beigePixels}/${totalPixels})`);
+    pd('debugTileContent', 'main.js', `   ⚠️ Blanc: ${whitePercent}% (${whitePixels}/${totalPixels})`);
+    
+    if (whitePixels > totalPixels * 0.1) {
+      pd('debugTileContent', 'main.js', `🚨 ALERTE: ${whitePercent}% de pixels blancs détectés!`);
+    }
+  } catch (e) {
+    pd('debugTileContent', 'main.js', `❌ Erreur analyse globale: ${e.message}`);
+  }
+  
+  pd('debugTileContent', 'main.js', `=== FIN CONTENU TUILE (${targetX},${targetY}) ===`);
+}
+
+// Exposer globalement
+window.debugTileContent = debugTileContent;
+
+// Debug automatique du contenu de (1,8) - DÉSACTIVÉ
+// setTimeout(() => {
+//   if (textureRectangles) {
+//     console.log('\n🔍 === ANALYSE CONTENU TUILE (1,8) ===');
+//     debugTileContent(1, 8);
+//     console.log('=== FIN ANALYSE CONTENU ===\n');
+//   }
+// }, 5000);
+
+// === DEBUG: Analyser les transformations matricielles ===
+function debugTileMatrixTransforms(gridX, gridY) {
+  if (!currentMesh || !textureRectangles) {
+    console.log('❌ Mesh ou rectangles non initialisés');
+    return;
+  }
+  
+  const originalIndex = gridX + gridY * MESH_U;
+  const face = currentMesh.faces.find(f => f.originalIndex === originalIndex);
+  
+  if (!face) {
+    console.log(`❌ Face non trouvée pour (${gridX},${gridY}) index=${originalIndex}`);
+    return;
+  }
+  
+  console.log(`🔍 === DEBUG TRANSFORMATIONS MATRICIELLES TUILE (${gridX},${gridY}) ===`);
+  console.log(`📍 Face originalIndex: ${originalIndex}`);
+  
+  // Récupérer le rectangle texture
+  const rectangle = getBmp(gridX, gridY);
+  if (!rectangle) {
+    console.log('❌ Rectangle texture non trouvé');
+    return;
+  }
+  
+  console.log(`📦 Rectangle: ${rectangle.width}x${rectangle.height}`);
+  
+  // Calculer les vertices projetés comme dans render()
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  
+  const projectedVertices = currentMesh.vertices.map(vertex => {
+    const rotated = currentSurface === 'projective' 
+      ? rotate3DProjective(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ, rotShape)
+      : rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
+    const projected = projectIso(rotated.x, rotated.y, rotated.z, scale);
+    
+    return {
+      x: centerX + projected.x + cameraOffsetX,
+      y: centerY - projected.y + cameraOffsetY,
+      z: rotated.z,
+      originalIndex: vertex.index
+    };
+  });
+  
+  // Construire le quad projeté
+  const quadProjected = face.vertices.map(vertexIndex => projectedVertices[vertexIndex]);
+  const [p0, p1, p2, p3] = quadProjected;
+  
+  console.log(`🎯 Quad projeté:`);
+  console.log(`   P0: (${p0.x.toFixed(1)}, ${p0.y.toFixed(1)})`);
+  console.log(`   P1: (${p1.x.toFixed(1)}, ${p1.y.toFixed(1)})`);
+  console.log(`   P2: (${p2.x.toFixed(1)}, ${p2.y.toFixed(1)})`);
+  console.log(`   P3: (${p3.x.toFixed(1)}, ${p3.y.toFixed(1)})`);
+  
+  // Calculer l'aire du quad
+  const area = Math.abs((p1.x - p0.x) * (p3.y - p0.y) - (p3.x - p0.x) * (p1.y - p0.y));
+  console.log(`📐 Aire du quad: ${area.toFixed(2)} pixels²`);
+  
+  if (area < 1) {
+    console.log('⚠️ Quad trop petit (area < 1) - sera ignoré');
+    return;
+  }
+  
+  // Analyser les subdivisions
+  const maxDist = Math.max(
+    distance2D(p0, p1), distance2D(p1, p2), 
+    distance2D(p2, p3), distance2D(p3, p0)
+  );
+  const subdivisions = Math.min(8, Math.max(2, Math.floor(maxDist / 50)));
+  console.log(`🔧 Distance max: ${maxDist.toFixed(1)}, Subdivisions: ${subdivisions}`);
+  
+  // Analyser le premier triangle (corner00, corner10, corner01)
+  const u0 = 0, u1 = 1/subdivisions, v0 = 0, v1 = 1/subdivisions;
+  
+  const corner00 = bilinearInterpolation(p0, p1, p2, p3, u0, v0);
+  const corner10 = bilinearInterpolation(p0, p1, p2, p3, u1, v0);
+  const corner01 = bilinearInterpolation(p0, p1, p2, p3, u0, v1);
+  
+  console.log(`🔺 Premier triangle:`);
+  console.log(`   Corner00: (${corner00.x.toFixed(1)}, ${corner00.y.toFixed(1)})`);
+  console.log(`   Corner10: (${corner10.x.toFixed(1)}, ${corner10.y.toFixed(1)})`);
+  console.log(`   Corner01: (${corner01.x.toFixed(1)}, ${corner01.y.toFixed(1)})`);
+  
+  // Coordonnées texture correspondantes
+  const srcW = rectangle.width;
+  const srcH = rectangle.height;
+  const srcX0 = u0 * srcW;
+  const srcY0 = v0 * srcH;
+  const srcW_sub = (u1 - u0) * srcW;
+  const srcH_sub = (v1 - v0) * srcH;
+  
+  const t0 = [srcX0, srcY0];
+  const t1 = [srcX0 + srcW_sub, srcY0];
+  const t2 = [srcX0, srcY0 + srcH_sub];
+  
+  console.log(`🎨 Coordonnées texture:`);
+  console.log(`   T0: (${t0[0].toFixed(1)}, ${t0[1].toFixed(1)})`);
+  console.log(`   T1: (${t1[0].toFixed(1)}, ${t1[1].toFixed(1)})`);
+  console.log(`   T2: (${t2[0].toFixed(1)}, ${t2[1].toFixed(1)})`);
+  
+  // CALCULER LA MATRICE DE TRANSFORMATION (même calcul que drawTriangleTexture)
+  const denom = (t1[0] - t0[0]) * (t2[1] - t0[1]) - (t2[0] - t0[0]) * (t1[1] - t0[1]);
+  console.log(`🧮 Dénominateur matrice: ${denom.toFixed(6)}`);
+  
+  if (Math.abs(denom) < 1e-10) {
+    console.log('❌ TRIANGLE DÉGÉNÉRÉ (denom trop petit) - sera ignoré');
+    return;
+  }
+  
+  const m11 = ((corner10.x - corner00.x) * (t2[1] - t0[1]) - (corner01.x - corner00.x) * (t1[1] - t0[1])) / denom;
+  const m12 = ((corner01.x - corner00.x) * (t1[0] - t0[0]) - (corner10.x - corner00.x) * (t2[0] - t0[0])) / denom;
+  const m21 = ((corner10.y - corner00.y) * (t2[1] - t0[1]) - (corner01.y - corner00.y) * (t1[1] - t0[1])) / denom;
+  const m22 = ((corner01.y - corner00.y) * (t1[0] - t0[0]) - (corner10.y - corner00.y) * (t2[0] - t0[0])) / denom;
+  const dx = corner00.x - m11 * t0[0] - m12 * t0[1];
+  const dy = corner00.y - m21 * t0[0] - m22 * t0[1];
+  
+  console.log(`🔢 Matrice de transformation:`);
+  console.log(`   [${m11.toFixed(3)}, ${m12.toFixed(3)}, ${dx.toFixed(1)}]`);
+  console.log(`   [${m21.toFixed(3)}, ${m22.toFixed(3)}, ${dy.toFixed(1)}]`);
+  console.log(`   [0, 0, 1]`);
+  
+  // Calculer le déterminant de la matrice 2x2
+  const det = m11 * m22 - m12 * m21;
+  console.log(`📊 Déterminant: ${det.toFixed(6)}`);
+  
+  if (Math.abs(det) < 1e-10) {
+    console.log('⚠️ MATRICE QUASI-SINGULIÈRE (det ≈ 0) - transformation dégénérée');
+  } else if (Math.abs(det) > 1000) {
+    console.log('⚠️ MATRICE TRÈS DÉFORMÉE (det > 1000) - transformation extrême');
+  } else {
+    console.log('✅ Matrice normale');
+  }
+  
+  // Analyser l'échelle de transformation
+  const scaleX = Math.sqrt(m11 * m11 + m21 * m21);
+  const scaleY = Math.sqrt(m12 * m12 + m22 * m22);
+  console.log(`📏 Échelles: X=${scaleX.toFixed(3)}, Y=${scaleY.toFixed(3)}`);
+  
+  if (scaleX > 100 || scaleY > 100) {
+    console.log('⚠️ ÉCHELLE EXTRÊME - peut causer du blanc par sur-étirement');
+  }
+  
+  console.log(`=== FIN DEBUG TRANSFORMATIONS MATRICIELLES ===`);
+}
+
+// Exposer pour la console
+window.debugTileMatrixTransforms = debugTileMatrixTransforms;
+
+// === DEBUG: Analyser l'ordre des vertices et coordonnées UV ===
+function debugVertexOrder(gridX, gridY) {
+  if (!currentMesh || !textureRectangles) {
+    console.log('❌ Mesh ou rectangles non initialisés');
+    return;
+  }
+  
+  const originalIndex = gridX + gridY * MESH_U;
+  const face = currentMesh.faces.find(f => f.originalIndex === originalIndex);
+  
+  if (!face) {
+    console.log(`❌ Face non trouvée pour (${gridX},${gridY}) index=${originalIndex}`);
+    return;
+  }
+  
+  console.log(`🔍 === DEBUG ORDRE VERTICES TUILE (${gridX},${gridY}) ===`);
+  console.log(`📍 Face originalIndex: ${originalIndex}`);
+  
+  // Analyser chaque vertex de la face
+  face.vertices.forEach((vertexIndex, i) => {
+    const vertex = currentMesh.vertices[vertexIndex];
+    console.log(`📍 Vertex ${i} (index ${vertexIndex}):`);
+    console.log(`   gridU: ${vertex.gridU.toFixed(3)} (u normalisé)`);
+    console.log(`   gridV: ${vertex.gridV.toFixed(3)} (v normalisé)`);
+    console.log(`   Position: (${vertex.x.toFixed(2)}, ${vertex.y.toFixed(2)}, ${vertex.z.toFixed(2)})`);
+  });
+  
+  // Calculer les projections à l'écran
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  
+  const projectedVertices = currentMesh.vertices.map(vertex => {
+    const rotated = currentSurface === 'projective' 
+      ? rotate3DProjective(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ, rotShape)
+      : rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
+    const projected = projectIso(rotated.x, rotated.y, rotated.z, scale);
+    
+    return {
+      x: centerX + projected.x + cameraOffsetX,
+      y: centerY - projected.y + cameraOffsetY,
+      z: rotated.z,
+      originalIndex: vertex.index
+    };
+  });
+  
+  // Construire le quad projeté
+  const quadProjected = face.vertices.map(vertexIndex => projectedVertices[vertexIndex]);
+  
+  console.log(`🎯 Quad projeté (ordre actuel des vertices):`);
+  quadProjected.forEach((point, i) => {
+    const vertex = currentMesh.vertices[face.vertices[i]];
+    console.log(`   P${i}: (${point.x.toFixed(1)}, ${point.y.toFixed(1)}) - UV(${vertex.gridU.toFixed(3)}, ${vertex.gridV.toFixed(3)})`);
+  });
+  
+  // Identifier quel vertex correspond à quel coin selon les UV
+  const corners = {
+    bottomLeft: null,   // UV proche de (gridX/30, gridY/20)
+    bottomRight: null,  // UV proche de ((gridX+1)/30, gridY/20)
+    topRight: null,     // UV proche de ((gridX+1)/30, (gridY+1)/20)
+    topLeft: null       // UV proche de (gridX/30, (gridY+1)/20)
+  };
+  
+  const targetU_min = gridX / MESH_U;
+  const targetU_max = (gridX + 1) / MESH_U;
+  const targetV_min = gridY / MESH_V;
+  const targetV_max = (gridY + 1) / MESH_V;
+  
+  face.vertices.forEach((vertexIndex, i) => {
+    const vertex = currentMesh.vertices[vertexIndex];
+    const u = vertex.gridU;
+    const v = vertex.gridV;
+    
+    // Déterminer quel coin c'est selon les UV
+    if (Math.abs(u - targetU_min) < 0.001 && Math.abs(v - targetV_min) < 0.001) {
+      corners.bottomLeft = { index: i, vertex, projected: quadProjected[i] };
+    } else if (Math.abs(u - targetU_max) < 0.001 && Math.abs(v - targetV_min) < 0.001) {
+      corners.bottomRight = { index: i, vertex, projected: quadProjected[i] };
+    } else if (Math.abs(u - targetU_max) < 0.001 && Math.abs(v - targetV_max) < 0.001) {
+      corners.topRight = { index: i, vertex, projected: quadProjected[i] };
+    } else if (Math.abs(u - targetU_min) < 0.001 && Math.abs(v - targetV_max) < 0.001) {
+      corners.topLeft = { index: i, vertex, projected: quadProjected[i] };
+    }
+  });
+  
+  console.log(`🧭 Mapping des coins selon UV:`);
+  Object.entries(corners).forEach(([cornerName, corner]) => {
+    if (corner) {
+      console.log(`   ${cornerName}: P${corner.index} - UV(${corner.vertex.gridU.toFixed(3)}, ${corner.vertex.gridV.toFixed(3)}) - Screen(${corner.projected.x.toFixed(1)}, ${corner.projected.y.toFixed(1)})`);
+    } else {
+      console.log(`   ${cornerName}: ❌ NON TROUVÉ`);
+    }
+  });
+  
+  // Vérifier l'ordre attendu vs réel
+  console.log(`🔄 Ordre actuel dans face.vertices:`);
+  console.log(`   [0] = ${corners.bottomLeft ? 'Bottom-Left' : '?'}`);
+  console.log(`   [1] = ${corners.bottomRight ? 'Bottom-Right' : '?'}`);
+  console.log(`   [2] = ${corners.topRight ? 'Top-Right' : '?'}`);
+  console.log(`   [3] = ${corners.topLeft ? 'Top-Left' : '?'}`);
+  
+  console.log(`=== FIN DEBUG ORDRE VERTICES ===`);
+}
+
+// Exposer pour la console
+window.debugVertexOrder = debugVertexOrder;
+
+// === DEBUG: Tracer le rendu complet d'une tuile spécifique ===
+function debugTileRenderingPipeline(gridX, gridY) {
+  if (!currentMesh || !textureRectangles) {
+    console.log('❌ Mesh ou rectangles non initialisés');
+    return;
+  }
+  
+  const originalIndex = gridX + gridY * MESH_U;
+  const face = currentMesh.faces.find(f => f.originalIndex === originalIndex);
+  
+  if (!face) {
+    console.log(`❌ Face non trouvée pour (${gridX},${gridY}) index=${originalIndex}`);
+    return;
+  }
+  
+  console.log(`🔍 === DEBUG PIPELINE RENDU TUILE (${gridX},${gridY}) ===`);
+  console.log(`📍 Face originalIndex: ${originalIndex}`);
+  
+  // 1. Vérifier le rectangle texture
+  const rectangle = getBmp(gridX, gridY);
+  if (!rectangle) {
+    console.log('❌ ÉCHEC: Rectangle texture non trouvé');
+    return;
+  }
+  
+  console.log(`📦 Rectangle: ${rectangle.width}x${rectangle.height}, fallback: ${!!rectangle.isFallback}`);
+  
+  // 2. Échantillonner le contenu du rectangle
+  const rectCanvas = rectangle.canvas;
+  const rectCtx = rectCanvas.getContext('2d', { willReadFrequently: true });
+  
+  console.log(`🎨 Échantillons rectangle (5 points):`);
+  for (let i = 0; i < 5; i++) {
+    const x = Math.floor((i / 4) * (rectCanvas.width - 1));
+    const y = Math.floor(rectCanvas.height / 2);
+    
+    try {
+      const imageData = rectCtx.getImageData(x, y, 1, 1);
+      const [r, g, b, a] = imageData.data;
+      const isWhite = r > 240 && g > 240 && b > 240;
+      console.log(`   Point ${i}: (${x},${y}) → rgba(${r},${g},${b},${a}) ${isWhite ? '⚠️ BLANC!' : '✅'}`);
+    } catch (e) {
+      console.log(`   Point ${i}: ERREUR lecture pixel`);
+    }
+  }
+  
+  // 3. Calculer le quad projeté
+  const centerX = canvas.width / 2;  // Canvas principal, pas rectangle texture
+  const centerY = canvas.height / 2;
+  
+  const projectedVertices = currentMesh.vertices.map(vertex => {
+    const rotated = currentSurface === 'projective' 
+      ? rotate3DProjective(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ, rotShape)
+      : rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
+    const projected = projectIso(rotated.x, rotated.y, rotated.z, scale);
+    
+    return {
+      x: centerX + projected.x + cameraOffsetX,
+      y: centerY - projected.y + cameraOffsetY,
+      z: rotated.z,
+      originalIndex: vertex.index
+    };
+  });
+  
+  const quadProjected = face.vertices.map(vertexIndex => projectedVertices[vertexIndex]);
+  
+  console.log(`🎯 Quad projeté:`);
+  quadProjected.forEach((point, i) => {
+    console.log(`   P${i}: (${point.x.toFixed(1)}, ${point.y.toFixed(1)})`);
+  });
+  
+  // 4. Tester si drawTransformedRectangle sera appelé
+  const [p0, p1, p2, p3] = quadProjected;
+  const area = Math.abs((p1.x - p0.x) * (p3.y - p0.y) - (p3.x - p0.x) * (p1.y - p0.y));
+  
+  console.log(`📐 Aire quad: ${area.toFixed(2)} pixels²`);
+  if (area < 1) {
+    console.log('❌ ÉCHEC: Quad trop petit (area < 1) - ne sera pas rendu');
+    return;
+  }
+  
+  // 5. Calculer les subdivisions
+  const maxDist = Math.max(
+    distance2D(p0, p1), distance2D(p1, p2), 
+    distance2D(p2, p3), distance2D(p3, p0)
+  );
+  const subdivisions = Math.min(8, Math.max(2, Math.floor(maxDist / 50)));
+  
+  console.log(`🔧 Distance max: ${maxDist.toFixed(1)}, Subdivisions: ${subdivisions}`);
+  
+  // 6. Analyser le premier sous-triangle
+  const u0 = 0, u1 = 1/subdivisions, v0 = 0, v1 = 1/subdivisions;
+  
+  const corner00 = bilinearInterpolation(p0, p1, p2, p3, u0, v0);
+  const corner10 = bilinearInterpolation(p0, p1, p2, p3, u1, v0);
+  const corner01 = bilinearInterpolation(p0, p1, p2, p3, u0, v1);
+  
+  const srcW = rectangle.width;
+  const srcH = rectangle.height;
+  const srcX0 = u0 * srcW;
+  const srcY0 = v0 * srcH;
+  const srcW_sub = (u1 - u0) * srcW;
+  const srcH_sub = (v1 - v0) * srcH;
+  
+  const t0 = [srcX0, srcY0];
+  const t1 = [srcX0 + srcW_sub, srcY0];
+  const t2 = [srcX0, srcY0 + srcH_sub];
+  
+  console.log(`🔺 Premier triangle screen:`);
+  console.log(`   Corner00: (${corner00.x.toFixed(1)}, ${corner00.y.toFixed(1)})`);
+  console.log(`   Corner10: (${corner10.x.toFixed(1)}, ${corner10.y.toFixed(1)})`);
+  console.log(`   Corner01: (${corner01.x.toFixed(1)}, ${corner01.y.toFixed(1)})`);
+  
+  console.log(`🎨 Coordonnées texture triangle:`);
+  console.log(`   T0: (${t0[0].toFixed(1)}, ${t0[1].toFixed(1)})`);
+  console.log(`   T1: (${t1[0].toFixed(1)}, ${t1[1].toFixed(1)})`);
+  console.log(`   T2: (${t2[0].toFixed(1)}, ${t2[1].toFixed(1)})`);
+  
+  // 7. Vérifier les pixels texture correspondants
+  console.log(`🔍 Pixels texture aux coordonnées triangle:`);
+  [t0, t1, t2].forEach((coord, i) => {
+    const x = Math.floor(coord[0]);
+    const y = Math.floor(coord[1]);
+    
+    if (x >= 0 && x < rectCanvas.width && y >= 0 && y < rectCanvas.height) {
+      try {
+        const imageData = rectCtx.getImageData(x, y, 1, 1);
+        const [r, g, b, a] = imageData.data;
+        const isWhite = r > 240 && g > 240 && b > 240;
+        console.log(`   T${i} (${x},${y}): rgba(${r},${g},${b},${a}) ${isWhite ? '⚠️ BLANC!' : '✅'}`);
+      } catch (e) {
+        console.log(`   T${i}: ERREUR lecture`);
+      }
+    } else {
+      console.log(`   T${i}: HORS LIMITES (${x},${y}) dans ${rectCanvas.width}x${rectCanvas.height}`);
+    }
+  });
+  
+  // 8. Simuler le rendu et voir ce qui est appelé
+  console.log(`🎭 Modes de rendu actifs:`);
+  console.log(`   showTexture: ${showTexture}`);
+  console.log(`   showColorDebug: ${showColorDebug}`);
+  console.log(`   showGrid: ${showGrid}`);
+  
+  // 9. Tester directement drawTransformedRectangle
+  console.log(`🧪 Test direct drawTransformedRectangle...`);
+  
+  // Créer un canvas de test
+  const testCanvas = document.createElement('canvas');
+  testCanvas.width = 100;
+  testCanvas.height = 100;
+  const testCtx = testCanvas.getContext('2d');
+  
+  // Fond blanc pour voir si quelque chose est dessiné
+  testCtx.fillStyle = 'white';
+  testCtx.fillRect(0, 0, 100, 100);
+  
+  // Ajuster le quad pour le canvas de test
+  const testQuad = quadProjected.map(p => ({
+    x: (p.x - 20) * 0.5,
+    y: (p.y - 170) * 0.5
+  }));
+  
+  try {
+    const success = drawTransformedRectangle(testCtx, rectangle, testQuad, originalIndex);
+    console.log(`   Résultat drawTransformedRectangle: ${success ? 'SUCCESS' : 'FAILED'}`);
+    
+    // Vérifier ce qui a été dessiné
+    const testData = testCtx.getImageData(0, 0, 100, 100);
+    let nonWhitePixels = 0;
+    for (let i = 0; i < testData.data.length; i += 4) {
+      const r = testData.data[i];
+      const g = testData.data[i + 1];
+      const b = testData.data[i + 2];
+      if (r < 240 || g < 240 || b < 240) {
+        nonWhitePixels++;
+      }
+    }
+    console.log(`   Pixels non-blancs dans test: ${nonWhitePixels} / ${testData.data.length / 4}`);
+    
+  } catch (e) {
+    console.log(`   ERREUR drawTransformedRectangle: ${e.message}`);
+  }
+  
+  console.log(`=== FIN DEBUG PIPELINE RENDU ===`);
+}
+
+// Exposer pour la console
+window.debugTileRenderingPipeline = debugTileRenderingPipeline;
+
+// === DEBUG SIMPLE TUILE (1,8) - SANS BOUCLE INFINIE ===
+window.debugTile18 = function() {
+  console.log('🔍 === DEBUG TUILE (1,8) ===');
+  
+  if (!currentMesh || !textureRectangles) {
+    console.log('❌ Mesh ou rectangles non initialisés');
+    return;
+  }
+  
+  const gridX = 1, gridY = 8;
+  const originalIndex = gridX + gridY * MESH_U; // 241
+  console.log(`📍 Index calculé: ${originalIndex}`);
+  
+  // Vérifier la face
+  const face = currentMesh.faces.find(f => f.originalIndex === originalIndex);
+  if (!face) {
+    console.log(`❌ Face ${originalIndex} non trouvée`);
+    return;
+  }
+  console.log(`✅ Face trouvée: originalIndex=${face.originalIndex}`);
+  
+  // Vérifier le rectangle texture
+  const rectangle = getBmp(gridX, gridY);
+  if (!rectangle) {
+    console.log(`❌ Rectangle (${gridX},${gridY}) non trouvé`);
+    return;
+  }
+  console.log(`📦 Rectangle: ${rectangle.width}x${rectangle.height}, fallback: ${!!rectangle.isFallback}`);
+  
+  // Analyser le contenu du rectangle
+  if (rectangle.canvas) {
+    const ctx = rectangle.canvas.getContext('2d', { willReadFrequently: true });
+    
+    // Échantillonner 9 points (3x3)
+    console.log(`🎨 Échantillons rectangle 3x3:`);
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 3; col++) {
+        const x = Math.floor((col / 2) * (rectangle.width - 1));
+        const y = Math.floor((row / 2) * (rectangle.height - 1));
+        
+        try {
+          const imageData = ctx.getImageData(x, y, 1, 1);
+          const [r, g, b, a] = imageData.data;
+          const isWhite = r > 240 && g > 240 && b > 240;
+          const isOcean = r < 50 && g > 40 && b > 30;
+          const type = isWhite ? '⚠️ BLANC' : (isOcean ? '🌊 OCÉAN' : '🏖️ TERRE');
+          console.log(`   (${x},${y}): rgba(${r},${g},${b},${a}) ${type}`);
+        } catch (e) {
+          console.log(`   (${x},${y}): ERREUR`);
+        }
+      }
+    }
+  }
+  
+  // Analyser les vertices de la face
+  console.log(`🗺️ Vertices de la face:`);
+  face.vertices.forEach((vertexIndex, i) => {
+    const vertex = currentMesh.vertices[vertexIndex];
+    console.log(`   V${i}: gridU=${vertex.gridU.toFixed(3)}, gridV=${vertex.gridV.toFixed(3)}`);
+  });
+  
+  // Calculer la projection à l'écran
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  
+  const quadProjected = face.vertices.map(vertexIndex => {
+    const vertex = currentMesh.vertices[vertexIndex];
+    const rotated = currentSurface === 'projective' 
+      ? rotate3DProjective(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ, rotShape)
+      : rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
+    const projected = projectIso(rotated.x, rotated.y, rotated.z, scale);
+    
+    return {
+      x: centerX + projected.x + cameraOffsetX,
+      y: centerY - projected.y + cameraOffsetY
+    };
+  });
+  
+  console.log(`🎯 Quad projeté:`);
+  quadProjected.forEach((point, i) => {
+    const onScreen = point.x >= 0 && point.x <= canvas.width && point.y >= 0 && point.y <= canvas.height;
+    console.log(`   P${i}: (${point.x.toFixed(1)}, ${point.y.toFixed(1)}) ${onScreen ? '✅' : '❌ HORS ÉCRAN'}`);
+  });
+  
+  // Calculer l'aire
+  const [p0, p1, p2, p3] = quadProjected;
+  const area = Math.abs((p1.x - p0.x) * (p3.y - p0.y) - (p3.x - p0.x) * (p1.y - p0.y));
+  console.log(`📐 Aire: ${area.toFixed(2)} pixels² ${area >= 1 ? '✅' : '❌ TROP PETIT'}`);
+  
+  console.log('=== FIN DEBUG TUILE (1,8) ===');
+};
+
+console.log('🔧 Debug function loaded: window.debugTile18()');
+
+// === TEST RENDU DIRECT TUILE ===
+window.testRenderTile18 = function() {
+  console.log('🧪 === TEST RENDU DIRECT TUILE (1,8) ===');
+  
+  if (!currentMesh || !textureRectangles) {
+    console.log('❌ Mesh ou rectangles non initialisés');
+    return;
+  }
+  
+  const gridX = 1, gridY = 8;
+  const originalIndex = gridX + gridY * MESH_U;
+  const face = currentMesh.faces.find(f => f.originalIndex === originalIndex);
+  const rectangle = getBmp(gridX, gridY);
+  
+  if (!face || !rectangle) {
+    console.log('❌ Face ou rectangle manquant');
+    return;
+  }
+  
+  // Créer un canvas de test
+  const testCanvas = document.createElement('canvas');
+  testCanvas.width = 200;
+  testCanvas.height = 200;
+  const testCtx = testCanvas.getContext('2d');
+  
+  // Fond blanc pour voir ce qui est dessiné
+  testCtx.fillStyle = 'white';
+  testCtx.fillRect(0, 0, 200, 200);
+  
+  // Calculer quad projeté RÉEL (comme dans l'app)
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  
+  const quadProjected = face.vertices.map(vertexIndex => {
+    const vertex = currentMesh.vertices[vertexIndex];
+    const rotated = currentSurface === 'projective' 
+      ? rotate3DProjective(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ, rotShape)
+      : rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
+    const projected = projectIso(rotated.x, rotated.y, rotated.z, scale);
+    
+    return {
+      x: centerX + projected.x + cameraOffsetX,
+      y: centerY - projected.y + cameraOffsetY
+    };
+  });
+  
+  console.log(`🎯 Quad réel dans l'app:`);
+  quadProjected.forEach((p, i) => {
+    const onScreen = p.x >= 0 && p.x <= canvas.width && p.y >= 0 && p.y <= canvas.height;
+    console.log(`   P${i}: (${p.x.toFixed(1)}, ${p.y.toFixed(1)}) ${onScreen ? '✅' : '❌ HORS ÉCRAN'}`);
+  });
+  
+  // CRÉER UN QUAD CENTRÉ pour le test (pas décalé)
+  const testQuad = [
+    { x: 50, y: 50 },   // Bottom-left
+    { x: 150, y: 50 },  // Bottom-right  
+    { x: 150, y: 150 }, // Top-right
+    { x: 50, y: 150 }   // Top-left
+  ];
+  
+  console.log(`🎯 Quad test centré:`);
+  testQuad.forEach((p, i) => {
+    console.log(`   P${i}: (${p.x.toFixed(1)}, ${p.y.toFixed(1)}) ✅`);
+  });
+  
+  // Tenter le rendu avec le quad centré
+  try {
+    const success = drawTransformedRectangle(testCtx, rectangle, testQuad, originalIndex);
+    console.log(`✅ drawTransformedRectangle: ${success ? 'SUCCESS' : 'FAILED'}`);
+    
+    // Analyser ce qui a été dessiné
+    const imageData = testCtx.getImageData(0, 0, 200, 200);
+    let whitePixels = 0, coloredPixels = 0, oceanPixels = 0;
+    
+    for (let i = 0; i < imageData.data.length; i += 4) {
+      const r = imageData.data[i];
+      const g = imageData.data[i + 1];
+      const b = imageData.data[i + 2];
+      
+      if (r > 240 && g > 240 && b > 240) {
+        whitePixels++;
+      } else {
+        coloredPixels++;
+        // Détecter océan spécifiquement
+        if (r < 50 && g > 40 && b > 30) {
+          oceanPixels++;
+        }
+      }
+    }
+    
+    const totalPixels = imageData.data.length / 4;
+    console.log(`📊 Résultat: ${coloredPixels} pixels colorés (${oceanPixels} océan), ${whitePixels} pixels blancs (sur ${totalPixels})`);
+    
+    if (coloredPixels > 0) {
+      console.log('✅ SUCCÈS: Des pixels ont été dessinés !');
+      
+      if (oceanPixels > coloredPixels * 0.8) {
+        console.log('🌊 EXCELLENT: Majoritairement océan comme attendu !');
+      }
+      
+      // Afficher le canvas de test pour inspection visuelle
+      testCanvas.style.position = 'fixed';
+      testCanvas.style.top = '10px';
+      testCanvas.style.right = '10px';
+      testCanvas.style.border = '2px solid red';
+      testCanvas.style.zIndex = '9999';
+      testCanvas.title = 'Test rendu tuile (1,8) - CENTRÉ';
+      document.body.appendChild(testCanvas);
+      
+      console.log('🖼️ Canvas de test ajouté en haut-droite de la page');
+      
+      // Supprimer après 8 secondes pour plus de temps d'inspection
+      setTimeout(() => {
+        if (testCanvas.parentNode) {
+          testCanvas.parentNode.removeChild(testCanvas);
+          console.log('🗑️ Canvas de test supprimé');
+        }
+      }, 8000);
+    } else {
+      console.log('❌ ÉCHEC: Aucun pixel coloré dessiné');
+      
+      // Tester avec un quad encore plus simple
+      console.log('🔄 Test avec quad minimal...');
+      testCtx.fillStyle = 'white';
+      testCtx.fillRect(0, 0, 200, 200);
+      
+      const simpleQuad = [
+        { x: 75, y: 75 },
+        { x: 125, y: 75 },
+        { x: 125, y: 125 },
+        { x: 75, y: 125 }
+      ];
+      
+      const simpleSuccess = drawTransformedRectangle(testCtx, rectangle, simpleQuad, originalIndex);
+      console.log(`🔄 Test simple: ${simpleSuccess ? 'SUCCESS' : 'FAILED'}`);
+    }
+    
+  } catch (e) {
+    console.log(`❌ ERREUR: ${e.message}`);
+    console.log(`📍 Stack: ${e.stack}`);
+  }
+  
+  console.log('=== FIN TEST RENDU ===');
+};
+
+console.log('🔧 Test function loaded: window.testRenderTile18()');
+
+// === ANALYSER TEXTURE SOURCE ===
+window.analyzeSourceTexture18 = function() {
+  console.log('🗺️ === ANALYSE TEXTURE SOURCE TUILE (1,8) ===');
+  
+  if (!mapCanvas) {
+    console.log('❌ Texture source non chargée');
+    return;
+  }
+  
+  const gridX = 1, gridY = 8;
+  console.log(`📍 Tuile (${gridX},${gridY})`);
+  
+  // Coordonnées UV
+  const uMin = gridX / MESH_U;     // 1/30 = 0.033
+  const uMax = (gridX + 1) / MESH_U; // 2/30 = 0.067
+  const vMin = gridY / MESH_V;     // 8/20 = 0.4
+  const vMax = (gridY + 1) / MESH_V; // 9/20 = 0.45
+  
+  console.log(`🎯 Coordonnées UV:`);
+  console.log(`   U: ${uMin.toFixed(3)} à ${uMax.toFixed(3)}`);
+  console.log(`   V: ${vMin.toFixed(3)} à ${vMax.toFixed(3)}`);
+  
+  // Coordonnées pixel dans la texture
+  const texW = mapCanvas.width;
+  const texH = mapCanvas.height;
+  const pixelX1 = Math.round(uMin * texW);
+  const pixelX2 = Math.round(uMax * texW);
+  const pixelY1 = Math.round(vMin * texH);
+  const pixelY2 = Math.round(vMax * texH);
+  
+  console.log(`📏 Texture ${texW}x${texH}:`);
+  console.log(`   X: ${pixelX1} à ${pixelX2} (largeur: ${pixelX2 - pixelX1})`);
+  console.log(`   Y: ${pixelY1} à ${pixelY2} (hauteur: ${pixelY2 - pixelY1})`);
+  
+  // Échantillonner la texture source
+  const ctx = mapCanvas.getContext('2d', { willReadFrequently: true });
+  
+  console.log(`🎨 Échantillons texture source (5x5):`);
+  for (let row = 0; row < 5; row++) {
+    const y = pixelY1 + Math.floor(row * (pixelY2 - pixelY1) / 4);
+    let rowStr = `   Y=${y}: `;
+    
+    for (let col = 0; col < 5; col++) {
+      const x = pixelX1 + Math.floor(col * (pixelX2 - pixelX1) / 4);
+      
+      try {
+        const imageData = ctx.getImageData(x, y, 1, 1);
+        const [r, g, b, a] = imageData.data;
+        const isWhite = r > 240 && g > 240 && b > 240;
+        const isOcean = r < 50 && g > 40 && b > 30;
+        const type = isWhite ? '⚪' : (isOcean ? '🌊' : '🟫');
+        rowStr += `${type}(${r},${g},${b}) `;
+      } catch (e) {
+        rowStr += '❌ ';
+      }
+    }
+    console.log(rowStr);
+  }
+  
+  // Statistiques globales de la zone
+  let whiteCount = 0, oceanCount = 0, landCount = 0, totalCount = 0;
+  
+  for (let y = pixelY1; y < pixelY2; y++) {
+    for (let x = pixelX1; x < pixelX2; x++) {
+      try {
+        const imageData = ctx.getImageData(x, y, 1, 1);
+        const [r, g, b] = imageData.data;
+        totalCount++;
+        
+        if (r > 240 && g > 240 && b > 240) {
+          whiteCount++;
+        } else if (r < 50 && g > 40 && b > 30) {
+          oceanCount++;
+        } else {
+          landCount++;
+        }
+      } catch (e) {
+        // Ignore
+      }
+    }
+  }
+  
+  console.log(`📊 Statistiques zone (${totalCount} pixels):`);
+  console.log(`   🌊 Océan: ${oceanCount} (${(oceanCount/totalCount*100).toFixed(1)}%)`);
+  console.log(`   🟫 Terre: ${landCount} (${(landCount/totalCount*100).toFixed(1)}%)`);
+  console.log(`   ⚪ Blanc: ${whiteCount} (${(whiteCount/totalCount*100).toFixed(1)}%)`);
+  
+  if (oceanCount > totalCount * 0.5) {
+    console.log('✅ Zone majoritairement océanique - devrait être bleue');
+  } else if (whiteCount > totalCount * 0.1) {
+    console.log('⚠️ Trop de blanc dans la texture source !');
+  }
+  
+  console.log('=== FIN ANALYSE TEXTURE SOURCE ===');
+};
+
+console.log('🔧 Source analysis function loaded: window.analyzeSourceTexture18()');
+
+// === DEBUG PRÉCALCUL RECTANGLE TUILE (1,8) ===
+window.debugPrecalcTile18 = function() {
+  console.log('🔧 === DEBUG PRÉCALCUL RECTANGLE TUILE (1,8) ===');
+  
+  if (!mapCanvas || !currentMesh) {
+    console.log('❌ mapCanvas ou currentMesh non initialisé');
+    return;
+  }
+  
+  const gridX = 1, gridY = 8;
+  const originalIndex = gridX + gridY * MESH_U; // 241
+  console.log(`📍 Tuile (${gridX},${gridY}) → originalIndex=${originalIndex}`);
+  
+  // Trouver la face
+  const face = currentMesh.faces.find(f => f.originalIndex === originalIndex);
+  if (!face) {
+    console.log(`❌ Face ${originalIndex} non trouvée`);
+    return;
+  }
+  
+  console.log(`✅ Face trouvée: ${face.vertices.length} vertices`);
+  
+  // Analyser les vertices de la face
+  const vertices = face.vertices.map(vertexIndex => currentMesh.vertices[vertexIndex]);
+  console.log(`🗺️ Vertices de la face:`);
+  vertices.forEach((vertex, i) => {
+    console.log(`   V${i}: gridU=${vertex.gridU.toFixed(3)}, gridV=${vertex.gridV.toFixed(3)}`);
+  });
+  
+  // Calculer les coordonnées UV comme dans precalculateTextureRectangles
+  const u0 = vertices[0].gridU;
+  const v0_tex = vertices[0].gridV;
+  const u1 = vertices[1].gridU;
+  const v1_tex = vertices[1].gridV;
+  const u2 = vertices[2].gridU;
+  const v2_tex = vertices[2].gridV;
+  const u3 = vertices[3].gridU;
+  const v3_tex = vertices[3].gridV;
+  
+  const minU = Math.min(u0, u1, u2, u3);
+  const maxU = Math.max(u0, u1, u2, u3);
+  const minV = Math.min(v0_tex, v1_tex, v2_tex, v3_tex);
+  const maxV = Math.max(v0_tex, v1_tex, v2_tex, v3_tex);
+  
+  console.log(`📐 Calcul UV bounds:`);
+  console.log(`   minU=${minU.toFixed(3)}, maxU=${maxU.toFixed(3)}`);
+  console.log(`   minV=${minV.toFixed(3)}, maxV=${maxV.toFixed(3)}`);
+  
+  // Conversion en pixels
+  const texW = mapCanvas.width;
+  const texH = mapCanvas.height;
+  const srcX = Math.round(minU * texW);
+  const srcY = Math.round(minV * texH);
+  const srcW = Math.ceil((maxU - minU) * texW);
+  const srcH = Math.ceil((maxV - minV) * texH);
+  
+  console.log(`📏 Rectangle texture calculé:`);
+  console.log(`   srcX=${srcX}, srcY=${srcY}`);
+  console.log(`   srcW=${srcW}, srcH=${srcH}`);
+  
+  // Vérifier si c'est un fallback
+  const isFallback = srcW < 2 || srcH < 2;
+  console.log(`⚠️ Fallback requis: ${isFallback ? 'OUI' : 'NON'}`);
+  
+  if (isFallback) {
+    console.log(`🔄 Utilisation fallback 4x4 bleu océan`);
+    return;
+  }
+  
+  // Simuler la création du rectangle
+  console.log(`🎨 Simulation création rectangle...`);
+  
+  try {
+    // Créer canvas temporaire
+    const rectCanvas = document.createElement('canvas');
+    rectCanvas.width = srcW;
+    rectCanvas.height = srcH;
+    const rectCtx = rectCanvas.getContext('2d');
+    
+    // Copier depuis la texture source
+    rectCtx.drawImage(mapCanvas, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+    
+    console.log(`✅ Rectangle créé: ${rectCanvas.width}x${rectCanvas.height}`);
+    
+    // Analyser le contenu
+    const imageData = rectCtx.getImageData(0, 0, rectCanvas.width, rectCanvas.height);
+    let whitePixels = 0, oceanPixels = 0, totalPixels = imageData.data.length / 4;
+    
+    for (let i = 0; i < imageData.data.length; i += 4) {
+      const r = imageData.data[i];
+      const g = imageData.data[i + 1];
+      const b = imageData.data[i + 2];
+      
+      if (r > 240 && g > 240 && b > 240) {
+        whitePixels++;
+      } else if (r < 50 && g > 40 && b > 30) {
+        oceanPixels++;
+      }
+    }
+    
+    console.log(`📊 Contenu rectangle:`);
+    console.log(`   🌊 Océan: ${oceanPixels} (${(oceanPixels/totalPixels*100).toFixed(1)}%)`);
+    console.log(`   ⚪ Blanc: ${whitePixels} (${(whitePixels/totalPixels*100).toFixed(1)}%)`);
+    
+    if (whitePixels > totalPixels * 0.1) {
+      console.log(`🚨 PROBLÈME: ${(whitePixels/totalPixels*100).toFixed(1)}% de pixels blancs !`);
+    } else if (oceanPixels > totalPixels * 0.5) {
+      console.log(`✅ Rectangle correct: majoritairement océan`);
+    }
+    
+    // Afficher le rectangle pour inspection visuelle
+    rectCanvas.style.position = 'fixed';
+    rectCanvas.style.top = '10px';
+    rectCanvas.style.left = '10px';
+    rectCanvas.style.border = '2px solid blue';
+    rectCanvas.style.zIndex = '9999';
+    rectCanvas.style.imageRendering = 'pixelated';
+    rectCanvas.style.transform = 'scale(10)';
+    rectCanvas.style.transformOrigin = 'top left';
+    rectCanvas.title = `Rectangle tuile (1,8) - ${srcW}x${srcH}`;
+    document.body.appendChild(rectCanvas);
+    
+    console.log(`🖼️ Rectangle affiché en haut-gauche (échelle x10)`);
+    
+    // Supprimer après 5 secondes
+    setTimeout(() => {
+      if (rectCanvas.parentNode) {
+        rectCanvas.parentNode.removeChild(rectCanvas);
+        console.log('🗑️ Rectangle supprimé');
+      }
+    }, 5000);
+    
+  } catch (e) {
+    console.log(`❌ ERREUR création rectangle: ${e.message}`);
+  }
+  
+  console.log('=== FIN DEBUG PRÉCALCUL ===');
+};
+
+console.log('🔧 Precalc debug function loaded: window.debugPrecalcTile18()');
+
+// === DEBUG COMPLET TUILE (1,8) ===
+window.debugAllTile18 = function() {
+  console.log('\n🚀 === DEBUG COMPLET TUILE (1,8) ===\n');
+  
+  console.log('1️⃣ ANALYSE TEXTURE SOURCE:');
+  window.analyzeSourceTexture18();
+  
+  console.log('\n2️⃣ DEBUG PRÉCALCUL RECTANGLE:');
+  window.debugPrecalcTile18();
+  
+  console.log('\n3️⃣ DEBUG DONNÉES TUILE:');
+  window.debugTile18();
+  
+  console.log('\n4️⃣ TEST RENDU DIRECT:');
+  window.testRenderTile18();
+  
+  console.log('\n5️⃣ DIAGNOSTIC POURQUOI BLANC:');
+  window.debugWhyWhite18();
+  
+  console.log('\n🏁 === FIN DEBUG COMPLET ===\n');
+};
+
+console.log('🚀 Complete debug function loaded: window.debugAllTile18()');
+console.log('');
+console.log('💡 UTILISATION:');
+console.log('  window.debugAllTile18()     - Debug complet');
+console.log('  window.analyzeSourceTexture18() - Texture source seulement');
+console.log('  window.debugPrecalcTile18() - Précalcul seulement'); 
+console.log('  window.debugTile18()        - Données tuile seulement');
+console.log('  window.testRenderTile18()   - Test rendu seulement');
+console.log('  window.debugWhyWhite18()    - Diagnostic pourquoi blanc');
+
+// === VÉRIFIER POURQUOI LA TUILE (1,8) EST BLANCHE DANS L'APP ===
+window.debugWhyWhite18 = function() {
+  console.log('🔍 === POURQUOI LA TUILE (1,8) EST-ELLE BLANCHE ? ===');
+  
+  if (!currentMesh || !textureRectangles) {
+    console.log('❌ Mesh ou rectangles non initialisés');
+    return;
+  }
+  
+  const gridX = 1, gridY = 8;
+  const originalIndex = gridX + gridY * MESH_U;
+  const face = currentMesh.faces.find(f => f.originalIndex === originalIndex);
+  const rectangle = getBmp(gridX, gridY);
+  
+  if (!face || !rectangle) {
+    console.log('❌ Face ou rectangle manquant');
+    return;
+  }
+  
+  console.log(`📍 Tuile (${gridX},${gridY}) - Face ${originalIndex}`);
+  
+  // 1. Vérifier la visibilité de la face
+  console.log(`👁️ Visibilité: ${face.visibility || 'undefined'}`);
+  console.log(`🙈 Coins cachés: ${face.hiddenCorners || 'undefined'}`);
+  
+  if (showHiddenFaces && face.visibility === 'hidden') {
+    console.log('🚫 PROBLÈME: Face marquée comme cachée et showHiddenFaces=true');
+    return;
+  }
+  
+  // 2. Vérifier le quad projeté réel
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  
+  const quadProjected = face.vertices.map(vertexIndex => {
+    const vertex = currentMesh.vertices[vertexIndex];
+    const rotated = currentSurface === 'projective' 
+      ? rotate3DProjective(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ, rotShape)
+      : rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
+    const projected = projectIso(rotated.x, rotated.y, rotated.z, scale);
+    
+    return {
+      x: centerX + projected.x + cameraOffsetX,
+      y: centerY - projected.y + cameraOffsetY
+    };
+  });
+  
+  console.log(`🎯 Quad projeté réel:`);
+  let allOnScreen = true;
+  quadProjected.forEach((p, i) => {
+    const onScreen = p.x >= 0 && p.x <= canvas.width && p.y >= 0 && p.y <= canvas.height;
+    if (!onScreen) allOnScreen = false;
+    console.log(`   P${i}: (${p.x.toFixed(1)}, ${p.y.toFixed(1)}) ${onScreen ? '✅' : '❌ HORS ÉCRAN'}`);
+  });
+  
+  if (!allOnScreen) {
+    console.log('🚫 PROBLÈME: Quad partiellement ou totalement hors écran');
+  }
+  
+  // 3. Vérifier l'aire du quad
+  const [p0, p1, p2, p3] = quadProjected;
+  const area = Math.abs((p1.x - p0.x) * (p3.y - p0.y) - (p3.x - p0.x) * (p1.y - p0.y));
+  console.log(`📐 Aire: ${area.toFixed(2)} pixels²`);
+  
+  if (area < 1) {
+    console.log('🚫 PROBLÈME: Aire trop petite (< 1) - quad ignoré');
+    return;
+  }
+  
+  // 4. Vérifier les modes d'affichage
+  console.log(`🎭 Modes d'affichage:`);
+  console.log(`   showTexture: ${showTexture}`);
+  console.log(`   showColorDebug: ${showColorDebug}`);
+  console.log(`   showCoordinates: ${showCoordinates}`);
+  
+  if (!showTexture) {
+    console.log('🚫 PROBLÈME: showTexture=false - texture désactivée');
+    return;
+  }
+  
+  // 5. Vérifier le rectangle texture
+  console.log(`📦 Rectangle texture:`);
+  console.log(`   Taille: ${rectangle.width}x${rectangle.height}`);
+  console.log(`   Fallback: ${!!rectangle.isFallback}`);
+  console.log(`   Canvas existe: ${!!rectangle.canvas}`);
+  
+  if (rectangle.isFallback) {
+    console.log('⚠️ ATTENTION: Rectangle fallback utilisé');
+  }
+  
+  // 6. Test direct de drawTransformedRectangle sur le canvas principal
+  console.log(`🧪 Test direct sur canvas principal...`);
+  
+  try {
+    // Sauvegarder l'état du canvas
+    ctx.save();
+    
+    // Dessiner un contour rouge autour de la zone pour la localiser
+    ctx.strokeStyle = 'red';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.lineTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.lineTo(p3.x, p3.y);
+    ctx.closePath();
+    ctx.stroke();
+    
+    // Essayer de dessiner la texture
+    const success = drawTransformedRectangle(ctx, rectangle, quadProjected, originalIndex);
+    console.log(`✅ drawTransformedRectangle sur canvas principal: ${success ? 'SUCCESS' : 'FAILED'}`);
+    
+    ctx.restore();
+    
+    if (success) {
+      console.log('🎯 SUCCÈS: La fonction de rendu fonctionne sur le canvas principal');
+      console.log('💡 Le problème peut être dans la boucle de rendu ou l\'ordre des faces');
+    } else {
+      console.log('❌ ÉCHEC: La fonction de rendu échoue même sur le canvas principal');
+    }
+    
+    // Nettoyer le contour après 3 secondes
+    setTimeout(() => {
+      render(); // Re-render pour effacer le contour rouge
+    }, 3000);
+    
+  } catch (e) {
+    console.log(`❌ ERREUR test direct: ${e.message}`);
+    ctx.restore();
+  }
+  
+  // 7. Vérifier l'ordre de tri des faces
+  const faceIndex = currentMesh.faces.findIndex(f => f.originalIndex === originalIndex);
+  console.log(`📊 Position face dans le tri: ${faceIndex} / ${currentMesh.faces.length}`);
+  console.log(`⚖️ Profondeur avgZ: ${face.avgZ?.toFixed(3) || 'undefined'}`);
+  
+  // Vérifier s'il y a des faces qui se chevauchent
+  const overlappingFaces = currentMesh.faces.filter(otherFace => {
+    if (otherFace.originalIndex === originalIndex) return false;
+    return Math.abs(otherFace.avgZ - face.avgZ) < 0.1; // Profondeurs très proches
+  });
+  
+  if (overlappingFaces.length > 0) {
+    console.log(`⚠️ ${overlappingFaces.length} faces avec profondeur similaire (peuvent se chevaucher)`);
+    overlappingFaces.slice(0, 3).forEach(f => {
+      console.log(`   Face ${f.originalIndex}: avgZ=${f.avgZ?.toFixed(3)}`);
+    });
+  }
+  
+  console.log('=== FIN DIAGNOSTIC ===');
+};
+
+console.log('🔍 Diagnostic function loaded: window.debugWhyWhite18()');
+
+// === TEST GRILLE COLORÉE TUILE (1,8) ===
+window.testColoredGrid18 = function() {
+  console.log('🎨 === TEST GRILLE COLORÉE TUILE (1,8) ===');
+  
+  if (!currentMesh || !textureRectangles) {
+    console.log('❌ Mesh ou rectangles non initialisés');
+    return;
+  }
+  
+  const gridX = 1, gridY = 8;
+  const originalIndex = gridX + gridY * MESH_U;
+  const face = currentMesh.faces.find(f => f.originalIndex === originalIndex);
+  const rectangle = getBmp(gridX, gridY);
+  
+  if (!face || !rectangle) {
+    console.log('❌ Face ou rectangle manquant');
+    return;
+  }
+  
+  console.log(`📍 Test grille colorée tuile (${gridX},${gridY})`);
+  
+  // Calculer les vertices projetés
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  
+  const projectedVertices = currentMesh.vertices.map(vertex => {
+    const rotated = currentSurface === 'projective' 
+      ? rotate3DProjective(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ, rotShape)
+      : rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
+    const projected = projectIso(rotated.x, rotated.y, rotated.z, scale);
+    
+    return {
+      x: centerX + projected.x + cameraOffsetX,
+      y: centerY - projected.y + cameraOffsetY
+    };
+  });
+  
+  // Points du quad
+  const points = face.vertices.map(vertexIndex => projectedVertices[vertexIndex]);
+  console.log(`🎯 Points quad:`);
+  points.forEach((p, i) => {
+    console.log(`   P${i}: (${p.x.toFixed(1)}, ${p.y.toFixed(1)})`);
+  });
+  
+  // Vérifier les rectangles voisins
+  console.log(`🔍 Vérification rectangles voisins:`);
+  const neighbors = [
+    { name: 'BAS', x: gridX, y: gridY - 1, side: 'bottom' },
+    { name: 'DROITE', x: gridX + 1, y: gridY, side: 'right' },
+    { name: 'HAUT', x: gridX, y: gridY + 1, side: 'top' },
+    { name: 'GAUCHE', x: gridX - 1, y: gridY, side: 'left' }
+  ];
+  
+  neighbors.forEach(neighbor => {
+    if (neighbor.x >= 0 && neighbor.x < 30 && neighbor.y >= 0 && neighbor.y < 20) {
+      const neighborRect = getBmp(neighbor.x, neighbor.y);
+      console.log(`   ${neighbor.name} (${neighbor.x},${neighbor.y}): ${neighborRect ? `${neighborRect.width}x${neighborRect.height}` : 'NULL'}`);
+      
+      if (neighborRect) {
+        // Tester sampleBorderColors
+        const avgColor = sampleBorderColors(rectangle.canvas, neighborRect, neighbor.side);
+        console.log(`     Couleur moyenne: rgba(${avgColor.r},${avgColor.g},${avgColor.b},${avgColor.a.toFixed(2)})`);
+      }
+    } else {
+      console.log(`   ${neighbor.name} (${neighbor.x},${neighbor.y}): HORS LIMITES`);
+    }
+  });
+  
+  // FORCER le rendu de la grille colorée (sans throttling)
+  console.log(`🎨 Force rendu grille colorée...`);
+  
+  ctx.save();
+  
+  // Dessiner contour rouge pour localiser
+  ctx.strokeStyle = 'red';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  ctx.lineTo(points[1].x, points[1].y);
+  ctx.lineTo(points[2].x, points[2].y);
+  ctx.lineTo(points[3].x, points[3].y);
+  ctx.closePath();
+  ctx.stroke();
+  
+  // GRILLE COLORÉE FORCÉE (sans throttling ni condition isAnimating)
+  const MESH_U = 30;
+  const MESH_V = 20;
+  const gridU = face.originalIndex % MESH_U;
+  const gridV = Math.floor(face.originalIndex / MESH_U);
+  
+  ctx.lineWidth = 3; // Plus épais pour le test
+  
+  let segmentsDrawn = 0;
+  
+  // Segment bas
+  if (gridV > 0) {
+    const neighborRect = getNeighborRect(gridU, gridV - 1);
+    if (neighborRect && neighborRect.canvas) {
+      const avgColor = sampleBorderColors(rectangle.canvas, neighborRect, 'bottom');
+      console.log(`   🔻 Segment BAS: rgba(${avgColor.r},${avgColor.g},${avgColor.b},${avgColor.a.toFixed(2)})`);
+      
+      ctx.strokeStyle = `rgba(${avgColor.r},${avgColor.g},${avgColor.b},${avgColor.a})`;
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      ctx.lineTo(points[1].x, points[1].y);
+      ctx.stroke();
+      segmentsDrawn++;
+    }
+  }
+  
+  // Segment droite
+  if (gridU < MESH_U - 1) {
+    const neighborRect = getNeighborRect(gridU + 1, gridV);
+    if (neighborRect && neighborRect.canvas) {
+      const avgColor = sampleBorderColors(rectangle.canvas, neighborRect, 'right');
+      console.log(`   ▶️ Segment DROITE: rgba(${avgColor.r},${avgColor.g},${avgColor.b},${avgColor.a.toFixed(2)})`);
+      
+      ctx.strokeStyle = `rgba(${avgColor.r},${avgColor.g},${avgColor.b},${avgColor.a})`;
+      ctx.beginPath();
+      ctx.moveTo(points[1].x, points[1].y);
+      ctx.lineTo(points[2].x, points[2].y);
+      ctx.stroke();
+      segmentsDrawn++;
+    }
+  }
+  
+  // Segment haut
+  if (gridV < MESH_V - 1) {
+    const neighborRect = getNeighborRect(gridU, gridV + 1);
+    if (neighborRect && neighborRect.canvas) {
+      const avgColor = sampleBorderColors(rectangle.canvas, neighborRect, 'top');
+      console.log(`   🔺 Segment HAUT: rgba(${avgColor.r},${avgColor.g},${avgColor.b},${avgColor.a.toFixed(2)})`);
+      
+      ctx.strokeStyle = `rgba(${avgColor.r},${avgColor.g},${avgColor.b},${avgColor.a})`;
+      ctx.beginPath();
+      ctx.moveTo(points[2].x, points[2].y);
+      ctx.lineTo(points[3].x, points[3].y);
+      ctx.stroke();
+      segmentsDrawn++;
+    }
+  }
+  
+  // Segment gauche
+  if (gridU > 0) {
+    const neighborRect = getNeighborRect(gridU - 1, gridV);
+    if (neighborRect && neighborRect.canvas) {
+      const avgColor = sampleBorderColors(rectangle.canvas, neighborRect, 'left');
+      console.log(`   ◀️ Segment GAUCHE: rgba(${avgColor.r},${avgColor.g},${avgColor.b},${avgColor.a.toFixed(2)})`);
+      
+      ctx.strokeStyle = `rgba(${avgColor.r},${avgColor.g},${avgColor.b},${avgColor.a})`;
+      ctx.beginPath();
+      ctx.moveTo(points[3].x, points[3].y);
+      ctx.lineTo(points[0].x, points[0].y);
+      ctx.stroke();
+      segmentsDrawn++;
+    }
+  }
+  
+  ctx.restore();
+  
+  console.log(`✅ ${segmentsDrawn} segments colorés dessinés`);
+  
+  // Nettoyer après 5 secondes
+  setTimeout(() => {
+    render();
+    console.log('🧹 Grille colorée test nettoyée');
+  }, 5000);
+  
+  console.log('=== FIN TEST GRILLE COLORÉE ===');
+};
+
+console.log('🎨 Colored grid test function loaded: window.testColoredGrid18()');
+
+// === FONCTION POUR FORCER RECALCUL GRILLE COLORÉE ===
+window.forceColoredGridRecalc = function() {
+  console.log('🔄 Force recalcul grille colorée...');
+  
+  // Vider le cache des couleurs pour forcer recalcul
+  if (typeof colorCache !== 'undefined') {
+    colorCache.clear();
+    console.log('🗑️ Cache couleurs vidé');
+  }
+  
+  // Forcer un nouveau rendu
+  render();
+  console.log('✅ Grille colorée recalculée');
+};
+
+console.log('🔄 Force recalc function loaded: window.forceColoredGridRecalc()');
+
+// === ANALYSE VOISINS TUILE (1,8) ===
+window.analyzeNeighbors18 = function() {
+  console.log('🔍 === ANALYSE VOISINS TUILE (1,8) ===');
+  
+  const gridX = 1, gridY = 8;
+  const rectangle = getBmp(gridX, gridY);
+  
+  if (!rectangle) {
+    console.log('❌ Rectangle (1,8) non trouvé');
+    return;
+  }
+  
+  console.log(`📍 Tuile centrale (1,8):`);
+  console.log(`   Rectangle: ${rectangle.width}x${rectangle.height}`);
+  
+  // Analyser couleur centrale de la tuile (1,8)
+  const centerColor = sampleTextureColor(rectangle.canvas, 0.5, 0.5);
+  console.log(`   Couleur centre: rgba(${centerColor.r},${centerColor.g},${centerColor.b},${centerColor.a.toFixed(2)})`);
+  
+  // Analyser chaque voisin
+  const neighbors = [
+    { name: 'BAS', x: 1, y: 7, side: 'bottom' },
+    { name: 'DROITE', x: 2, y: 8, side: 'right' },
+    { name: 'HAUT', x: 1, y: 9, side: 'top' },
+    { name: 'GAUCHE', x: 0, y: 8, side: 'left' }
+  ];
+  
+  console.log(`🔍 Analyse des voisins:`);
+  
+  neighbors.forEach(neighbor => {
+    if (neighbor.x >= 0 && neighbor.x < 30 && neighbor.y >= 0 && neighbor.y < 20) {
+      const neighborRect = getBmp(neighbor.x, neighbor.y);
+      
+      if (neighborRect) {
+        // Couleur centre du voisin
+        const neighborCenter = sampleTextureColor(neighborRect.canvas, 0.5, 0.5);
+        
+        // Couleur moyenne calculée par sampleBorderColors
+        const avgColor = sampleBorderColors(rectangle.canvas, neighborRect, neighbor.side);
+        
+        console.log(`   ${neighbor.name} (${neighbor.x},${neighbor.y}):`);
+        console.log(`     Centre voisin: rgba(${neighborCenter.r},${neighborCenter.g},${neighborCenter.b},${neighborCenter.a.toFixed(2)})`);
+        console.log(`     Couleur bord: rgba(${avgColor.r},${avgColor.g},${avgColor.b},${avgColor.a.toFixed(2)})`);
+        
+        // Détection type de terrain
+        const isOcean = (neighborCenter.r < 50 && neighborCenter.g < 100 && neighborCenter.b > 100);
+        const isLand = (neighborCenter.r > 150 && neighborCenter.g > 150);
+        console.log(`     Type: ${isOcean ? '🌊 OCÉAN' : isLand ? '🏜️ TERRE' : '❓ AUTRE'}`);
+      } else {
+        console.log(`   ${neighbor.name} (${neighbor.x},${neighbor.y}): ❌ RECTANGLE NULL`);
+      }
+    } else {
+      console.log(`   ${neighbor.name} (${neighbor.x},${neighbor.y}): 🚫 HORS LIMITES`);
+    }
+  });
+  
+  console.log('=== FIN ANALYSE VOISINS ===');
+};
+
+console.log('🔍 Neighbors analysis function loaded: window.analyzeNeighbors18()');
+
+// === ANALYSE TEXTURE DIRECTE TUILE (1,8) ===
+window.analyzeTileTexture18 = function() {
+  console.log('🔬 === ANALYSE TEXTURE DIRECTE (1,8) ===');
+  
+  const rectangle = getBmp(1, 8);
+  if (!rectangle || !rectangle.canvas) {
+    console.log('❌ Rectangle (1,8) non trouvé');
+    return;
+  }
+  
+  const canvas = rectangle.canvas;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  
+  console.log(`📐 Canvas tuile (1,8): ${canvas.width}x${canvas.height}`);
+  
+  // Analyser plusieurs points de la tuile
+  const testPoints = [
+    { name: 'Centre', u: 0.5, v: 0.5 },
+    { name: 'Coin TL', u: 0.1, v: 0.1 },
+    { name: 'Coin TR', u: 0.9, v: 0.1 },
+    { name: 'Coin BL', u: 0.1, v: 0.9 },
+    { name: 'Coin BR', u: 0.9, v: 0.9 },
+    { name: 'Bord haut', u: 0.5, v: 0.05 },
+    { name: 'Bord bas', u: 0.5, v: 0.95 },
+    { name: 'Bord gauche', u: 0.05, v: 0.5 },
+    { name: 'Bord droit', u: 0.95, v: 0.5 }
+  ];
+  
+  console.log(`🎨 Analyse couleurs tuile (1,8):`);
+  
+  testPoints.forEach(point => {
+    const x = Math.floor(point.u * canvas.width);
+    const y = Math.floor(point.v * canvas.height);
+    
+    try {
+      const imageData = ctx.getImageData(x, y, 1, 1);
+      const [r, g, b, a] = imageData.data;
+      
+      const isOcean = (r < 100 && g < 150 && b > r);
+      const isLand = (r > 150 && g > 150);
+      const isSuspect = (r > 200 || g > 200);
+      
+      const type = isOcean ? '🌊' : isLand ? '🏜️' : isSuspect ? '⚠️' : '❓';
+      
+      console.log(`   ${point.name} UV(${point.u.toFixed(2)},${point.v.toFixed(2)}) px(${x},${y}): rgba(${r},${g},${b},${a}) ${type}`);
+    } catch (e) {
+      console.log(`   ${point.name}: ❌ Erreur lecture pixel`);
+    }
+  });
+  
+  // Vérifier si la texture source est correcte
+  console.log(`🔍 Vérification texture source:`);
+  console.log(`   Texture actuelle: "${currentMapName}"`);
+  
+  // Analyser l'histogramme des couleurs
+  try {
+    const fullImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = fullImageData.data;
+    
+    let oceanPixels = 0;
+    let landPixels = 0;
+    let suspectPixels = 0;
+    let totalPixels = canvas.width * canvas.height;
+    
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      
+      if (r < 100 && g < 150 && b > r) {
+        oceanPixels++;
+      } else if (r > 150 && g > 150) {
+        landPixels++;
+      } else if (r > 200 || g > 200) {
+        suspectPixels++;
+      }
+    }
+    
+    console.log(`📊 Histogramme tuile (1,8):`);
+    console.log(`   🌊 Océan: ${oceanPixels}/${totalPixels} (${(oceanPixels/totalPixels*100).toFixed(1)}%)`);
+    console.log(`   🏜️ Terre: ${landPixels}/${totalPixels} (${(landPixels/totalPixels*100).toFixed(1)}%)`);
+    console.log(`   ⚠️ Suspect: ${suspectPixels}/${totalPixels} (${(suspectPixels/totalPixels*100).toFixed(1)}%)`);
+    
+    if (suspectPixels > totalPixels * 0.1) {
+      console.log(`🚨 PROBLÈME: ${suspectPixels} pixels suspects (couleurs trop claires) dans une tuile océan !`);
+    }
+    
+  } catch (e) {
+    console.log(`❌ Erreur analyse histogramme: ${e.message}`);
+  }
+  
+  console.log('=== FIN ANALYSE TEXTURE ===');
+};
+
+console.log('🔬 Texture analysis function loaded: window.analyzeTileTexture18()');
+
+// === TRACER COORDONNÉES IMAGE SOURCE POUR (1,8) ===
+window.traceSourceCoords18 = function() {
+  console.log('📍 === TRACER COORDONNÉES IMAGE SOURCE (1,8) ===');
+  
+  if (!textureRectangles) {
+    console.log('❌ textureRectangles non initialisés');
+    return;
+  }
+  
+  const gridX = 1, gridY = 8;
+  const originalIndex = gridX + gridY * 30;
+  const rectangle = textureRectangles[originalIndex];
+  
+  if (!rectangle) {
+    console.log('❌ Rectangle (1,8) non trouvé');
+    return;
+  }
+  
+  console.log(`📐 Rectangle (1,8): ${rectangle.width}x${rectangle.height}`);
+  console.log(`🔍 Structure rectangle:`, Object.keys(rectangle));
+  
+  // Debug structure complète
+  console.log(`📊 Rectangle complet:`, rectangle);
+  
+  // Calculer coordonnées UV selon la grille logique
+  const expectedU = gridX / 30;  // 1/30 = 0.033
+  const expectedV = gridY / 20;  // 8/20 = 0.400
+  
+  console.log(`📍 UV attendus selon grille: u=${expectedU.toFixed(4)}, v=${expectedV.toFixed(4)}`);
+  
+  // Calculer coordonnées pixels dans l'image source selon grille logique
+  const expectedSourceX = Math.floor(expectedU * mapCanvas.width);
+  const expectedSourceY = Math.floor(expectedV * mapCanvas.height);
+     const sourceEndX = expectedSourceX + rectangle.width;
+   const sourceEndY = expectedSourceY + rectangle.height;
+  
+     console.log(`🖼️ Pixels dans image source (${mapCanvas.width}x${mapCanvas.height}):`);
+   console.log(`   X: ${expectedSourceX} → ${sourceEndX} (largeur: ${sourceEndX - expectedSourceX})`);
+   console.log(`   Y: ${expectedSourceY} → ${sourceEndY} (hauteur: ${sourceEndY - expectedSourceY})`);
+  
+  // Échantillonner quelques points pour validation
+  const testPoints = [
+    { name: 'Centre tuile', localU: 0.5, localV: 0.5 },
+    { name: 'Bord bas centre', localU: 0.5, localV: 0.95 },
+    { name: 'Bord droite centre', localU: 0.95, localV: 0.5 },
+    { name: 'Bord haut centre', localU: 0.5, localV: 0.05 },
+    { name: 'Bord gauche centre', localU: 0.05, localV: 0.5 }
+  ];
+  
+  console.log(`🎯 Points de test avec coordonnées source:`);
+  
+  testPoints.forEach(point => {
+    // Coordonnées dans la tuile 35x40
+    const tileX = Math.floor(point.localU * rectangle.width);
+    const tileY = Math.floor(point.localV * rectangle.height);
+    
+         // Coordonnées correspondantes dans l'image source
+     const sourceX = expectedSourceX + tileX;
+     const sourceY = expectedSourceY + tileY;
+    
+    // UV global dans l'image source
+    const globalU = sourceX / mapCanvas.width;
+    const globalV = sourceY / mapCanvas.height;
+    
+    console.log(`   ${point.name}:`);
+    console.log(`     Tuile: (${tileX},${tileY}) UV_local(${point.localU.toFixed(2)},${point.localV.toFixed(2)})`);
+    console.log(`     Source: (${sourceX},${sourceY}) UV_global(${globalU.toFixed(4)},${globalV.toFixed(4)})`);
+    
+    // Échantillonner couleur directement dans l'image source
+    try {
+      const sourceCtx = mapCanvas.getContext('2d');
+      const sourceImageData = sourceCtx.getImageData(sourceX, sourceY, 1, 1);
+      const [r, g, b, a] = sourceImageData.data;
+      
+      const isOcean = (r < 100 && g < 150 && b > r);
+      const isLand = (r > 150 && g > 150);
+      const type = isOcean ? '🌊' : isLand ? '🏜️' : '❓';
+      
+      console.log(`     Couleur source: rgba(${r},${g},${b},${a}) ${type}`);
+    } catch (e) {
+      console.log(`     ❌ Erreur lecture source: ${e.message}`);
+    }
+  });
+  
+  console.log('=== FIN TRACER COORDONNÉES ===');
+};
+
+console.log('📍 Source coords tracer loaded: window.traceSourceCoords18()');
+
+// === COULEURS PIXELS DEMANDÉS ===
+window.checkPixels18 = function() {
+  if (!mapCanvas) {
+    console.log('❌ Pas de mapCanvas');
+    return;
+  }
+  
+  const ctx = mapCanvas.getContext('2d');
+  
+  // Pixel milieu case (1,8): (34,320) + (35,40)/2 = (51.5, 340)
+  const centerX = 34 + 35/2;  // 51.5 → 51
+  const centerY = 320 + 40/2; // 340
+  
+  // Pixel (34,340) demandé
+  const testX = 34;
+  const testY = 340;
+  
+  try {
+    // Couleur centre
+    const centerData = ctx.getImageData(Math.floor(centerX), centerY, 1, 1);
+    const [r1, g1, b1, a1] = centerData.data;
+    
+    // Couleur test
+    const testData = ctx.getImageData(testX, testY, 1, 1);
+    const [r2, g2, b2, a2] = testData.data;
+    
+    console.log(`Pixel centre (${Math.floor(centerX)},${centerY}): rgba(${r1},${g1},${b1},${a1})`);
+    console.log(`Pixel test (${testX},${testY}): rgba(${r2},${g2},${b2},${a2})`);
+    
+  } catch (e) {
+    console.log('❌ Erreur lecture pixels');
+  }
+};
+
+console.log('🎯 Pixel checker loaded: window.checkPixels18()');
+
+// === FORCER RECALCUL AVEC SEGMENTS ===
+window.forceRecalcWithSegments = function() {
+  console.log('🔄 Force recalcul avec segments 1D...');
+  textureRectangles = null;
+  render();
+  console.log('✅ Recalcul terminé - segments 1D disponibles');
+};
+
+console.log('🔄 Force recalc with segments loaded: window.forceRecalcWithSegments()');

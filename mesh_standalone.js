@@ -18,14 +18,14 @@ function createMesh(width = 30, height = 20) {
   const all = [];
   
   // Générer toutes les cases de la grille
-  for (let i = 0; i < width; i++) {
-    for (let j = 0; j < height; j++) {
+  for (let x = 0; x < width; x++) {
+    for (let y = 0; y < height; y++) {
       // Case = 4 coins en coordonnées grille [0,0] à [width,height]
       const case_quad = [
-        [i, j],         // Bottom-left
-        [i + 1, j],     // Bottom-right  
-        [i + 1, j + 1], // Top-right
-        [i, j + 1]      // Top-left
+        [x, y],         // Bottom-left
+        [x + 1, y],     // Bottom-right  
+        [x + 1, y + 1], // Top-right
+        [x, y + 1]      // Top-left
       ];
       
       all.push(case_quad);
