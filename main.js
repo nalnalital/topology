@@ -88,7 +88,7 @@ async function detectAvailableTextures() {
         title: title
       });
       
-      pd('detectTextures', 'main.js', `✅ Texture: ${title} (${filename})`);
+      pd('detectTextures', 'main.js', `🟢 Texture: ${title} (${filename})`);
     }
     
     // Vérifier que la carte par défaut existe, sinon prendre la première
@@ -104,7 +104,7 @@ async function detectAvailableTextures() {
     return availableMaps;
     
   } catch (error) {
-    pd('detectTextures', 'main.js', `❌ Erreur scan répertoire: ${error.message}`);
+    pd('detectTextures', 'main.js', `🔴 Erreur scan répertoire: ${error.message}`);
     
     // Fallback: configuration minimale avec map.png par défaut
     availableMaps = [
@@ -181,7 +181,7 @@ function loadTexture(mapName = currentMapName) {
   
   const mapConfig = availableMaps.find(m => m.name === mapName);
   if (!mapConfig) {
-    pd('loadTexture', 'main.js', `❌ Carte inconnue: ${mapName}`);
+    pd('loadTexture', 'main.js', `🔴 Carte inconnue: ${mapName}`);
     return;
   }
   
@@ -202,7 +202,7 @@ function loadTexture(mapName = currentMapName) {
     // Réinitialiser le cache des rectangles pour nouvelle texture
     textureRectangles = null;
     
-    pd('loadTexture', 'main.js', `✅ Carte "${mapConfig.title}" chargée: ${img.width}x${img.height} pixels`);
+    pd('loadTexture', 'main.js', `🟢 Carte "${mapConfig.title}" chargée: ${img.width}x${img.height} pixels`);
     
     // AUTO-RETOUR 3D avec petit timeout pour éviter mélange tuiles
     if (previousSurfaceBeforeMapChange && previousSurfaceBeforeMapChange !== 'view2d') {
@@ -260,7 +260,7 @@ function loadTexture(mapName = currentMapName) {
     requestAnimationFrame(render);
   };
   img.onerror = function() {
-    pd('loadTexture', 'main.js', `❌ Erreur chargement carte: ${mapConfig.file}`);
+    pd('loadTexture', 'main.js', `🔴 Erreur chargement carte: ${mapConfig.file}`);
   };
   img.src = mapConfig.file;
 }
@@ -397,7 +397,7 @@ function precalculateTextureRectangles() {
     }
   });
   
-  pd('precalculateTextureRectangles', 'main.js', `✅ ${rectangles.filter(r => r !== null).length}/${rectangles.length} rectangles pré-calculés (UV stables)`);
+  pd('precalculateTextureRectangles', 'main.js', `🟢 ${rectangles.filter(r => r !== null).length}/${rectangles.length} rectangles pré-calculés (UV stables)`);
   
   return rectangles;
 }
@@ -540,8 +540,8 @@ function pd(func, file, msg) {
   // Détection automatique du type de message par icônes dans le message
   let icon = '📄'; // Par défaut : info neutre
   
-  if (msg.includes('✅') || msg.includes('✓')) {
-    icon = '✅'; // Succès
+  if (msg.includes('🟢') || msg.includes('✓')) {
+    icon = '🟢'; // Succès
   } else if (msg.includes('🔧') || msg.includes('⚡') || msg.includes('🔄')) {
     icon = '🔧'; // Technique/Process
   } else if (msg.includes('📊') || msg.includes('📍') || msg.includes('📐')) {
@@ -552,8 +552,8 @@ function pd(func, file, msg) {
     icon = '⏱️'; // Debug spécial timeout
   } else if (msg.includes('TRACE') || msg.includes('CALL') || msg.includes('→')) {
     icon = '🔍'; // Debug trace
-  } else if (msg.includes('❌') || msg.includes('ERREUR') || msg.includes('ERROR')) {
-    icon = '❌'; // Erreur explicite
+  } else if (msg.includes('🔴') || msg.includes('ERREUR') || msg.includes('ERROR')) {
+    icon = '🔴'; // Erreur explicite
   } else if (msg.includes('STABLE') || msg.includes('MORPHING') || msg.includes('Mode de vue')) {
     icon = '📊'; // Messages d'état
   }
@@ -564,7 +564,7 @@ function pd(func, file, msg) {
 // DEBUG: Afficher la structure complète du maillage
 function showMeshStructure() {
   if (!currentMesh) {
-    console.log('❌ Pas de maillage actuel');
+    console.log('🔴 Pas de maillage actuel');
     return;
   }
   
@@ -605,7 +605,7 @@ function showMeshStructure() {
     console.log(`Face[${i}]: centre texture (${face.textureCenterX}, ${face.textureCenterY}) → originalIndex=${face.originalIndex}`);
   }
   
-  console.log('\n✅ Structure affichée dans la console');
+  console.log('\n🟢 Structure affichée dans la console');
 }
 
 // === MAILLAGE AVEC ANIMATION ===
@@ -912,7 +912,7 @@ function morphToSurface(newSurfaceName, skipAnimation = false) {
 // Update animation barycentrique
 function updateMorphing() {
   if (!isAnimating || !currentMesh) {
-    pd('updateMorphing', 'main.js', `❌ SKIP: isAnimating=${isAnimating}, currentMesh=${!!currentMesh}`);
+    pd('updateMorphing', 'main.js', `🔴 SKIP: isAnimating=${isAnimating}, currentMesh=${!!currentMesh}`);
     return;
   }
   
@@ -954,7 +954,7 @@ function updateMorphing() {
   // Arrêter l'animation si tous les sommets ont convergé
   if (convergedCount === currentMesh.vertices.length) {
     isAnimating = false;
-    pd('updateMorphing', 'main.js', `✅ Animation terminée - tous sommets convergés vers ${targetSurface}`);
+    pd('updateMorphing', 'main.js', `🟢 Animation terminée - tous sommets convergés vers ${targetSurface}`);
   }
 }
 
@@ -1467,11 +1467,13 @@ function render() {
           lineWidth = isAnimating ? 0.3 : 0.1;
         }
         
-        // GRILLE TEMPORAIREMENT DÉSACTIVÉE - trop de getImageData()
+        // Grille simple restaurée (performance optimisée)
         if (showGrid) {
-          // Retour grille simple pour éviter explosion performance
-          ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-          ctx.lineWidth = 1;
+          if (Math.random() < 0.01) { // Debug 1% des faces
+            pd('renderGrid', 'main.js', `🔲 Rendu grille face ${face.originalIndex}: showGrid=${showGrid}`);
+          }
+          ctx.strokeStyle = 'rgba(0,0,0,0.8)'; // Plus visible pour debug
+          ctx.lineWidth = 2; // Plus épais pour debug
           const indices = face.vertices;
           ctx.beginPath();
           ctx.moveTo(projectedVertices[indices[0]].x, projectedVertices[indices[0]].y);
@@ -1510,6 +1512,23 @@ function render() {
       }
       
       // Dessiner le contour du quad
+      ctx.beginPath();
+      ctx.moveTo(projectedVertices[indices[0]].x, projectedVertices[indices[0]].y);
+      ctx.lineTo(projectedVertices[indices[1]].x, projectedVertices[indices[1]].y);
+      ctx.lineTo(projectedVertices[indices[2]].x, projectedVertices[indices[2]].y);
+      ctx.lineTo(projectedVertices[indices[3]].x, projectedVertices[indices[3]].y);
+      ctx.closePath();
+      ctx.stroke();
+    });
+  }
+  
+  // Grille supplémentaire si demandée (mode wireframe)
+  if (showGrid && !showTexture) {
+    pd('renderGridWireframe', 'main.js', `🔲 Rendu grille wireframe: ${sortedFaces.length} faces`);
+    sortedFaces.forEach(face => {
+      const indices = face.vertices;
+      ctx.strokeStyle = 'rgba(255,0,0,0.8)'; // Rouge pour debug wireframe
+      ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(projectedVertices[indices[0]].x, projectedVertices[indices[0]].y);
       ctx.lineTo(projectedVertices[indices[1]].x, projectedVertices[indices[1]].y);
@@ -1831,9 +1850,18 @@ document.querySelectorAll('input[name="mapChoice"]').forEach(radio => {
 // Drag rotation toujours activé (plus de contrôle)
 dragEnabled = true;
 
+// Gestionnaire pour le bouton grille 🌐 (toggle du checkbox caché)
+document.querySelector('label[for="showTexture"], .map-option:has(#showTexture)').addEventListener('click', (e) => {
+  e.preventDefault();
+  const checkbox = document.getElementById('showTexture');
+  checkbox.checked = !checkbox.checked;
+  checkbox.dispatchEvent(new Event('change'));
+});
+
 document.getElementById('showTexture').addEventListener('change', (e) => {
   showGrid = e.target.checked;
-  pd('showGrid', 'main.js', `Lignes de grille: ${showGrid ? 'ACTIVÉES' : 'DÉSACTIVÉES'}`);
+  pd('showGrid', 'main.js', `Lignes de grille: ${showGrid ? 'ACTIVÉES' : 'DÉSACTIVÉES'} - Scale actuel: ${scale.toFixed(1)}`);
+  render(); // Rendu direct pour voir changement
 });
 
 // Les boutons radio topology gèrent maintenant aussi la vue 2D
@@ -1977,7 +2005,8 @@ setInterval(() => {
   }
 }, 100);
 
-// Zoom avec molette
+// Zoom avec molette + rendu différé
+let wheelTimeout = null;
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
   const oldScale = scale;
@@ -1986,6 +2015,18 @@ canvas.addEventListener('wheel', (e) => {
   
   // Log du scale lors du wheel
   pd('wheel', 'main.js', `🔍 Scale: ${oldScale.toFixed(1)} → ${scale.toFixed(1)} (${e.deltaY > 0 ? 'zoom out' : 'zoom in'})`);
+  
+  // Annuler le timeout précédent s'il existe
+  if (wheelTimeout) {
+    clearTimeout(wheelTimeout);
+  }
+  
+  // Programmer un rendu dans 10ms (oneshot après fin du wheel)
+  wheelTimeout = setTimeout(() => {
+    render();
+    wheelTimeout = null;
+    pd('wheelRender', 'main.js', `🔄 Rendu après wheel terminé`);
+  }, 10);
 });
 
 // === CONTRÔLES TRANSLATION CAMÉRA (DIRECTIONS CORRIGÉES) ===
@@ -2010,7 +2051,7 @@ function debugOverlaps() {
   console.log('=== DEBUG OVERLAPS ===');
   
   if (!textureRectangles || textureRectangles.length === 0) {
-    console.log('❌ Pas de textureRectangles disponibles');
+    console.log('🔴 Pas de textureRectangles disponibles');
     return;
   }
   
@@ -2021,7 +2062,7 @@ function debugOverlaps() {
   
   // Si on a au moins 2 rectangles, analyser les chevauchements
   if (textureRectangles.length < 2) {
-    console.log('❌ Pas assez de rectangles pour tester les chevauchements');
+    console.log('🔴 Pas assez de rectangles pour tester les chevauchements');
     return;
   }
   
@@ -2042,7 +2083,7 @@ function debugOverlaps() {
           }
         }
       } catch (e) {
-        console.log(`❌ Erreur lors de la comparaison ${i} vs ${j}:`, e.message);
+        console.log(`🔴 Erreur lors de la comparaison ${i} vs ${j}:`, e.message);
         return; // Arrêter si erreur
       }
       totalChecks++;
@@ -2081,7 +2122,7 @@ function getBoundingBox(rect) {
     ys = [sq.p0.y, sq.p1.y, sq.p2.y, sq.p3.y];
   } else {
     // Structure inconnue - essayer de détecter
-    console.log('❌ Structure rectangle inconnue:', Object.keys(rect));
+    console.log('🔴 Structure rectangle inconnue:', Object.keys(rect));
     throw new Error('Structure rectangle non supportée');
   }
   
@@ -2218,7 +2259,7 @@ function getNeighborRect(gridU, gridV) {
 // Échantillonner couleurs le long du bord commun entre deux tuiles
 function sampleBorderColors(canvas1, canvas2, borderSide) {
   if (!canvas1 || !canvas2 || !canvas2.canvas) {
-    console.log(`❌ sampleBorderColors: canvas manquant`, { canvas1: !!canvas1, canvas2: !!canvas2, canvas2_canvas: !!canvas2?.canvas });
+    console.log(`🔴 sampleBorderColors: canvas manquant`, { canvas1: !!canvas1, canvas2: !!canvas2, canvas2_canvas: !!canvas2?.canvas });
     return { r: 128, g: 128, b: 128, a: 1 };
   }
   
