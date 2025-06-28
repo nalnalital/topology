@@ -13,10 +13,10 @@
 export const config = {
   // Coefficient barycentrique pour l'interpolation
   // 0.0 = transition instantanée, 0.99 = très lent
-  bary: 0.95,
+  bary: 0.85,
   
   // Seuil de convergence (en unités 3D)
-  convergenceThreshold: 0.01,
+  convergenceThreshold: 0.03,
   
   // Vitesse d'animation (ms entre frames)
   animationSpeed: 16, // ~60 FPS

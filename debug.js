@@ -45,24 +45,40 @@ function debugTileClick(tileX, tileY) {
   
   pd('tileClick', 'debug.js', `📦 Rectangle: ${rectangle.width}x${rectangle.height}, index=${rectangle.originalIndex}`);
   
-  // Analyser les segments disponibles (SEULEMENT RIGHT et BOTTOM)
+  // Analyser les segments disponibles (RIGHT+BOTTOM toujours, TOP+LEFT pour bordures globales)
   if (rectangle.segments) {
-    pd('tileClick', 'debug.js', `🎨 SEGMENTS DISPONIBLES (optimisé RIGHT+BOTTOM):`);
-    ['bottom', 'right'].forEach(side => {
+    pd('tileClick', 'debug.js', `🎨 SEGMENTS DISPONIBLES:`);
+    
+    // Vérifier tous les segments possibles
+    ['bottom', 'right', 'top', 'left'].forEach(side => {
       const segment = rectangle.segments[side];
       if (segment && segment.data) {
         const pixelCount = segment.data.length / 4;
         const firstPixel = `rgba(${segment.data[0]},${segment.data[1]},${segment.data[2]},${segment.data[3]})`;
         const lastPixel = `rgba(${segment.data[segment.data.length-4]},${segment.data[segment.data.length-3]},${segment.data[segment.data.length-2]},${segment.data[segment.data.length-1]})`;
-        pd('tileClick', 'debug.js', `   ${side.toUpperCase()}: ${pixelCount}px, ${segment.width}x${segment.height} | Premier=${firstPixel} Dernier=${lastPixel}`);
+        pd('tileClick', 'debug.js', `   ${side.toUpperCase()}: ✅ ${pixelCount}px, ${segment.width}x${segment.height} | Premier=${firstPixel} Dernier=${lastPixel}`);
       } else {
-        pd('tileClick', 'debug.js', `   ${side.toUpperCase()}: ❌ MANQUANT`);
+        // Expliquer pourquoi le segment n'est pas là
+        let reason = '';
+        if (side === 'top' && tileY > 0) reason = ' (fourni par voisin HAUT)';
+        else if (side === 'left' && tileX > 0) reason = ' (fourni par voisin GAUCHE)';
+        else if (side === 'top' && tileY === 0) reason = ' (ERREUR: devrait être calculé pour Y=0!)';
+        else if (side === 'left' && tileX === 0) reason = ' (ERREUR: devrait être calculé pour X=0!)';
+        
+        pd('tileClick', 'debug.js', `   ${side.toUpperCase()}: ❌ MANQUANT${reason}`);
       }
     });
     
-    // Expliquer pourquoi TOP et LEFT ne sont pas là
-    pd('tileClick', 'debug.js', `   TOP: ⏸️ Non calculé (fourni par voisin HAUT)`);
-    pd('tileClick', 'debug.js', `   LEFT: ⏸️ Non calculé (fourni par voisin GAUCHE)`);
+    // Expliquer la logique selon la position
+    if (tileX === 0 && tileY === 0) {
+      pd('tileClick', 'debug.js', `📍 COIN (0,0): Devrait avoir 4 segments (RIGHT+BOTTOM+LEFT+TOP)`);
+    } else if (tileX === 0) {
+      pd('tileClick', 'debug.js', `📍 COLONNE X=0: Devrait avoir 3 segments (RIGHT+BOTTOM+LEFT)`);
+    } else if (tileY === 0) {
+      pd('tileClick', 'debug.js', `📍 LIGNE Y=0: Devrait avoir 3 segments (RIGHT+BOTTOM+TOP)`);
+    } else {
+      pd('tileClick', 'debug.js', `📍 TUILE STANDARD: 2 segments (RIGHT+BOTTOM) - économie mémoire`);
+    }
   } else {
     pd('tileClick', 'debug.js', `❌ Pas de segments pré-calculés`);
   }
@@ -85,55 +101,59 @@ function debugTileClick(tileX, tileY) {
     }
   });
   
-  // Analyser quels bords seront dessinés selon la logique actuelle
-  pd('tileClick', 'debug.js', `🖌️ BORDS DESSINÉS (logique droite+bas):`);
+  // Analyser quels bords seront dessinés selon la nouvelle logique
+  pd('tileClick', 'debug.js', `🖌️ BORDS DESSINÉS (logique RIGHT+BOTTOM + bordures globales):`);
   
-  // Bord DROITE
+  // Bord RIGHT
   if (tileX < MESH_U - 1) {
     const rightNeighbor = getBmp(tileX + 1, tileY);
     if (rightNeighbor) {
-      pd('tileClick', 'debug.js', `   DROITE: ✅ Sera dessiné (voisin droite existe)`);
+      pd('tileClick', 'debug.js', `   RIGHT: ✅ Sera dessiné (voisin droite existe)`);
     } else {
-      pd('tileClick', 'debug.js', `   DROITE: ❌ Ne sera pas dessiné (pas de voisin droite)`);
+      pd('tileClick', 'debug.js', `   RIGHT: ❌ Ne sera pas dessiné (pas de voisin droite)`);
     }
   } else {
-    pd('tileClick', 'debug.js', `   DROITE: ❌ Bord extrême (X=${tileX})`);
+    pd('tileClick', 'debug.js', `   RIGHT: ❌ Bord extrême (X=${tileX})`);
   }
   
-  // Bord BAS  
+  // Bord BOTTOM  
   if (tileY < MESH_V - 1) {
     const bottomNeighbor = getBmp(tileX, tileY + 1);
     if (bottomNeighbor) {
-      pd('tileClick', 'debug.js', `   BAS: ✅ Sera dessiné (voisin bas existe)`);
+      pd('tileClick', 'debug.js', `   BOTTOM: ✅ Sera dessiné (voisin bas existe)`);
     } else {
-      pd('tileClick', 'debug.js', `   BAS: ❌ Ne sera pas dessiné (pas de voisin bas)`);
+      pd('tileClick', 'debug.js', `   BOTTOM: ❌ Ne sera pas dessiné (pas de voisin bas)`);
     }
   } else {
-    pd('tileClick', 'debug.js', `   BAS: ❌ Bord extrême (Y=${tileY})`);
+    pd('tileClick', 'debug.js', `   BOTTOM: ❌ Bord extrême (Y=${tileY})`);
   }
   
-  // Bords qui ne seront PAS dessinés par cette tuile
-  pd('tileClick', 'debug.js', `   GAUCHE: ⏸️ Sera dessiné par voisin gauche (${tileX-1},${tileY})`);
-  pd('tileClick', 'debug.js', `   HAUT: ⏸️ Sera dessiné par voisin haut (${tileX},${tileY-1})`);
+  // Bords LEFT et TOP conditionnels
+  if (tileX === 0) {
+    pd('tileClick', 'debug.js', `   LEFT: ✅ Sera dessiné (bordure globale X=0)`);
+  } else {
+    pd('tileClick', 'debug.js', `   LEFT: ⏸️ Sera dessiné par voisin gauche (${tileX-1},${tileY})`);
+  }
+  
+  if (tileY === 0) {
+    pd('tileClick', 'debug.js', `   TOP: ✅ Sera dessiné (bordure globale Y=0)`);
+  } else {
+    pd('tileClick', 'debug.js', `   TOP: ⏸️ Sera dessiné par voisin haut (${tileX},${tileY-1})`);
+  }
   
   pd('tileClick', 'debug.js', `🔚 FIN DEBUG TUILE (${tileX},${tileY})`);
   
   // ANALYSE AUTOMATIQUE DES VECTEURS COULEURS
   pd('tileClick', 'debug.js', `🎨 === ANALYSE AUTOMATIQUE VECTEURS COULEURS ===`);
   
-  // Analyser segment RIGHT
-  if (rectangle.segments && rectangle.segments.right) {
-    debugSegmentColors(tileX, tileY, 'right');
-  } else {
-    pd('tileClick', 'debug.js', `❌ Segment RIGHT non disponible pour analyse`);
-  }
-  
-  // Analyser segment BOTTOM  
-  if (rectangle.segments && rectangle.segments.bottom) {
-    debugSegmentColors(tileX, tileY, 'bottom');
-  } else {
-    pd('tileClick', 'debug.js', `❌ Segment BOTTOM non disponible pour analyse`);
-  }
+  // Analyser tous les segments disponibles
+  ['right', 'bottom', 'top', 'left'].forEach(segmentSide => {
+    if (rectangle.segments && rectangle.segments[segmentSide]) {
+      debugSegmentColors(tileX, tileY, segmentSide);
+    } else {
+      pd('tileClick', 'debug.js', `❌ Segment ${segmentSide.toUpperCase()} non disponible pour analyse`);
+    }
+  });
 }
 
 /**
@@ -182,10 +202,27 @@ function debugSegmentColors(tileX, tileY, segmentSide = 'right') {
         segmentSrcW = 1;
         segmentSrcH = srcH;
         break;
+      case 'top':
+        segmentSrcX = srcX;
+        segmentSrcY = srcY + srcH - 1;  // ← DERNIÈRE ligne pour TOP
+        segmentSrcW = srcW;
+        segmentSrcH = 1;
+        break;
+      case 'left':
+        segmentSrcX = srcX;  // ← PREMIÈRE colonne pour LEFT
+        segmentSrcY = srcY;
+        segmentSrcW = 1;
+        segmentSrcH = srcH;
+        break;
     }
     
     pd('segmentColors', 'debug.js', `🎯 Segment ${segmentSide} source: (${segmentSrcX},${segmentSrcY}) ${segmentSrcW}x${segmentSrcH}`);
     pd('segmentColors', 'debug.js', `🔄 CORRECTION: segment BOTTOM utilise maintenant srcY (première ligne) au lieu de srcY+srcH-1`);
+    
+    // ALERTE si coordonnées dépassent la texture
+    if (segmentSrcX + segmentSrcW > texW || segmentSrcY + segmentSrcH > texH) {
+      pd('segmentColors', 'debug.js', `⚠️ DÉPASSEMENT TEXTURE ! Segment va de (${segmentSrcX},${segmentSrcY}) à (${segmentSrcX + segmentSrcW},${segmentSrcY + segmentSrcH}) mais texture = ${texW}x${texH}`);
+    }
   }
   
   const segment = rectangle.segments[segmentSide];
@@ -255,7 +292,9 @@ window.debugSegmentColors = debugSegmentColors;
  * Debug des coins UV pour vérifier mapping texture
  */
 function debugUVCorners() {
-  if (!currentMesh || !currentMesh.vertices) {
+  // Récupérer currentMesh depuis window
+  const mesh = window.currentMesh;
+  if (!mesh || !mesh.vertices) {
     pd('debugUV', 'debug.js', '❌ Pas de mesh actuel');
     return;
   }
@@ -271,8 +310,8 @@ function debugUVCorners() {
   pd('debugUV', 'debug.js', '🔍 ANALYSE COINS UV:');
   
   corners.forEach(corner => {
-    if (corner.index < currentMesh.vertices.length) {
-      const vertex = currentMesh.vertices[corner.index];
+    if (corner.index < mesh.vertices.length) {
+      const vertex = mesh.vertices[corner.index];
       pd('debugUV', 'debug.js', `   ${corner.name}: UV(${vertex.u.toFixed(3)}, ${vertex.v.toFixed(3)}) XYZ(${vertex.x.toFixed(2)}, ${vertex.y.toFixed(2)}, ${vertex.z.toFixed(2)})`);
     }
   });
@@ -752,4 +791,5 @@ window.analyzeSourceTexture18 = function() {
   }
 };
 
+console.log('🔧 Debug module loaded - Functions available: debugTileClick, debugOverlaps, debugTileRendering, debugUVCorners'); 
 console.log('🔧 Debug module loaded - Functions available: debugTileClick, debugOverlaps, debugTileRendering, debugUVCorners'); 

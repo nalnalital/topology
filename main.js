@@ -107,6 +107,7 @@ function getBmp(x, y) {
 window.getBmp = getBmp;
 window.MESH_U = MESH_U;
 window.MESH_V = MESH_V;
+// currentMesh sera exporté dynamiquement quand il sera initialisé
 
 // === MODE COULEUR DEBUG ===
 let showColorDebug = false; // Mode couleur coordonnées (bouton 🎨)
@@ -597,29 +598,63 @@ function precalculateTextureRectangles() {
       // Remettre les données corrigées
       rectCtx.putImageData(imageData, 0, 0);
       
-      // PRÉ-CALCULER SEULEMENT LES SEGMENTS RIGHT et BOTTOM (logique optimisée)
+      // PRÉ-CALCULER SEGMENTS : RIGHT+BOTTOM toujours, TOP+LEFT pour bordures globales
       const segments = {};
       
+      // Calculer coordonnées grille pour cette face
+      const gridX = face.originalIndex % MESH_U;
+      const gridY = Math.floor(face.originalIndex / MESH_U);
+      
       try {
-        // Segment BOTTOM (horizontal 35x1) - CORRECTION: utiliser srcY au lieu de srcY + srcH - 1
+        // Calculer largeur/hauteur uniformes pour segments cohérents
+        const uniformTileW = Math.floor(texW / MESH_U); // 35px théorique
+        const uniformTileH = Math.floor(texH / MESH_V); // 40px théorique
+        
+        // DEBUG: Afficher les dimensions pour diagnostic
+        if (gridY >= 18) {
+          pd('segmentDebug', 'main.js', `🔍 Tuile (${gridX},${gridY}): texture=${texW}x${texH}, uniforme=${uniformTileW}x${uniformTileH}, srcPos=(${srcX},${srcY}) srcSize=${srcW}x${srcH}`);
+        }
+        
+        // Segment BOTTOM (horizontal uniforme) - CORRECTION: utiliser srcY au lieu de srcY + srcH - 1
         segments.bottom = mapCanvas.getContext('2d').getImageData(
           Math.max(0, srcX), Math.max(0, srcY),
-          Math.min(srcW, texW - srcX), 1
+          srcW, 1  // 🎯 CORRECTION: utiliser srcW réel au lieu de uniformTileW
         );
         
-        // Segment RIGHT (vertical 1x40) - toujours calculé
+        // Segment RIGHT (vertical uniforme) - toujours calculé
         segments.right = mapCanvas.getContext('2d').getImageData(
           Math.max(0, srcX + srcW - 1), Math.max(0, srcY),
-          1, Math.min(srcH, texH - srcY)
+          1, srcH  // 🎯 CORRECTION: utiliser srcH réel au lieu de uniformTileH
         );
         
-        // TOP et LEFT ne sont PAS calculés (économie mémoire et CPU)
-        // Ils seront fournis par les tuiles voisines (HAUT et GAUCHE)
+        // SEGMENTS SUPPLÉMENTAIRES pour bordures globales
+        if (gridX === 0) {
+          // Bordure LEFT pour colonne X=0 (pas de voisin gauche)
+          segments.left = mapCanvas.getContext('2d').getImageData(
+            Math.max(0, srcX), Math.max(0, srcY),
+            1, srcH  // 🎯 CORRECTION: utiliser srcH réel
+          );
+        }
+        
+        if (gridY === 0) {
+          // Bordure TOP pour ligne Y=0 (pas de voisin haut)
+          segments.top = mapCanvas.getContext('2d').getImageData(
+            Math.max(0, srcX), Math.max(0, srcY + srcH - 1),
+            srcW, 1  // 🎯 CORRECTION: utiliser srcW réel
+          );
+        }
         
       } catch (e) {
-        // Fallback si erreur
-        const fallbackData = new ImageData(new Uint8ClampedArray([20, 50, 80, 255]), 1, 1);
-        segments.bottom = segments.right = fallbackData;
+        // Fallback si erreur - créer segments uniformes
+        const uniformTileW = Math.floor(texW / MESH_U);
+        const uniformTileH = Math.floor(texH / MESH_V);
+        const fallbackDataH = new ImageData(new Uint8ClampedArray(Array(uniformTileW * 4).fill([20, 50, 80, 255]).flat()), uniformTileW, 1);
+        const fallbackDataV = new ImageData(new Uint8ClampedArray(Array(uniformTileH * 4).fill([20, 50, 80, 255]).flat()), 1, uniformTileH);
+        
+        segments.bottom = fallbackDataH;
+        segments.right = fallbackDataV;
+        if (gridX === 0) segments.left = fallbackDataV;
+        if (gridY === 0) segments.top = fallbackDataH;
       }
 
       rectangles[face.originalIndex] = {
@@ -1134,7 +1169,8 @@ function morphToSurface(newSurfaceName, skipAnimation = false) {
   }
   
   // Remplacer le maillage corrompu par un nouveau propre
-  currentMesh = newMesh;
+      currentMesh = newMesh;
+    window.currentMesh = currentMesh; // Export pour debug.js
   
   // PLUS BESOIN de réinitialiser le cache rectangles - structure UV identique !
   // textureRectangles reste valide car même grille 30x20, mêmes UV, même texture
@@ -1368,12 +1404,18 @@ function translateCamera(deltaX, deltaY) {
   cameraOffsetX += deltaX * moveSpeed;
   cameraOffsetY += deltaY * moveSpeed;
   pd('translateCamera', 'main.js', `📹 Caméra déplacée: X=${Math.round(cameraOffsetX)} Y=${Math.round(cameraOffsetY)}`);
+  
+  // 🎯 CORRECTION: Forcer le rendu après déplacement caméra
+  requestAnimationFrame(render);
 }
 
 function resetCameraPosition() {
   cameraOffsetX = 0;
   cameraOffsetY = 0;
   pd('resetCamera', 'main.js', `📹 Position caméra réinitialisée`);
+  
+  // 🎯 CORRECTION: Forcer le rendu après reset caméra
+  requestAnimationFrame(render);
 }
 
 
@@ -1503,10 +1545,13 @@ function render() {
   // Initialiser le maillage si nécessaire
   if (!currentMesh) {
     currentMesh = initializeMesh(surfaces[currentSurface]);
+    window.currentMesh = currentMesh; // Export pour debug.js
   }
   
-  // Update animation
-  updateMorphing();
+  // Update animation (seulement si morphing actif)
+  if (isAnimating) {
+    updateMorphing();
+  }
   
   // Calculer visibilité des faces si activé
   calculateFaceVisibility();
@@ -2540,30 +2585,36 @@ function drawColoredGrid(ctx, face, projectedVertices, rectangle) {
     projectedVertices[indices[3]]  // Top-left     (P3)
   ];
   
-  // SEULEMENT Segment droite (entre bottom-right et top-right)
+  // Segment RIGHT (entre bottom-right et top-right)
   if (gridU < MESH_U - 1) { // Pas le bord droit
     const neighborRect = getNeighborRect(gridU + 1, gridV);
     if (neighborRect && neighborRect.canvas) {
       // Utiliser directement le segment pré-calculé au lieu de la couleur moyennée
       const segmentData = rectangle.segments ? rectangle.segments.right : null;
-      
-      // DEBUG NETTOYÉ - RIEN
-      
       drawColoredSegment(ctx, points[1], points[2], segmentData);
     }
   }
   
-  // SEULEMENT Segment bas (entre bottom-left et bottom-right)  
+  // Segment BOTTOM (entre bottom-left et bottom-right)  
   if (gridV < MESH_V - 1) { // Pas le bord inférieur
     const neighborRect = getNeighborRect(gridU, gridV + 1);
     if (neighborRect && neighborRect.canvas) {
       // Utiliser directement le segment pré-calculé au lieu de la couleur moyennée
       const segmentData = rectangle.segments ? rectangle.segments.bottom : null;
-      
-      // DEBUG NETTOYÉ - RIEN
-      
       drawColoredSegment(ctx, points[0], points[1], segmentData);
     }
+  }
+  
+  // SEGMENTS SUPPLÉMENTAIRES pour bordures globales
+  
+  // Segment LEFT (entre top-left et bottom-left) - seulement pour colonne X=0
+  if (gridU === 0 && rectangle.segments && rectangle.segments.left) {
+    drawColoredSegment(ctx, points[3], points[0], rectangle.segments.left);
+  }
+  
+  // Segment TOP (entre top-left et top-right) - seulement pour ligne Y=0  
+  if (gridV === 0 && rectangle.segments && rectangle.segments.top) {
+    drawColoredSegment(ctx, points[3], points[2], rectangle.segments.top);
   }
 }
 
