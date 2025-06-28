@@ -1,9 +1,10 @@
 // File: sphere.js - Sphere surface
 // Desc: En français, dans l'architecture, je suis une sphère simple
-// Version 1.0.0 (création initiale)
+// Version 1.0.1 (inversion X)
 // Author: DNAvatar.org - Arnaud Maignan
-// Date: December 16, 2024 00:45 UTC+1
+// Date: December 16, 2024 01:15 UTC+1
 // Logs:
+//   - v1.0.1: X coordinate inverted for correct texture projection
 //   - v1.0.0: Initial sphere implementation with UV mapping
 
 // Icône topologique simple
@@ -23,7 +24,7 @@ export function sphere(u, v) {
   const radius = 2.5;               // Rayon de la sphère
   
   return {
-    x: radius * Math.sin(theta) * Math.cos(phi),
+    x: -radius * Math.sin(theta) * Math.cos(phi), // X inversé pour projection correcte
     y: radius * Math.cos(theta),    // Y = hauteur (pôle nord en haut)
     z: radius * Math.sin(theta) * Math.sin(phi)
   };

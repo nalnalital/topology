@@ -254,12 +254,9 @@ function generateTextureInterface() {
 
 // === CHARGEMENT TEXTURE ===
 function loadTexture(mapName = currentMapName) {
-  pd('loadTexture', 'main.js', `🔍 Recherche carte: "${mapName}" dans ${availableMaps.length} disponibles`);
-  pd('loadTexture', 'main.js', `📋 Cartes disponibles: ${availableMaps.map(m => m.name).join(', ')}`);
-  
   const mapConfig = availableMaps.find(m => m.name === mapName);
   if (!mapConfig) {
-    pd('loadTexture', 'main.js', `🔴 Carte inconnue: ${mapName}`);
+    pd('loadTexture', 'main.js', `🔴 Texture inconnue: ${mapName}`);
     return;
   }
   
@@ -280,34 +277,41 @@ function loadTexture(mapName = currentMapName) {
     // Réinitialiser le cache des rectangles pour nouvelle texture
     textureRectangles = null;
     
-    // Debug: forcer recalcul pour tester système fallback robuste
-    pd('loadTexture', 'main.js', `🔧 Cache rectangles réinitialisé - prochaine render() recalculera avec système fallback robuste`);
-    
-    pd('loadTexture', 'main.js', `🟢 Carte "${mapConfig.title}" chargée: ${img.width}x${img.height} pixels`);
+    pd('loadTexture', 'main.js', `🟢 Texture "${mapConfig.title}" chargée`);
     
     // AUTO-RETOUR 3D avec petit timeout pour éviter mélange tuiles
     if (previousSurfaceBeforeMapChange && previousSurfaceBeforeMapChange !== 'view2d') {
-      pd('loadTexture', 'main.js', `⚡ Auto-retour 3D vers: ${previousSurfaceBeforeMapChange} (timeout 20ms)`);
+      pd('loadTexture', 'main.js', `⚡ Auto-retour 3D vers: ${previousSurfaceBeforeMapChange}`);
       
       // Petit timeout pour laisser le recalcul se stabiliser
       setTimeout(() => {
         // Retourner à la surface précédente SANS ANIMATION
         view2DMode = false;
+        currentSurface = previousSurfaceBeforeMapChange; // FORCER la surface cible
         morphToSurface(previousSurfaceBeforeMapChange, true); // SKIP ANIMATION
         
-        // RÉINITIALISER les angles avec config de la surface 3D
-        if (config.privilegedAngles[previousSurfaceBeforeMapChange]) {
+        // RESTAURER les angles mémorisés (au lieu des angles privilégiés)
+        if (previousAnglesBeforeMapChange) {
+          rotX = previousAnglesBeforeMapChange.rotX;
+          rotY = previousAnglesBeforeMapChange.rotY;
+          rotZ = previousAnglesBeforeMapChange.rotZ;
+          scale = previousAnglesBeforeMapChange.scale;
+          pd('loadTexture', 'main.js', `📐 Angles restaurés: X=${Math.round(rotX * 180 / Math.PI)}° Y=${Math.round(rotY * 180 / Math.PI)}° Z=${Math.round(rotZ * 180 / Math.PI)}° Scale=${scale.toFixed(1)}`);
+        } else if (config.privilegedAngles[previousSurfaceBeforeMapChange]) {
+          // Fallback : angles privilégiés si pas de mémorisation
           const angles = config.privilegedAngles[previousSurfaceBeforeMapChange];
           rotX = (angles.rotX * Math.PI) / 180;
           rotY = (angles.rotY * Math.PI) / 180;
           rotZ = (angles.rotZ * Math.PI) / 180;
           scale = angles.scale;
+          pd('loadTexture', 'main.js', `📐 Angles privilégiés appliqués (fallback)`);
         } else {
           // Angles par défaut si pas de config spécifique
           rotX = (config.defaultRotationX * Math.PI) / 180;
           rotY = (config.defaultRotationY * Math.PI) / 180;
           rotZ = 0;
           scale = getOptimalScale(previousSurfaceBeforeMapChange);
+          pd('loadTexture', 'main.js', `📐 Angles par défaut appliqués (fallback)`);
         }
         updateAngleDisplay();
         
@@ -322,11 +326,22 @@ function loadTexture(mapName = currentMapName) {
         if (overlay) {
           overlay.classList.remove('active');
           overlay.innerHTML = ''; // Nettoyer capture
-          pd('loadTexture', 'main.js', `🎭 Cache misère désactivé (overlay masqué + capture nettoyée)`);
+          pd('loadTexture', 'main.js', `🎭 Cache misère désactivé`);
         }
+        
+        // DÉSACTIVER moveOverlay pour réactiver contrôles caméra en 3D
+        const moveOverlay = document.getElementById('moveOverlay');
+        if (moveOverlay) {
+          moveOverlay.classList.remove('active');
+          pd('loadTexture', 'main.js', `🔓 Contrôles caméra réactivés`);
+        }
+        
+        // FORCER rendu pour afficher le retour 3D immédiatement
+        requestAnimationFrame(render);
         
         // Réinitialiser pour prochain changement
         previousSurfaceBeforeMapChange = null;
+        previousAnglesBeforeMapChange = null;
       }, 20); // 20ms timeout pour stabilisation recalcul
     } else {
       // MASQUER OVERLAY même en 2D après chargement texture
@@ -341,13 +356,14 @@ function loadTexture(mapName = currentMapName) {
     requestAnimationFrame(render);
   };
   img.onerror = function() {
-    pd('loadTexture', 'main.js', `🔴 Erreur chargement carte: ${mapConfig.file}`);
+    pd('loadTexture', 'main.js', `🔴 Erreur chargement: ${mapConfig.file}`);
   };
   img.src = mapConfig.file;
 }
 
-// Variable pour mémoriser surface précédente
+// Variables pour mémoriser l'état précédent
 let previousSurfaceBeforeMapChange = null;
+let previousAnglesBeforeMapChange = null;
 
 // Changer de carte
 function changeMap(mapName) {
@@ -365,12 +381,20 @@ function changeMap(mapName) {
       overlay.appendChild(captureImg);
       overlay.classList.add('active');
       
-      pd('changeMap', 'main.js', `🎭 Cache misère activé (capture canvas sur overlay canvas uniquement)`);
+      pd('changeMap', 'main.js', `🎭 Cache misère activé`);
     }
     
-    // Mémoriser surface précédente si on était en 3D
+    // Mémoriser surface ET angles précédents si on était en 3D
     if (!view2DMode) {
       previousSurfaceBeforeMapChange = currentSurface;
+      // Mémoriser les angles actuels (en radians)
+      previousAnglesBeforeMapChange = {
+        rotX: rotX,
+        rotY: rotY,
+        rotZ: rotZ,
+        scale: scale
+      };
+      pd('changeMap', 'main.js', `📐 Angles mémorisés: X=${Math.round(rotX * 180 / Math.PI)}° Y=${Math.round(rotY * 180 / Math.PI)}° Z=${Math.round(rotZ * 180 / Math.PI)}° Scale=${scale.toFixed(1)}`);
     }
     
     // FORCER le passage par 2D pour recalculer tout
@@ -405,7 +429,7 @@ function changeMap(mapName) {
     // Charger la nouvelle texture (avec callback auto-retour 3D)
     loadTexture(mapName);
     
-    pd('changeMap', 'main.js', `🗺️ Changement vers carte: ${mapName}`);
+    pd('changeMap', 'main.js', `🗺️ Changement texture: ${mapName}`);
   }
 }
 
@@ -1403,7 +1427,7 @@ function translateCamera(deltaX, deltaY) {
   const moveSpeed = 10; // Vitesse de déplacement
   cameraOffsetX += deltaX * moveSpeed;
   cameraOffsetY += deltaY * moveSpeed;
-  pd('translateCamera', 'main.js', `📹 Caméra déplacée: X=${Math.round(cameraOffsetX)} Y=${Math.round(cameraOffsetY)}`);
+
   
   // 🎯 CORRECTION: Forcer le rendu après déplacement caméra
   requestAnimationFrame(render);
@@ -1412,10 +1436,48 @@ function translateCamera(deltaX, deltaY) {
 function resetCameraPosition() {
   cameraOffsetX = 0;
   cameraOffsetY = 0;
-  pd('resetCamera', 'main.js', `📹 Position caméra réinitialisée`);
+
   
   // 🎯 CORRECTION: Forcer le rendu après reset caméra
   requestAnimationFrame(render);
+}
+
+function resetToDefaultConfiguration() {
+  // Réinitialiser position caméra
+  cameraOffsetX = 0;
+  cameraOffsetY = 0;
+  
+  // Réinitialiser angles et scale selon la config de la surface courante
+  if (view2DMode) {
+    // Mode 2D : utiliser config view2d
+    if (config.privilegedAngles['view2d']) {
+      const angles = config.privilegedAngles['view2d'];
+      rotX = (angles.rotX * Math.PI) / 180;
+      rotY = (angles.rotY * Math.PI) / 180;
+      rotZ = (angles.rotZ * Math.PI) / 180;
+      scale = angles.scale;
+    }
+  } else {
+    // Mode 3D : utiliser config de la surface courante
+    if (config.privilegedAngles[currentSurface]) {
+      const angles = config.privilegedAngles[currentSurface];
+      rotX = (angles.rotX * Math.PI) / 180;
+      rotY = (angles.rotY * Math.PI) / 180;
+      rotZ = (angles.rotZ * Math.PI) / 180;
+      scale = angles.scale;
+    } else {
+      // Fallback angles par défaut
+      rotX = (config.defaultRotationX * Math.PI) / 180;
+      rotY = (config.defaultRotationY * Math.PI) / 180;
+      rotZ = 0;
+      scale = getOptimalScale(currentSurface);
+    }
+  }
+  
+  updateAngleDisplay();
+  requestAnimationFrame(render);
+  
+  pd('resetConfig', 'main.js', `🎯 Configuration réinitialisée pour ${view2DMode ? 'view2d' : currentSurface}`);
 }
 
 
@@ -1911,6 +1973,13 @@ startAnimation();
   // Initialiser l'affichage de la projection
   updateProjectionName(currentMapName);
   
+  // ACTIVER moveOverlay au démarrage puisque view2DMode = true par défaut
+  const moveOverlay = document.getElementById('moveOverlay');
+  if (moveOverlay) {
+    moveOverlay.classList.add('active');
+    pd('initTextures', 'main.js', '🔒 Mode 2D par défaut: panneau move grisé');
+  }
+  
   pd('initTextures', 'main.js', '🎨 Interface de textures initialisée dynamiquement');
 })();
 
@@ -2140,45 +2209,39 @@ document.getElementById('showCoordinates').addEventListener('change', (e) => {
 document.getElementById('rotXLeft').addEventListener('click', () => {
   rotX -= (5 * Math.PI) / 180; // -5°
   updateAngleDisplay();
-  pd('rotXLeft', 'main.js', `Rotation X -5°: ${Math.round(rotX * 180 / Math.PI)}°`);
-  if (!view2DMode) debugUVCorners();
+  requestAnimationFrame(render);
 });
 
 document.getElementById('rotXRight').addEventListener('click', () => {
   rotX += (5 * Math.PI) / 180; // +5°
   updateAngleDisplay();
-  pd('rotXRight', 'main.js', `Rotation X +5°: ${Math.round(rotX * 180 / Math.PI)}°`);
-  if (!view2DMode) debugUVCorners();
+  requestAnimationFrame(render);
 });
 
 // Boutons fine-tuning rotation Y
 document.getElementById('rotYLeft').addEventListener('click', () => {
   rotY -= (5 * Math.PI) / 180; // -5°
   updateAngleDisplay();
-  pd('rotYLeft', 'main.js', `Rotation Y -5°: ${Math.round(rotY * 180 / Math.PI)}°`);
-  if (!view2DMode) debugUVCorners();
+  requestAnimationFrame(render);
 });
 
 document.getElementById('rotYRight').addEventListener('click', () => {
   rotY += (5 * Math.PI) / 180; // +5°
   updateAngleDisplay();
-  pd('rotYRight', 'main.js', `Rotation Y +5°: ${Math.round(rotY * 180 / Math.PI)}°`);
-  if (!view2DMode) debugUVCorners();
+  requestAnimationFrame(render);
 });
 
 // Boutons fine-tuning rotation Z
 document.getElementById('rotZLeft').addEventListener('click', () => {
   rotZ -= (5 * Math.PI) / 180; // -5°
   updateAngleDisplay();
-  pd('rotZLeft', 'main.js', `Rotation Z -5°: ${Math.round(rotZ * 180 / Math.PI)}°`);
-  if (!view2DMode) debugUVCorners();
+  requestAnimationFrame(render);
 });
 
 document.getElementById('rotZRight').addEventListener('click', () => {
   rotZ += (5 * Math.PI) / 180; // +5°
   updateAngleDisplay();
-  pd('rotZRight', 'main.js', `Rotation Z +5°: ${Math.round(rotZ * 180 / Math.PI)}°`);
-  if (!view2DMode) debugUVCorners();
+  requestAnimationFrame(render);
 });
 
 // Bouton affichage structure supprimé
@@ -2265,14 +2328,7 @@ canvas.addEventListener('mousemove', (e) => {
   
   updateAngleDisplay();
   
-  // DEBUG UV à chaque nouvelle valeur de rotation
-  if (oldRotX !== rotX || oldRotY !== rotY || oldRotZ !== rotZ) {
-    const rotXDeg = Math.round((rotX * 180) / Math.PI);
-    const rotYDeg = Math.round((rotY * 180) / Math.PI);
-    const rotZDeg = Math.round((rotZ * 180) / Math.PI);
-    console.log(`🔄 Rotation changée: X=${rotXDeg}° Y=${rotYDeg}° Z=${rotZDeg}°`);
-    debugUVCorners();
-  }
+
 });
 
 canvas.addEventListener('mouseup', () => {
@@ -2300,9 +2356,6 @@ canvas.addEventListener('wheel', (e) => {
   const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
   scale = Math.max(10, Math.min(500, scale * zoomFactor)); // ScaleMin à 10 !
   
-  // Log du scale lors du wheel
-  pd('wheel', 'main.js', `🔍 Scale: ${oldScale.toFixed(1)} → ${scale.toFixed(1)} (${e.deltaY > 0 ? 'zoom out' : 'zoom in'})`);
-  
   // Annuler le timeout précédent s'il existe
   if (wheelTimeout) {
     clearTimeout(wheelTimeout);
@@ -2312,7 +2365,6 @@ canvas.addEventListener('wheel', (e) => {
   wheelTimeout = setTimeout(() => {
     render();
     wheelTimeout = null;
-    pd('wheelRender', 'main.js', `🔄 Rendu après wheel terminé`);
   }, 10);
 });
 
@@ -2326,7 +2378,7 @@ document.getElementById('camDown').addEventListener('click', () => translateCame
 document.getElementById('camDownLeft').addEventListener('click', () => translateCamera(-1, 1)); // Bas-gauche
 document.getElementById('camLeft').addEventListener('click', () => translateCamera(-1, 0));     // Gauche = X négatif
 document.getElementById('camUpLeft').addEventListener('click', () => translateCamera(-1, -1));  // Haut-gauche
-document.getElementById('camCenter').addEventListener('click', () => resetCameraPosition());
+document.getElementById('camCenter').addEventListener('click', () => resetToDefaultConfiguration());
 
 // Initialiser l'affichage des angles
 updateAngleDisplay();
@@ -2586,7 +2638,7 @@ function drawColoredGrid(ctx, face, projectedVertices, rectangle) {
   ];
   
   // Segment RIGHT (entre bottom-right et top-right)
-  if (gridU < MESH_U - 1) { // Pas le bord droit
+  if (gridU < MESH_U - 1) { // Pas le bord droit global
     const neighborRect = getNeighborRect(gridU + 1, gridV);
     if (neighborRect && neighborRect.canvas) {
       // Utiliser directement le segment pré-calculé au lieu de la couleur moyennée
@@ -2596,13 +2648,25 @@ function drawColoredGrid(ctx, face, projectedVertices, rectangle) {
   }
   
   // Segment BOTTOM (entre bottom-left et bottom-right)  
-  if (gridV < MESH_V - 1) { // Pas le bord inférieur
+  if (gridV < MESH_V - 1) { // Pas le bord inférieur global
     const neighborRect = getNeighborRect(gridU, gridV + 1);
     if (neighborRect && neighborRect.canvas) {
       // Utiliser directement le segment pré-calculé au lieu de la couleur moyennée
       const segmentData = rectangle.segments ? rectangle.segments.bottom : null;
       drawColoredSegment(ctx, points[0], points[1], segmentData);
     }
+  }
+  
+  // 🎯 SEGMENTS DE BORDURE GLOBALE - dessiner même sans voisin
+  
+  // Segment RIGHT pour dernière colonne (X=29)
+  if (gridU === MESH_U - 1 && rectangle.segments && rectangle.segments.right) {
+    drawColoredSegment(ctx, points[1], points[2], rectangle.segments.right);
+  }
+  
+  // Segment BOTTOM pour dernière ligne (Y=19)  
+  if (gridV === MESH_V - 1 && rectangle.segments && rectangle.segments.bottom) {
+    drawColoredSegment(ctx, points[0], points[1], rectangle.segments.bottom);
   }
   
   // SEGMENTS SUPPLÉMENTAIRES pour bordures globales
@@ -2776,7 +2840,7 @@ function drawColoredSegment(ctx, point1, point2, segmentImageData) {
   const isHorizontal = segmentImageData.width > segmentImageData.height;
   
   // Configuration ligne épaisse comme la grille normale
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.5;
   ctx.lineCap = 'round';
   
   // Parcourir le segment pixel par pixel et copier les couleurs correspondantes

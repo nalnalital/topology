@@ -41,7 +41,7 @@ export const config = {
   // ANGLES PRIVILÉGIÉS PAR TOPOLOGIE (X°, Y°, Z°, Scale)
   privilegedAngles: {
     'view2d': { rotX: 0, rotY: 135, rotZ: 0, scale: 108 },        // 2D : 0° 135° 0° 108
-    'sphere': { rotX: 25, rotY: 45, rotZ: 0, scale: 60 },         // Sphère : 25° 45° 0° 60
+    'sphere': { rotX: 3, rotY: 223, rotZ: -45, scale: 60 },       // Sphère : 3° 223° -45° 60
     'disk': { rotX: 5, rotY: 0, rotZ: -5, scale: 162 },           // Disque : 5° 0° -5° 162
     'cylinder': { rotX: 35, rotY: 250, rotZ: -45, scale: 100 },   // Cylindre : 35° 250° -45° 100
     'mobius': { rotX: 27, rotY: -9, rotZ: -45, scale: 100 },      // Möbius : 27° -9° -45° 100
