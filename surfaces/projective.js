@@ -1,9 +1,10 @@
-// File: projective.js - Projective plane surface  
+// File: projective.js - Projective plane surface
 // Desc: En français, dans l'architecture, je suis le plan projectif avec pôle SUD à l'infini (projection sphérique douce)
-// Version 1.6.0 (retrait inversion X/Y)
+// Version 1.7.0 (Restored from faulty Steiner refactor)
 // Author: DNAvatar.org - Arnaud Maignan
-// Date: December 16, 2024 02:42 UTC+1
+// Date: [June 09, 2025] [HH:MM UTC+1]
 // Logs:
+//   - v1.7.0: Reverted faulty refactoring. Function is 'projective', config name is 'Steiner'.
 //   - v1.6.0: Retrait inversion X/Y - pas d'effet visuel en projection isométrique
 //   - v1.4.0: Inversion paramétrisation - pôle SUD à l'infini au lieu du pôle NORD (u_inverted = π - u)
 //   - v1.3.0: Transition ultra-douce - fréquence 0.5 + racine carrée pour meilleure progression aux pôles
@@ -13,7 +14,7 @@
 // Icône topologique avec flèches directionnelles
 // Plan projectif : géométrie complexe avec croisements
 export const topologyIcon = {
-  center: '🪩',
+  center: '🍎',
   top: '▶️',
   left: '⏬',
   right: '🔼',
@@ -49,7 +50,7 @@ export function projective(u, v) {
   
   // DEBUG pour voir les valeurs aux pôles (plus fréquent pour vérifier)
   if (Math.random() < 0.002) { // 1 chance sur 500 pour debug
-    console.log(`🪩 [projective] u=${u.toFixed(2)} u_inv=${u_inverted.toFixed(2)} → polarFactor=${polarFactor.toFixed(3)} smooth=${smoothTransition.toFixed(3)} heightScale=${heightScale.toFixed(3)} z=${(heightVariation * 2.0).toFixed(3)}`);
+    console.log(`🍎 [projective] u=${u.toFixed(2)} u_inv=${u_inverted.toFixed(2)} → polarFactor=${polarFactor.toFixed(3)} smooth=${smoothTransition.toFixed(3)} heightScale=${heightScale.toFixed(3)} z=${(heightVariation * 2.0).toFixed(3)}`);
   }
   
   return {
@@ -59,12 +60,18 @@ export function projective(u, v) {
   };
 }
 
-// Configuration spécifique projective
+// Structure d'identification pour le carré fondamental
+export const identification = [
+    { edge1: 'top', edge2: 'bottom', orientation: 'opposite' },
+    { edge1: 'left', edge2: 'right', orientation: 'opposite' }
+];
+
+// Configuration spécifique
 export const config = {
-  scale: 80,                     // Scale réduit pour plan projectif
-  defaultRotation: { x: 10, y: 20 }, // Vue par défaut
-  name: 'Plan projectif',
-  emoji: '🌎'
+  scale: 80,
+  defaultRotation: { x: 10, y: 20 },
+  name: 'Surface de Steiner',
+  emoji: '🍎'
 };
 
 // Fonction Three.js (legacy - pour homogénéité)

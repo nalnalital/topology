@@ -18,7 +18,7 @@
  * @param {string} file - Nom du fichier
  * @param {string} msg - Message à afficher
  */
-function pd(func, file, msg) {
+export function pd(func, file, msg) {
   const timestamp = new Date().toLocaleTimeString('fr-FR');
   console.log(`🔍 [${func}][${file}] ${msg}`);
 }

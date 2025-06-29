@@ -61,6 +61,12 @@ export function createSurface() {
   return new THREE.Mesh(geometry, material);
 }
 
+// Structure d'identification pour le carré fondamental
+export const identification = [
+    { edge1: 'top', edge2: 'bottom', orientation: 'same' },
+    { edge1: 'left', edge2: 'right', orientation: 'opposite' }
+];
+
 // Configuration spécifique bouteille de Klein
 export const config = {
   scale: 100,                       // Scale adapté à la géométrie Klein

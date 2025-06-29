@@ -14,7 +14,6 @@ import { config } from './config.js';
 import { createMesh, createSurface, transformCase, transformMesh, debugCase, debugMesh } from './mesh.js';
 import { surface2D } from './surfaces/2D.js';
 import { drawColorGrid } from './3Diso.js';
-import './debug.js'; // Module de debug séparé
 // Import configurations des surfaces
 import { config as cylinderConfig, cylinder } from './surfaces/cylinder.js';
 import { config as torusConfig, torus } from './surfaces/torus.js';
@@ -23,8 +22,8 @@ import { projective } from './surfaces/projective.js';
 import { plane } from './surfaces/plane.js';
 import { sphere } from './surfaces/sphere.js';
 import { disk } from './surfaces/disk.js';
-import { klein } from './surfaces/klein.js';
-import { crosscap } from './surfaces/crosscap.js';
+import { klein, identification as kleinId } from './surfaces/klein.js';
+import { crosscap, identification as crosscapId } from './surfaces/crosscap.js';
 
 // === CONFIGURATION MAILLAGE ===
 // ========================================================================
@@ -633,11 +632,6 @@ function precalculateTextureRectangles() {
         // Calculer largeur/hauteur uniformes pour segments cohérents
         const uniformTileW = Math.floor(texW / MESH_U); // 35px théorique
         const uniformTileH = Math.floor(texH / MESH_V); // 40px théorique
-        
-        // DEBUG: Afficher les dimensions pour diagnostic
-        if (gridY >= 18) {
-          pd('segmentDebug', 'main.js', `🔍 Tuile (${gridX},${gridY}): texture=${texW}x${texH}, uniforme=${uniformTileW}x${uniformTileH}, srcPos=(${srcX},${srcY}) srcSize=${srcW}x${srcH}`);
-        }
         
         // Segment BOTTOM (horizontal uniforme) - CORRECTION: utiliser srcY au lieu de srcY + srcH - 1
         segments.bottom = mapCanvas.getContext('2d').getImageData(
@@ -4945,3 +4939,9 @@ window.forceRecalcWithSegments = function() {
 };
 
 console.log('🔄 Force recalc with segments loaded: window.forceRecalcWithSegments()');
+
+// Charger le module de debug à la toute fin pour éviter les dépendances circulaires
+import './debug/debug.js';
+
+// Initialisation du maillage par défaut (2D)
+initializeMesh(surface2D);

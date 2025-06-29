@@ -47,3 +47,9 @@ export function createSurface() {
   const material = new THREE.MeshStandardMaterial({ color: 0x3399ff });
   return new THREE.Mesh(geometry, material);
 }
+
+// Structure d'identification pour le carré fondamental
+export const identification = [
+    { edge1: 'top', edge2: 'bottom', orientation: 'same' },
+    { edge1: 'left', edge2: 'right', orientation: 'same' }
+];

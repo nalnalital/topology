@@ -23,8 +23,16 @@ export const config = {
   scale: 140,                    // Scale optimal pour mobius
   defaultRotation: { x: 30, y: 45 }, // Vue 3/4 légèrement inclinée
   name: 'Ruban de Möbius',
-  emoji: '♾️'
+  emoji: '♾️',
+  slider: {
+    // ... existing code ...
+  }
 };
+
+// Structure d'identification pour le carré fondamental
+export const identification = [
+    { edge1: 'left', edge2: 'right', orientation: 'opposite' }
+];
 
 // Fonction mathématique du ruban de Möbius
 export function mobius(u, v) {

@@ -24,7 +24,8 @@ class TranslationManager {
     // Charge les traductions depuis le CSV
     async loadTranslations(csvFile = 'translations.csv') {
         try {
-            const response = await fetch(csvFile);
+            const version = new Date().getTime(); // Cache busting
+            const response = await fetch(`${csvFile}?v=${version}`);
             const csvText = await response.text();
             
             const lines = csvText.split('\n');

@@ -8,7 +8,7 @@
 """cylinder""","""Cylindre""","""Cylinder""","""Cilindro""","""Cilindro""","""Zylinder"""
 """mobius""","""Möbius""","""Möbius Strip""","""Cinta de Möbius""","""Nastro di Möbius""","""Möbiusband"""
 """torus""","""Tore""","""Torus""","""Toro""","""Toro""","""Torus"""
-"""projective""","""Plan Projectif""","""Projective Plane""","""Plano Proyectivo""","""Piano Proiettivo""","""Projektive Ebene"""
+"""projective""","""Surface de Steiner""","""Steiner Surface""","""Superficie de Steiner""","""Superficie di Steiner""","""Steiner-Fläche"""
 """klein""","""Klein""","""Klein Bottle""","""Botella de Klein""","""Bottiglia di Klein""","""Kleinsche Flasche"""
 """crosscap""","""Cross-cap""","""Cross-cap""","""Cross-cap""","""Cross-cap""","""Cross-cap"""
 """mouseHelp""","""🖱️ Drag pour faire tourner • Shift+Drag pour incliner • Molette pour zoomer""","""🖱️ Drag to rotate • Shift+Drag to tilt • Wheel to zoom""","""🖱️ Arrastra para rotar • Shift+Arrastra para inclinar • Rueda para zoom""","""🖱️ Trascina per ruotare • Shift+Trascina per inclinare • Rotella per zoom""","""🖱️ Ziehen zum Drehen • Shift+Ziehen zum Neigen • Mausrad zum Zoomen"""

@@ -29,9 +29,16 @@ export function crosscap(u, v) {
   return {
     x: sinU * cosV * 2,
     y: sinU * sinV * 2,
-    z: cosU * cos2V
+    z: (Math.sin(u) * Math.cos(v)) / 2
   };
 }
+
+// Structure d'identification pour le carré fondamental
+// Note: C'est la même que le plan projectif
+export const identification = [
+    { edge1: 'top', edge2: 'bottom', orientation: 'opposite' },
+    { edge1: 'left', edge2: 'right', orientation: 'opposite' }
+];
 
 // Configuration spécifique crosscap
 export const config = {

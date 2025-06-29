@@ -55,4 +55,15 @@ export const config = {
   // 💠 - étoile à six branches (géométrie complexe)
   // 🌌 - galaxie spirale (cosmos, infini)
   // 🪐 - planète avec anneaux (géométrie toroïdale)
+
+  surfaces: {
+    'sphere': { rotX: 3, rotY: 223, rotZ: -45, scale: 60 },
+    'disk': { rotX: 0, rotY: 0, rotZ: 0, scale: 100 },
+    'cylinder': { rotX: 15, rotY: 335, rotZ: 10, scale: 70 },
+    'mobius': { rotX: 0, rotY: 0, rotZ: 0, scale: 60 },
+    'torus': { rotX: 25, rotY: 325, rotZ: 350, scale: 80 },
+    'projective': { rotX: 0, rotY: 0, rotZ: 0, scale: 75 },
+    'klein': { rotX: 15, rotY: 350, rotZ: 10, scale: 70 },
+    'crosscap': { rotX: 0, rotY: 0, rotZ: 0, scale: 80 }
+  },
 }; 

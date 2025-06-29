@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <title>Visualisation de Surfaces Topologiques - Projection Isométrique</title>
-  <link rel="stylesheet" href="css.css">
-      <!-- Version 2.41.0 - Bouton coordonnées 📍 ajouté -->
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/shapes_buttons.css">
+      <!-- Version 2.53.0 - Refactoring CSS -->
 </head>
 <body>
   <h1>Square Topologicon</h1>
@@ -49,6 +50,7 @@
       
       <label class="topology-option">
         <input type="radio" name="topology" value="cylinder">
+        <div class="quotient-container"></div>
         <span class="topology-visual cross-pattern">
           <span class="cross-top"></span>
           <span class="cross-left">🔼</span><span class="cross-center">🫙</span><span class="cross-right">🔼</span>
@@ -58,6 +60,7 @@
       
       <label class="topology-option">
         <input type="radio" name="topology" value="mobius">
+        <div class="quotient-container"></div>
         <span class="topology-visual cross-pattern">
           <span class="cross-top">▶️</span>
           <span class="cross-left"></span><span class="cross-center">🎀</span><span class="cross-right"></span>
@@ -130,6 +133,7 @@
     <div class="right-controls">
       <label class="topology-option">
         <input type="radio" name="topology" value="torus">
+        <div class="quotient-container"></div>
         <span class="topology-visual cross-pattern">
           <span class="cross-top">▶️</span>
           <span class="cross-left">⏫</span><span class="cross-center">🍩</span><span class="cross-right">⏫</span>
@@ -139,6 +143,7 @@
       
       <label class="topology-option">
         <input type="radio" name="topology" value="projective">
+        <div class="quotient-container"></div>
         <span class="topology-visual cross-pattern">
           <span class="cross-top">▶️</span>
           <span class="cross-left">⏬</span><span class="cross-center">🍎</span><span class="cross-right">🔼</span>
@@ -148,6 +153,7 @@
       
       <label class="topology-option">
         <input type="radio" name="topology" value="klein">
+        <div class="quotient-container"></div>
         <span class="topology-visual cross-pattern">
           <span class="cross-top">▶️</span>
           <span class="cross-left">⏫</span><span class="cross-center">🖇️</span><span class="cross-right">⏫</span>
@@ -157,6 +163,7 @@
       
       <label class="topology-option">
         <input type="radio" name="topology" value="crosscap">
+        <div class="quotient-container"></div>
         <span class="topology-visual cross-pattern">
           <span class="cross-top">▶️</span>
           <span class="cross-left">⏬</span><span class="cross-center">🪢</span><span class="cross-right">⏫</span>
@@ -180,8 +187,14 @@
       <small>🖱️ Drag pour faire tourner • Shift+Drag pour incliner • Molette pour zoomer</small>
     </div>
   </div>
-  <script type="module" src="main.js"></script>
-  <script src="debug.js"></script>
-  <!-- Config chargé automatiquement via import ES6 -->
+  <script type="module" src="shape-selector.js"></script>
+  <script>
+    // Cache busting pour main.js
+    const version = new Date().getTime();
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.src = `main.js?v=${version}`;
+    document.body.appendChild(script);
+  </script>
 </body>
 </html>

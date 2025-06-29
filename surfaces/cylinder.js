@@ -23,7 +23,10 @@ export const config = {
   scale: 180,                    // Scale optimal pour cylindre (plus grand que défaut 150)
   defaultRotation: { x: 0, y: 90 }, // Vue de profil par défaut
   name: 'Cylindre',
-  emoji: '🫙'
+  emoji: '🫙',
+  slider: {
+    // ... existing code ...
+  }
 };
 
 // Fonction mathématique du cylindre
@@ -43,3 +46,8 @@ export function createSurface() {
   const material = new THREE.MeshStandardMaterial({ color: 0xff9933, side: THREE.DoubleSide });
   return new THREE.Mesh(geometry, material);
 }
+
+// Structure d'identification pour le carré fondamental
+export const identification = [
+    { edge1: 'left', edge2: 'right', orientation: 'same' }
+];

@@ -1,9 +1,10 @@
 /* File: css.css - Styles for isometric topology viewer */
 /* Desc: En français, dans l'architecture, je suis les styles pour l'interface de projection isométrique avec système multi-cartes */
-/* Version 2.52.0 (interface flottante 80px + équilibrage espacement séparateur) */
+/* Version 2.53.0 (CSS refactoring) */
 /* Author: DNAvatar.org - Arnaud Maignan */
-/* Date: December 16, 2024 00:20 UTC+1 */
+/* Date: [June 08, 2025] [16:05 UTC+1] */
 /* Logs: */
+/*   - Extracted shape button styles into shapes_buttons.css */
 /*   - MOVE ENTRE BOUTONS: Interface move entre 2D/Grille avec align-items: flex-end */
 /*   - RÉORGANISATION INTERFACE: 2D/Grille encadrent move, textures en dessous + cache misère 2D */
 /*   - INTERFACE TEXTURES DYNAMIQUE: Support multi-lignes avec flex-wrap et min-height adaptative */
@@ -116,128 +117,8 @@ canvas:active {
   object-fit: cover;
 }
 
-.topology-option {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  background: linear-gradient(145deg, #ffffff, #f8f9fa);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  width: 70px;
-  height: 70px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
-}
+/* --- STYLES DES BOUTONS DE FORMES (maintenant dans css/shapes_buttons.css) --- */
 
-.topology-option:hover {
-  background: linear-gradient(145deg, #f8f9fa, #e3f2fd);
-  border-color: #bbb;
-  transform: translateY(-3px);
-  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-}
-
-.topology-option input[type="radio"], .topology-option input[type="checkbox"] {
-  display: none;
-}
-
-/* Changer la couleur de TOUT le bouton quand sélectionné (pas l'icône) */
-.topology-option:has(input[type="radio"]:checked), .topology-option:has(input[type="checkbox"]:checked) {
-  background: linear-gradient(145deg, #e3f2fd, #bbdefb);
-  border: 2px solid #3498db;
-  transform: scale(1.05);
-  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
-}
-
-/* Garder l'icône transparente quand sélectionnée */
-.topology-option:has(input[type="radio"]:checked) .topology-visual, .topology-option:has(input[type="checkbox"]:checked) .topology-visual {
-  background: transparent;
-  border: none;
-  color: #3498db;
-}
-
-.topology-option input[type="radio"]:checked ~ .topology-name {
-  color: #3498db;
-  font-weight: bold;
-}
-
-.topology-visual {
-  font-size: 22px;
-  font-family: 'Courier New', monospace;
-  font-weight: bold;
-  padding: 0;
-  border-radius: 4px;
-  background: transparent;
-  transition: all 0.3s ease;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  letter-spacing: 0px;
-  margin: 0;
-  line-height: 1;
-}
-
-.cross-pattern {
-  display: grid !important;
-  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
-  grid-template-rows: 1fr 1fr 1fr;
-  gap: 0px;
-  width: 100%;
-  height: 100%;
-  align-items: center;
-  justify-items: center;
-  margin: 0;
-  padding: 0;
-}
-
-.cross-top {
-  grid-column: 3;
-  grid-row: 1;
-  font-size: 12px;
-  line-height: 1;
-  margin: 0;
-  padding: 0;
-}
-
-.cross-left {
-  grid-column: 1;
-  grid-row: 2;
-  font-size: 12px;
-  line-height: 1;
-  margin: 0;
-  padding: 0;
-}
-
-.cross-center {
-  grid-column: 3;
-  grid-row: 2;
-  font-size: 18px;
-  line-height: 1;
-  margin: 0;
-  padding: 0;
-}
-
-.cross-right {
-  grid-column: 5;
-  grid-row: 2;
-  font-size: 12px;
-  line-height: 1;
-  margin: 0;
-  padding: 0;
-}
-
-.cross-bottom {
-  grid-column: 3;
-  grid-row: 3;
-  font-size: 12px;
-  line-height: 1;
-  margin: 0;
-  padding: 0;
-}
 
 .topology-name {
   font-size: 12px;
@@ -277,23 +158,15 @@ canvas:active {
 
 .simulation-grid {
   display: grid;
-  grid-template-columns: 90px 800px 90px;
-  gap: 5px;
-  align-items: center;
-  justify-items: center;
-  margin: 10px 0;
-  background: transparent;
-  justify-content: center;
+  grid-template-columns: 100px 1fr 100px; /* Colonnes pour boutons, canvas, boutons */
+  align-items: center; /* Centrage vertical */
+  gap: 10px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-.left-controls, .right-controls {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 25px;
-  min-width: 90px;
-}
+/* --- CONTROLES GAUCHE/DROITE (maintenant dans css/shapes_buttons.css) --- */
 
 .external-controls {
   display: flex;
@@ -927,3 +800,42 @@ canvas:active {
 .move-overlay.active {
   display: block;
 }
+
+/* === Quotient SVG Visualization === */
+.quotient-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  opacity: 0.7;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.quotient-svg {
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 3px;
+  box-shadow: 0 0 5px rgba(0,0,0,0.1);
+}
+
+.topology-option:hover .quotient-container {
+  opacity: 1;
+}
+
+.topology-option .topology-visual {
+  margin-bottom: 0;
+}
+
+.move-overlay.active {
+  opacity: 0.8;
+  pointer-events: all; /* Capture clicks when active */
+}
+
+/* --- STYLES QUOTIENT (maintenant dans css/shapes_buttons.css) --- */
