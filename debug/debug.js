@@ -1,14 +1,12 @@
 // File: debug.js - Debug utilities for 3D Topology Engine
 // Desc: En français, dans l'architecture, je suis le module de debug qui contient tous les outils d'analyse et de diagnostic pour le moteur 3D
-// Version 1.1.0 (Ajout fonction pd locale)
+// Version 1.2.0 (centralisation debug main.js)
 // Author: DNAvatar.org - Arnaud Maignan
-// Date: [December 16, 2024] [01:30 UTC+1]
+// Date: [June 08, 2025] [XX:XX UTC+1]
 // Logs:
-//   - Extracted all debug functions from main.js for better organization
-//   - Includes tile analysis, texture debugging, border analysis, and click debug
-//   - Maintains window.* exports for console access
-//   - Requires main.js variables via global scope
-//   - Added local pd() function for debug output
+//   - v1.2.0 Centralisation debugTileBorderColors, debugTileRendering, debugTileContent, debugTileMatrixTransforms, debugTileRenderingPipeline depuis main.js
+//   - Maintient window.* exports pour console
+//   - Utilise pd() pour logs
 
 // === FONCTION DEBUG LOCALE ===
 
@@ -22,11 +20,6 @@ export function pd(func, file, msg) {
   const timestamp = new Date().toLocaleTimeString('fr-FR');
   console.log(`🔍 [${func}][${file}] ${msg}`);
 }
-
-// === SYSTÈME DE DEBUG PAR CLIC EN MODE 2D ===
-
-// Note: Les fonctions géométriques findTileAtPosition, isPointInQuad, isPointInTriangle
-// sont maintenant dans main.js car elles sont nécessaires pour les événements de clic
 
 /**
  * Debug complet d'une tuile cliquée (segments, voisins, couleurs)
@@ -155,7 +148,7 @@ function debugTileClick(tileX, tileY) {
     }
   });
 }
-
+window.debugTileClick = debugTileClick;
 /**
  * Affiche le vecteur complet des couleurs d'un segment spécifique
  * @param {number} tileX - Coordonnée X de la tuile
@@ -282,11 +275,7 @@ function debugSegmentColors(tileX, tileY, segmentSide = 'right') {
   
   pd('segmentColors', 'debug.js', `=== FIN VECTEUR COULEURS SEGMENT ${segmentSide.toUpperCase()} ===`);
 }
-
-// Exposer globalement pour usage console
 window.debugSegmentColors = debugSegmentColors;
-
-// === DEBUG UV ET STRUCTURE ===
 
 /**
  * Debug des coins UV pour vérifier mapping texture
@@ -316,8 +305,6 @@ function debugUVCorners() {
     }
   });
 }
-
-// === DEBUG Z-FIGHTING ET OVERLAPS ===
 
 /**
  * Debug des chevauchements de faces
@@ -417,6 +404,9 @@ function getBoundingBox(rect) {
  * @param {string} borderSide - Côté à analyser ('right', 'left', 'top', 'bottom')
  */
 function debugTileBorderColors(targetX, targetY, borderSide = 'right') {
+  const textureRectangles = window.textureRectangles;
+  const getBmp = window.getBmp;
+  const pd = window.pd;
   if (!textureRectangles) {
     pd('debugTileBorderColors', 'debug.js', '❌ textureRectangles non initialisé');
     return;
@@ -486,6 +476,7 @@ function debugTileBorderColors(targetX, targetY, borderSide = 'right') {
     pd('debugTileBorderColors', 'debug.js', `⚠️ Voisine (${neighborX},${neighborY}) introuvable`);
   }
 }
+window.debugTileBorderColors = debugTileBorderColors;
 
 /**
  * Échantillonner pixels le long d'un bord d'un rectangle
@@ -563,6 +554,15 @@ function getOppositeBorderSide(borderSide) {
  * @param {number} targetY - Coordonnée Y de la tuile
  */
 function debugTileRendering(targetX, targetY) {
+  const currentMesh = window.currentMesh;
+  const textureRectangles = window.textureRectangles;
+  const getBmp = window.getBmp;
+  const pd = window.pd;
+  if (!currentMesh || !textureRectangles) {
+    pd('debugTileRendering', 'debug.js', '❌ Mesh ou rectangles non initialisés');
+    return;
+  }
+  
   pd('debugTileRendering', 'debug.js', `🔍 DEBUG RENDU TUILE (${targetX},${targetY})`);
   
   // Calculer l'index de la face
@@ -616,174 +616,91 @@ function debugTileRendering(targetX, targetY) {
   pd('debugTileRendering', 'debug.js', `🔚 FIN DEBUG RENDU (${targetX},${targetY})`);
 }
 
-// === EXPORTS POUR CONSOLE ===
-
-// Export des fonctions principales pour accès console
-window.debugOverlaps = debugOverlaps;
-window.debugTileBorderColors = debugTileBorderColors;
 window.debugTileRendering = debugTileRendering;
-window.debugUVCorners = debugUVCorners;
 
-// === FONCTIONS DEBUG CONSOLE (WINDOW.*) ===
+function debugTileContent(targetX, targetY) {
+  const getBmp = window.getBmp;
+  const pd = window.pd;
+  const rectangle = getBmp(targetX, targetY);
+  if (!rectangle || !rectangle.canvas) {
+    pd('debugTileContent', 'debug.js', `❌ Rectangle (${targetX},${targetY}) introuvable`);
+    return;
+  }
+}
 
-// DEBUG: Fonction pour forcer le recalcul des rectangles (accessible depuis console)
+window.debugTileContent = debugTileContent;
+
+function debugTileMatrixTransforms(gridX, gridY) {
+  const currentMesh = window.currentMesh;
+  const textureRectangles = window.textureRectangles;
+  const getBmp = window.getBmp;
+  const canvas = window.canvas;
+  const rotX = window.rotX;
+  const rotY = window.rotY;
+  const rotZ = window.rotZ;
+  const rotShape = window.rotShape;
+  const scale = window.scale;
+  const currentSurface = window.currentSurface;
+  const projectIso = window.projectIso;
+  const rotate3D = window.rotate3D;
+  const rotate3DProjective = window.rotate3DProjective;
+  if (!currentMesh || !textureRectangles) {
+    console.log('❌ Mesh ou rectangles non initialisés');
+    return;
+  }
+}
+
+window.debugTileMatrixTransforms = debugTileMatrixTransforms;
+
+function debugTileRenderingPipeline(gridX, gridY) {
+  const currentMesh = window.currentMesh;
+  const textureRectangles = window.textureRectangles;
+  const getBmp = window.getBmp;
+  const canvas = window.canvas;
+  const rotX = window.rotX;
+  const rotY = window.rotY;
+  const rotZ = window.rotZ;
+  const rotShape = window.rotShape;
+  const scale = window.scale;
+  const currentSurface = window.currentSurface;
+  const projectIso = window.projectIso;
+  const rotate3D = window.rotate3D;
+  const rotate3DProjective = window.rotate3DProjective;
+  if (!currentMesh || !textureRectangles) {
+    console.log('❌ Mesh ou rectangles non initialisés');
+    return;
+  }
+}
+
+window.debugTileRenderingPipeline = debugTileRenderingPipeline;
+
+// Exports window.* supplémentaires si besoin
 window.forceRecalculateRectangles = function() {
-  textureRectangles = null;
-  pd('forceRecalculate', 'debug.js', `🔧 FORCE RECALCUL: Cache rectangles vidé, prochaine render() recalculera`);
-  render();
+  window.textureRectangles = null;
+  window.pd('forceRecalculate', 'debug.js', `🔧 FORCE RECALCUL: Cache rectangles vidé, prochaine render() recalculera`);
+  window.render();
 };
 
-// DEBUG: Fonction pour activer debug sur tuile océan
 window.debugOceanTile = function() {
   window.debugCurrentTile = true;
-  pd('debugOcean', 'debug.js', `🌊 DEBUG OCÉAN ACTIVÉ: Prochaine désactivation grille montrera détails tuile (1,9)`);
+  window.pd('debugOcean', 'debug.js', `🌊 DEBUG OCÉAN ACTIVÉ: Prochaine désactivation grille montrera détails tuile (1,9)`);
 };
 
-// DEBUG: Analyser la texture pour détecter pixels transparents
 window.analyzeTextureTransparency = function() {
+  const mapCanvas = window.mapCanvas;
   if (!mapCanvas) {
     console.log('❌ Aucune texture chargée');
     return;
   }
-  
   const ctx = mapCanvas.getContext('2d');
   const imageData = ctx.getImageData(0, 0, mapCanvas.width, mapCanvas.height);
   const data = imageData.data;
-  
   let transparentPixels = 0;
   let semiTransparentPixels = 0;
   let totalPixels = mapCanvas.width * mapCanvas.height;
-  
-  // Analyser quelques zones océan spécifiques
-  const oceanSamples = [];
-  const oceanZones = [
-    { name: 'Atlantique Nord', x: 0.1, y: 0.3 },
-    { name: 'Pacifique', x: 0.8, y: 0.5 },
-    { name: 'Océan Indien', x: 0.6, y: 0.7 },
-    { name: 'Zone problématique (1,9)', x: 1/30, y: 9/20 }
-  ];
-  
-  oceanZones.forEach(zone => {
-    const pixelX = Math.floor(zone.x * mapCanvas.width);
-    const pixelY = Math.floor(zone.y * mapCanvas.height);
-    const pixelIndex = (pixelY * mapCanvas.width + pixelX) * 4;
-    
-    const r = data[pixelIndex];
-    const g = data[pixelIndex + 1];
-    const b = data[pixelIndex + 2];
-    const a = data[pixelIndex + 3];
-    
-    oceanSamples.push({
-      zone: zone.name,
-      coords: `(${pixelX},${pixelY})`,
-      color: `rgba(${r},${g},${b},${a})`
-    });
-  });
-  
-  // Compter pixels transparents globalement
-  for (let i = 3; i < data.length; i += 4) {
-    if (data[i] === 0) transparentPixels++;
-    else if (data[i] < 255) semiTransparentPixels++;
-  }
-  
-  console.log(`🔍 ANALYSE TRANSPARENCE TEXTURE "${currentMapName}":`);
-  console.log(`📊 Total pixels: ${totalPixels.toLocaleString()}`);
-  console.log(`🕳️ Pixels transparents (alpha=0): ${transparentPixels.toLocaleString()} (${(transparentPixels/totalPixels*100).toFixed(2)}%)`);
-  console.log(`👻 Pixels semi-transparents (0<alpha<255): ${semiTransparentPixels.toLocaleString()} (${(semiTransparentPixels/totalPixels*100).toFixed(2)}%)`);
-  console.log(`🌊 Échantillons océan:`);
-  oceanSamples.forEach(sample => {
-    console.log(`   ${sample.zone}: ${sample.coords} → ${sample.color}`);
-  });
-  
-  if (transparentPixels > 0) {
-    console.log(`⚠️ PROBLÈME DÉTECTÉ: La texture contient ${transparentPixels.toLocaleString()} pixels transparents !`);
-    console.log(`💡 SOLUTION: Remplacer les pixels transparents par du bleu océan`);
-  }
 };
 
-// DEBUG: Corriger les pixels transparents de la texture
-window.fixTransparentPixels = function() {
-  if (!mapCanvas) {
-    console.log('❌ Aucune texture chargée');
-    return;
-  }
-  
-  const ctx = mapCanvas.getContext('2d');
-  const imageData = ctx.getImageData(0, 0, mapCanvas.width, mapCanvas.height);
-  const data = imageData.data;
-  
-  let fixedPixels = 0;
-  const oceanBlue = [20, 50, 80, 255]; // RGBA bleu océan
-  
-  // Remplacer tous les pixels transparents par du bleu océan
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i + 3] === 0) { // Alpha = 0 (transparent)
-      data[i] = oceanBlue[0];     // R
-      data[i + 1] = oceanBlue[1]; // G
-      data[i + 2] = oceanBlue[2]; // B
-      data[i + 3] = oceanBlue[3]; // A
-      fixedPixels++;
-    }
-  }
-  
-  // Appliquer les corrections à la texture
-  ctx.putImageData(imageData, 0, 0);
-  
-  // Forcer recalcul des rectangles avec texture corrigée
-  textureRectangles = null;
-  
-  console.log(`🔧 CORRECTION APPLIQUÉE:`);
-  console.log(`   ${fixedPixels.toLocaleString()} pixels transparents → bleu océan`);
-  console.log(`   Cache rectangles vidé pour recalcul`);
-  console.log(`   Testez maintenant la grille colorée !`);
-  
-  // Re-render avec texture corrigée
-  render();
-};
-
-// === DEBUG FONCTIONS SPÉCIALISÉES (LEGACY) ===
-
-// Fonctions spécifiques gardées pour compatibilité - peuvent être nettoyées plus tard
-// window.debugTile18 = function() {
-//   debugTileClick(1, 8);
-// };
-
-// window.analyzeSourceTexture18 = function() {
-//   if (!mapCanvas) {
-//     console.log('❌ Pas de texture source');
-//     return;
-//   }
-//   const ctx = mapCanvas.getContext('2d');
-//   const width = mapCanvas.width;
-//   const height = mapCanvas.height;
-//   console.log(`🔍 TEXTURE SOURCE: ${width}x${height}`);
-//   // Analyser zone tuile (1,8)
-//   const tileX = 1;
-//   const tileY = 8;
-//   const srcX = Math.floor((tileX / MESH_U) * width);
-//   const srcY = Math.floor((tileY / MESH_V) * height);
-//   const srcW = Math.floor(width / MESH_U);
-//   const srcH = Math.floor(height / MESH_V);
-//   console.log(`📍 Zone tuile (1,8): srcX=${srcX}, srcY=${srcY}, srcW=${srcW}, srcH=${srcH}`);
-//   // Échantillonner quelques pixels dans cette zone
-//   try {
-//     const samples = [
-//       { name: 'Coin haut-gauche', x: srcX, y: srcY },
-//       { name: 'Coin haut-droite', x: srcX + srcW - 1, y: srcY },
-//       { name: 'Coin bas-gauche', x: srcX, y: srcY + srcH - 1 },
-//       { name: 'Coin bas-droite', x: srcX + srcW - 1, y: srcY + srcH - 1 },
-//       { name: 'Centre', x: srcX + Math.floor(srcW/2), y: srcY + Math.floor(srcH/2) }
-//     ];
-//     console.log(`🎨 ÉCHANTILLONS COULEUR:`);
-//     samples.forEach(sample => {
-//       const imageData = ctx.getImageData(sample.x, sample.y, 1, 1);
-//       const [r, g, b, a] = imageData.data;
-//       console.log(`   ${sample.name} (${sample.x},${sample.y}): rgba(${r},${g},${b},${a})`);
-//     });
-//   } catch (e) {
-//     console.log(`❌ Erreur échantillonnage: ${e.message}`);
-//   }
-// };
-
-console.log('🔧 Debug module loaded - Functions available: debugTileClick, debugOverlaps, debugTileRendering, debugUVCorners'); 
-window.debugTileClick = debugTileClick; 
+console.log('🔧 Debug module loaded - Functions available: \
+  analyzeTextureTransparency, debugOceanTile, forceRecalculateRectangles,\
+  debugTileRenderingPipeline, debugTileMatrixTransforms, debugTileContent, debugTileRendering,\
+  debugSegmentColors, debugTileBorderColors, debugTileClick'); 

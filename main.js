@@ -11,23 +11,9 @@
 
 // === IMPORTS ===
 import { config } from './config.js';
-import { createMesh, createSurface, transformCase, transformMesh, debugCase, debugMesh } from './mesh.js';
-import { surface2D } from './surfaces/2D.js';
-import { drawColorGrid } from './3Diso.js';
-// Import configurations des surfaces
-import { cylinder } from './surfaces/cylinder.js';
-import { torus } from './surfaces/torus.js';
-import { mobius } from './surfaces/mobius.js';
-import { projective } from './surfaces/projective.js';
-import { plane } from './surfaces/plane.js';
-import { sphere } from './surfaces/sphere.js';
-import { disk } from './surfaces/disk.js';
-import { klein, identification as kleinId } from './surfaces/klein.js';
-import { crosscap, identification as crosscapId } from './surfaces/crosscap.js';
-import { createSurface as kleinSurface } from './surfaces/klein.js';
-import { createSurface as crosscapSurface } from './surfaces/crosscap.js';
-import { createSurface as diskSurface } from './surfaces/disk.js';
-// import { debugTileClick } from './debug/debug.js';
+import { createMesh, homeomorphism, transformCase, transformMesh, debugCase, debugMesh } from './mesh.js';
+import { drawColorGrid } from './3D/3Diso.js';
+import { setupCameraControls } from './3D/camera.js';
 
 // === CONFIGURATION MAILLAGE ===
 // ========================================================================
@@ -103,6 +89,10 @@ function getBmp(x, y) {
   //   pd('getBmp', 'main.js', `🎯 getBmp(${x},${y}) → wrappedX=${wrappedX}, clampedY=${clampedY} → index=${index}${overflow}${xOverflow} → ${rectangle ? `${rectangle.width}x${rectangle.height}` : 'null'}`);
   // }
   
+  if (clampedY > 10) {
+    console.log(`[TILE DEBUG][getBmp] getBmp(${x},${y}) → index=${index}, rectW=${rectangle?.width}, rectH=${rectangle?.height}`);
+  }
+  
   return rectangle;
 }
 
@@ -125,6 +115,7 @@ window.availableMaps = availableMaps; // 🔗 Correction : exposer sur window
 
 // Détection automatique des textures disponibles (scan répertoire)
 async function detectAvailableTextures() {
+  pd('detectAvailableTextures', 'main.js', 'Entrée dans detectAvailableTextures');
   try {
     // Scanner le répertoire cartes/ via l'API du serveur Python
     const response = await fetch('/api/list-textures');
@@ -209,6 +200,7 @@ function capitalizeFirstLetter(str) {
 }
 
 function generateTextureInterface() {
+  pd('generateTextureInterface', 'main.js', 'Entrée dans generateTextureInterface');
   const mapOptionsContainer = document.querySelector('.map-options');
   if (!mapOptionsContainer) return;
   // Supprimer tous les enfants (labels) existants
@@ -262,6 +254,7 @@ function generateTextureInterface() {
 
 // === CHARGEMENT TEXTURE ===
 function loadTexture(mapName = currentMapName) {
+  pd('loadTexture', 'main.js', 'Entrée dans loadTexture');
   const mapConfig = availableMaps.find(m => m.name === mapName);
   if (!mapConfig) {
     pd('loadTexture', 'main.js', `🔴 Texture inconnue: ${mapName}`);
@@ -306,9 +299,9 @@ function loadTexture(mapName = currentMapName) {
           rotZ = previousAnglesBeforeMapChange.rotZ;
           scale = previousAnglesBeforeMapChange.scale;
           pd('loadTexture', 'main.js', `📐 Angles restaurés: X=${Math.round(rotX * 180 / Math.PI)}° Y=${Math.round(rotY * 180 / Math.PI)}° Z=${Math.round(rotZ * 180 / Math.PI)}° Scale=${scale.toFixed(1)}`);
-        } else if (config.privilegedAngles[previousSurfaceBeforeMapChange]) {
+        } else if (surfaces[newSurfaceName]?.config) {
           // Fallback : angles privilégiés si pas de mémorisation
-           const angles = config.privilegedAngles[previousSurfaceBeforeMapChange];
+           const angles = surfaces[newSurfaceName]?.config;
            rotX = (angles.rotX * Math.PI) / 180;
            rotY = (angles.rotY * Math.PI) / 180;
            rotZ = (angles.rotZ * Math.PI) / 180;
@@ -413,16 +406,23 @@ function precalculateTextureRectangles() {
      const v3_tex = v3.gridV;
     
     // Rectangle UV dans la texture (en pixels)
-  const minU = Math.min(u0, u1, u2, u3);
-  const maxU = Math.max(u0, u1, u2, u3);
-  const minV = Math.min(v0_tex, v1_tex, v2_tex, v3_tex);
-  const maxV = Math.max(v0_tex, v1_tex, v2_tex, v3_tex);
-  
-      const srcX = Math.round(minU * texW);
+    const minU = Math.min(u0, u1, u2, u3);
+    const maxU = Math.max(u0, u1, u2, u3);
+    const minV = Math.min(v0_tex, v1_tex, v2_tex, v3_tex);
+    const maxV = Math.max(v0_tex, v1_tex, v2_tex, v3_tex);
+    
+    const srcX = Math.round(minU * texW);
     const srcY = Math.round(minV * texH); // Pas d'inversion Y
-  const srcW = Math.ceil((maxU - minU) * texW);
-  const srcH = Math.ceil((maxV - minV) * texH);
-  
+    const srcW = Math.ceil((maxU - minU) * texW);
+    const srcH = Math.ceil((maxV - minV) * texH);
+
+    // DEBUG: Log détaillé pour chaque tuile du cylindre
+    if (window.currentSurface === 'cylinder') {
+      const gridX = face.originalIndex % MESH_U;
+      const gridY = Math.floor(face.originalIndex / MESH_U);
+      console.log(`[TILE DEBUG][cylinder] gridX=${gridX}, gridY=${gridY}, minV=${minV.toFixed(3)}, maxV=${maxV.toFixed(3)}, srcH=${srcH}, gridV=[${v0_tex.toFixed(3)},${v1_tex.toFixed(3)},${v2_tex.toFixed(3)},${v3_tex.toFixed(3)}]`);
+    }
+    
     // Debug supprimé pour éviter boucle infinie
     
     // SOLUTION: Créer rectangle fallback pour tuiles trop petites
@@ -861,12 +861,8 @@ function showMeshStructure() {
 
 // === MAILLAGE AVEC ANIMATION ===
 let currentMesh = null;
-let originalMesh2D = null; // RÉFÉRENCE FIXE du maillage 2D original (JAMAIS modifiée)
-let targetSurface = 'view2d';
 let currentSurface = 'view2d';
 let isAnimating = false;
-let dragEnabled = true;
-let view2DMode = true; // Mode vue 2D grille par défaut
 
 // === AFFICHAGE SCALE ===
 // Scale affiché en temps réel
@@ -884,17 +880,9 @@ let showHiddenFaces = false;
 const VIEW_DIRECTION = { x: -ISO_COS, y: 0, z: ISO_COS };
 
 function initializeMesh(surfaceFunc) {
+  pd('initializeMesh', 'main.js', 'Entrée dans initializeMesh');
   const vertices = [];
   const faces = [];
-  
-  // DEBUG SPÉCIFIQUE PROJECTIF - Test quelques points
-  if (currentSurface === 'projective') {
-    pd('projective_debug', 'main.js', `🪩 INIT PROJECTIF - Test coordonnées poles:`);
-    const testPole1 = surfaceFunc(0.1, 0.5); // Près pôle
-    const testPole2 = surfaceFunc(0.9, 0.5); // Près autre pôle
-    const testCenter = surfaceFunc(0.5, 0.5); // Centre
-    pd('projective_debug', 'main.js', `🪩 Pôle 1 (u=0.1): z=${testPole1.z.toFixed(3)} | Pôle 2 (u=0.9): z=${testPole2.z.toFixed(3)} | Centre: z=${testCenter.z.toFixed(3)}`);
-  }
   
   // Génération des sommets sur grille rectangulaire
   for (let x = 0; x <= MESH_U; x++) {
@@ -1083,156 +1071,18 @@ function calculateFaceVisibility() {
   }
 }
 
-// Morphing vers une nouvelle surface (RÉINITIALISATION COMPLÈTE pour éviter corruption UV)
-function morphToSurface(newSurfaceName, skipAnimation = false) {
-  // DEBUG CONFIG INIT
-  const configSource = 'config.privilegedAngles';
-  const configObj = config.privilegedAngles[newSurfaceName] || null;
-  pd('CONFIG', 'main.js', `CONFIG | source: ${configSource} | surface: ${newSurfaceName} | valeurs: ${configObj ? JSON.stringify(configObj) : 'Aucune config trouvée'}`);
-  if (newSurfaceName === targetSurface) return;
-  
-  targetSurface = newSurfaceName;
-  currentSurface = newSurfaceName;
-  
-  // SCALE GÉRÉ PAR LES ANGLES PRIVILÉGIÉS - plus besoin de getOptimalScale
-  
-  let newMesh;
-  
-  if (newSurfaceName === 'view2d') {
-    // RETOUR EN 2D : Utiliser la référence fixe originale (transformation réversible garantie)
-    if (!originalMesh2D) {
-      // Première fois : créer la référence fixe
-      originalMesh2D = initializeMesh(surfaces.view2d);
-      pd('morphToSurface', 'main.js', '🔧 Référence 2D originale créée (première fois)');
-    }
-    
-    // Cloner la référence fixe (structure parfaitement identique)
-    newMesh = {
-      vertices: originalMesh2D.vertices.map(v => ({...v})),
-      faces: originalMesh2D.faces.map(f => ({...f, vertices: [...f.vertices]}))
-    };
-    
-    pd('morphToSurface', 'main.js', '🔄 Retour 2D via référence fixe - transformation réversible garantie');
-  } else {
-    // AUTRES SURFACES : Génération normale
-    newMesh = initializeMesh(surfaces[newSurfaceName]);
-    pd('morphToSurface', 'main.js', `🔄 Maillage généré vers ${newSurfaceName}`);
-  }
-  
-  if (currentMesh) {
-    // COPIE PAR CORRESPONDANCE LOGIQUE (même position grille) et non par index tableau
-    // Créer un mapping basé sur les coordonnées UV originales
-    const oldVertexMap = new Map();
-  currentMesh.vertices.forEach(vertex => {
-      const key = `${vertex.u.toFixed(6)}_${vertex.v.toFixed(6)}`;
-      oldVertexMap.set(key, vertex);
-    });
-    
-    // Copier les positions vers les vertices correspondants
-    newMesh.vertices.forEach(vertex => {
-      const key = `${vertex.u.toFixed(6)}_${vertex.v.toFixed(6)}`;
-      const oldVertex = oldVertexMap.get(key);
-      if (oldVertex) {
-        vertex.x = oldVertex.x;
-        vertex.y = oldVertex.y;
-        vertex.z = oldVertex.z;
-      }
-    });
-    
-    pd('morphToSurface', 'main.js', '🔧 Positions copiées par correspondance logique UV (pas par index)');
-  }
-  
-  // Remplacer le maillage corrompu par un nouveau propre
-  currentMesh = newMesh;
-    window.currentMesh = currentMesh; // Export pour debug.js
-  
-  // PLUS BESOIN de réinitialiser le cache rectangles - structure UV identique !
-  // textureRectangles reste valide car même grille 30x20, mêmes UV, même texture
-  
-  if (skipAnimation) {
-    // SKIP ANIMATION : Aller directement à la position finale
-    currentMesh.vertices.forEach(vertex => {
-      vertex.x = vertex.xDest;
-      vertex.y = vertex.yDest;
-      vertex.z = vertex.zDest;
-    });
-    isAnimating = false;
-    pd('morphToSurface', 'main.js', `⚡ Animation skippée - transition immédiate vers ${newSurfaceName}`);
-  } else {
-  isAnimating = true;
-    startAnimation(); // CORRECTION: Redémarrer la boucle d'animation
-    pd('morphToSurface', 'main.js', `🔄 Animation démarrée vers ${newSurfaceName}`);
-  }
-}
+// === VARIABLES DYNAMIQUES ===
+let createSurface = null;
+let currentConfig = null;
 
-// Update animation barycentrique
-function updateMorphing() {
-  if (!isAnimating || !currentMesh) {
-    pd('updateMorphing', 'main.js', `⏸️ SKIP: isAnimating=${isAnimating}, currentMesh=${!!currentMesh}`);
-    return;
-  }
-  
-  // DEBUG CONFIG DEST
-  if (currentSurface && config.privilegedAngles[currentSurface]) {
-    const conf = config.privilegedAngles[currentSurface];
-    pd('CONFIG', 'main.js', `CONFIG | DEST | surface: ${currentSurface} | rotX: ${conf.rotX} | rotY: ${conf.rotY} | rotZ: ${conf.rotZ} | scale: ${conf.scale}`);
-  }
-  
-  let convergedCount = 0;
-  let totalVertices = currentMesh.vertices.length;
-  
-  currentMesh.vertices.forEach(vertex => {
-    // Interpolation barycentrique
-    const newX = config.bary * vertex.x + (1 - config.bary) * vertex.xDest;
-    const newY = config.bary * vertex.y + (1 - config.bary) * vertex.yDest;
-    const newZ = config.bary * vertex.z + (1 - config.bary) * vertex.zDest;
-    
-    // Test de convergence
-    const maxDist = Math.max(
-      Math.abs(newX - vertex.xDest),
-      Math.abs(newY - vertex.yDest),
-      Math.abs(newZ - vertex.zDest)
-    );
-    
-    if (maxDist < config.convergenceThreshold) {
-      // Convergé → fixer à la position finale
-      vertex.x = vertex.xDest;
-      vertex.y = vertex.yDest;
-      vertex.z = vertex.zDest;
-      convergedCount++;
-    } else {
-      // Continuer l'interpolation
-      vertex.x = newX;
-      vertex.y = newY;
-      vertex.z = newZ;
-    }
-  });
-  
-  // Debug morphing progress
-  if (Math.random() < 0.1) { // 10% des frames pour éviter spam
-    pd('updateMorphing', 'main.js', `🔄 Morphing: ${convergedCount}/${totalVertices} convergés`);
-  }
-  
-  // Arrêter l'animation si tous les sommets ont convergé
-  if (convergedCount === currentMesh.vertices.length) {
-    isAnimating = false;
-    pd('updateMorphing', 'main.js', `🟢 Animation terminée - tous sommets convergés vers ${targetSurface}`);
-  }
+async function loadSurfaceModule() {
+  const surfaceName = window.currentSurface;
+  const module = await import(`./surfaces/${surfaceName}.js`);
+  createSurface = module.createSurface;
+  currentConfig = module.config;
+  window.currentHandleDrag = module.handleDrag; // Correction ici
+  pd('CONFIG', 'main.js', `CONFIG chargée pour ${surfaceName}: ${JSON.stringify(currentConfig)}`);
 }
-
-// === SURFACES PARAMÉTRÉES ===
-const surfaces = {
-  sphere: sphere,
-  torus: torus,
-  klein: kleinSurface,
-  cylinder: cylinder,
-  mobius: mobius,
-  crosscap: crosscapSurface,
-  projective: projective,
-  disk: diskSurface,
-  plane: plane,
-  view2d: surface2D
-};
 
 // === ROTATION 3D ===
 function rotate3D(x, y, z, rotX, rotY, rotZ) {
@@ -1279,7 +1129,7 @@ function projectIso(x, y, z, scale) {
 
 // === CONFIGURATION SCALE DYNAMIQUE ===
 function getOptimalScale(surfaceName) {
-  const privileged = config.privilegedAngles[surfaceName];
+  const privileged = surfaces[surfaceName]?.config;
   return privileged && privileged.scale ? privileged.scale : 150;
 }
 
@@ -1288,12 +1138,13 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 // Surface courante déjà déclarée en haut
 // Initialisation avec config 2D par défaut
-let rotX = config.privilegedAngles[window.currentSurface] ? (config.privilegedAngles[window.currentSurface].rotX * Math.PI) / 180 : 0;
-let rotY = config.privilegedAngles[window.currentSurface] ? (config.privilegedAngles[window.currentSurface].rotY * Math.PI) / 180 : 0;
-let rotZ = config.privilegedAngles[window.currentSurface] ? (config.privilegedAngles[window.currentSurface].rotZ * Math.PI) / 180 : 0;
-let scale = config.privilegedAngles[window.currentSurface] ? config.privilegedAngles[window.currentSurface].scale : 150; // Scale initial 2D
+let rotX = (currentConfig?.rotX ?? 0) * Math.PI / 180;
+let rotY = (currentConfig?.rotY ?? 0) * Math.PI / 180;
+let rotZ = (currentConfig?.rotZ ?? 0) * Math.PI / 180;
+let scale = currentConfig?.scale ?? 150; // Scale initial 2D
 let cameraOffsetX = 0; // Translation caméra X
 let cameraOffsetY = 0; // Translation caméra Y
+let rotShape = 0; // Rotation spécifique pour la surface projective (Steiner)
 
 // === GESTION SOURIS ===
 let isDragging = false;
@@ -1337,10 +1188,10 @@ function resetToDefaultConfiguration() {
   cameraOffsetY = 0;
   
   // Réinitialiser angles et scale selon la config de la surface courante
-  if (view2DMode) {
+  if (window.currentSurface === 'view2d') {
     // Mode 2D : utiliser config view2d
-    if (config.privilegedAngles['view2d']) {
-      const angles = config.privilegedAngles['view2d'];
+    if (surfaces['view2d']?.config) {
+      const angles = surfaces['view2d']?.config;
       rotX = (angles.rotX * Math.PI) / 180;
       rotY = (angles.rotY * Math.PI) / 180;
       rotZ = (angles.rotZ * Math.PI) / 180;
@@ -1348,8 +1199,8 @@ function resetToDefaultConfiguration() {
      }
      } else {
     // Mode 3D : utiliser config de la surface courante
-    if (config.privilegedAngles[currentSurface]) {
-      const angles = config.privilegedAngles[currentSurface];
+    if (surfaces[window.currentSurface]?.config) {
+      const angles = surfaces[window.currentSurface]?.config;
       rotX = (angles.rotX * Math.PI) / 180;
       rotY = (angles.rotY * Math.PI) / 180;
       rotZ = (angles.rotZ * Math.PI) / 180;
@@ -1359,14 +1210,14 @@ function resetToDefaultConfiguration() {
       rotX = (config.defaultRotationX * Math.PI) / 180;
       rotY = (config.defaultRotationY * Math.PI) / 180;
       rotZ = 0;
-      scale = getOptimalScale(currentSurface);
+      scale = getOptimalScale(window.currentSurface);
     }
   }
   
   updateAngleDisplay();
   requestAnimationFrame(render);
   
-  pd('resetConfig', 'main.js', `🎯 Configuration réinitialisée pour ${view2DMode ? 'view2d' : currentSurface}`);
+  pd('resetConfig', 'main.js', `🎯 Configuration réinitialisée pour ${window.currentSurface === 'view2d' ? 'view2d' : 'currentSurface'}`);
 }
 
 
@@ -1484,27 +1335,14 @@ function render2DGrid() {
 }
 
 function render() {
-  
-  // Debug UV désormais uniquement lors des rotations manuelles
-  
-  // Vue 2D utilise maintenant le même rendu avec projection orthogonale
-  
+  pd('render', 'main.js', `Entrée dans render | surface: ${currentSurface} | rotX: ${(rotX*180/Math.PI).toFixed(1)}° | rotY: ${(rotY*180/Math.PI).toFixed(1)}° | rotZ: ${(rotZ*180/Math.PI).toFixed(1)}° | scale: ${scale}`);
   // Clear
   ctx.fillStyle = '#f0f0f0';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
-  // Initialiser le maillage si nécessaire
-  if (!currentMesh) {
-    currentMesh = initializeMesh(surfaces[currentSurface]);
-    window.currentMesh = currentMesh; // Export pour debug.js
-  }
-  
-  // Update animation (seulement si morphing actif)
-  if (isAnimating) {
-  updateMorphing();
-  }
-  
-  // Calculer visibilité des faces si activé
+  if (!currentMesh) return;
+
+  // Calculer visibilités des faces si activé
   calculateFaceVisibility();
   
   const centerX = canvas.width / 2;
@@ -1512,12 +1350,10 @@ function render() {
   
   // Rotation et projection des sommets (avec positions animées)
   const projectedVertices = currentMesh.vertices.map(vertex => {
-    // MÊME SYSTÈME pour 2D et 3D : rotation puis projection isométrique
     const rotated = currentSurface === 'projective' 
       ? rotate3DProjective(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ, rotShape)
       : rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
     const projected = projectIso(rotated.x, rotated.y, rotated.z, scale);
-    
     return {
       x: centerX + projected.x + cameraOffsetX,
       y: centerY - projected.y + cameraOffsetY,
@@ -1525,83 +1361,56 @@ function render() {
       originalIndex: vertex.index
     };
   });
-  
-  // Sauvegarder les projectedVertices pour le système de clic
   currentMesh.projectedVertices = projectedVertices;
   
   // Calcul centres et profondeurs des faces
   currentMesh.faces.forEach((face, faceIndex) => {
     let centerX = 0, centerY = 0, centerZ = 0;
-    
     face.vertices.forEach(vertexIndex => {
       const projected = projectedVertices[vertexIndex];
       centerX += projected.x;
       centerY += projected.y; 
-      
-      // MÊME CALCUL de profondeur pour 2D et 3D
       const vertex = currentMesh.vertices[vertexIndex];
       const rotated = currentSurface === 'projective' 
         ? rotate3DProjective(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ, rotShape)
         : rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
       centerZ += rotated.z;
     });
-    
     face.center = {
       x: centerX / 4,
       y: centerY / 4
     };
-    
-    // CORRECTION Z-ORDER : Ajouter petit décalage basé sur l'index pour préserver l'ordre logique
-    // Les faces avec index plus élevé sont légèrement plus proches (Z plus grand)
-    const zOffset = faceIndex * 0.001; // Très petit décalage pour préserver l'ordre
+    const zOffset = faceIndex * 0.001;
     face.avgZ = (centerZ / 4) + zOffset;
   });
   
-  // Tri des faces par profondeur (painter's algorithm) - RÉACTIVÉ avec Z-order corrigé
+  // Tri des faces par profondeur (painter's algorithm)
   const sortedFaces = currentMesh.faces.sort((a, b) => a.avgZ - b.avgZ);
-  // L'ordre logique est préservé grâce au zOffset basé sur faceIndex
   
-  // Pré-calculer rectangles textures si nécessaire (SEULEMENT si pas encore fait)
+  // Précalculer rectangles textures si nécessaire
   if (showTexture && !textureRectangles) {
     textureRectangles = precalculateTextureRectangles();
     pd('render', 'main.js', '🔧 Rectangles texture pré-calculés UNE SEULE FOIS');
   }
   
-  // Debug périodique supprimé pour éviter spam console
-  
   // Rendu avec texture ET grille si activé
   if (showTexture) {
-    // Rendu avec texture projetée (rectangles pré-calculés + transformations)
     sortedFaces.forEach((face, sortedIndex) => {
-      // Skip faces cachées si activé
       if (showHiddenFaces && face.visibility === 'hidden') return;
-      
-      // Construire quad projeté pour cette face
       const quadProjected = face.vertices.map(vertexIndex => projectedVertices[vertexIndex]);
-      
-      // Récupérer coordonnées X,Y pour cette face
-      const gridX = face.originalIndex % MESH_U;             // X (horizontal, 0-29)
-      const gridY = Math.floor(face.originalIndex / MESH_U); // Y (vertical, 0-19)
-      
-      // NOUVELLE APPROCHE: Utiliser getBmp(x,y) pour récupérer la texture
-      // Vérifier que les rectangles sont initialisés avant d'appeler getBmp
+      const gridX = face.originalIndex % MESH_U;
+      const gridY = Math.floor(face.originalIndex / MESH_U);
       const rectangle = textureRectangles ? getBmp(gridX, gridY) : null;
-      
-      // Mode couleur coordonnées ou texture normale
+
       let success = false;
       if (showColorDebug) {
-        // Mode couleur : affichage couleurs coordonnées sans texte
         success = drawColorGrid(ctx, quadProjected, face.originalIndex);
       } else {
-        // Mode normal : texture récupérée via getBmp(x,y)
         success = drawTransformedRectangle(ctx, rectangle, quadProjected, face.originalIndex);
       }
-      
-      // Affichage coordonnées texte si activé
       if (showCoordinates) {
         const centerX = (quadProjected[0].x + quadProjected[1].x + quadProjected[2].x + quadProjected[3].x) / 4;
         const centerY = (quadProjected[0].y + quadProjected[1].y + quadProjected[2].y + quadProjected[3].y) / 4;
-        
         ctx.save();
         ctx.fillStyle = 'white';
         ctx.strokeStyle = 'black';
@@ -1609,21 +1418,14 @@ function render() {
         ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        
         const coordText = `${gridX},${gridY}`;
-        // Contour noir pour lisibilité
         ctx.strokeText(coordText, centerX, centerY);
-        // Texte blanc par-dessus
         ctx.fillText(coordText, centerX, centerY);
-        
         ctx.restore();
       }
-      
-      // TOUJOURS traiter la grille, même si texture échoue
+      // Grille
       {
         const indices = face.vertices;
-        
-        // Contour selon visibilité
         let strokeColor, lineWidth;
         if (showHiddenFaces) {
           switch (face.visibility) {
@@ -1643,16 +1445,9 @@ function render() {
           strokeColor = isAnimating ? 'rgba(231,76,60,0.3)' : 'rgba(0,0,0,0.1)';
           lineWidth = isAnimating ? 0.3 : 0.1;
         }
-        
-        // Grille intelligente : visible si activée, colorée si désactivée (masque gaps)
         if (showGrid) {
-          // GRILLE VISIBLE : Contours noirs classiques
-          if (Math.random() < 0.01) { // Debug 1% des faces
-            pd('renderGrid', 'main.js', `🔲 Rendu grille visible face ${face.originalIndex}`);
-          }
           ctx.strokeStyle = 'rgba(0,0,0,0.6)';
           ctx.lineWidth = 1;
-          const indices = face.vertices;
         ctx.beginPath();
         ctx.moveTo(projectedVertices[indices[0]].x, projectedVertices[indices[0]].y);
         ctx.lineTo(projectedVertices[indices[1]].x, projectedVertices[indices[1]].y);
@@ -1661,18 +1456,17 @@ function render() {
         ctx.closePath();
         ctx.stroke();
         } else {
-          // GRILLE COLORÉE : Segments avec couleur moyenne des bords (masque gaps)
-          // CORRECTION: Toujours active quand grille désactivée pour masquer gaps
           drawColoredGrid(ctx, face, projectedVertices, rectangle);
         }
+      }
+      if (gridY > 10) {
+        console.log(`[TILE DEBUG][render] gridX=${gridX}, gridY=${gridY}, originalIndex=${face.originalIndex}, rectW=${rectangle?.width}, rectH=${rectangle?.height}, verts=[${face.vertices.join(',')}]`);
       }
     });
   } else {
     // Rendu wireframe classique
     sortedFaces.forEach(face => {
       const indices = face.vertices;
-      
-      // Couleur selon visibilité des faces cachées
       if (showHiddenFaces) {
         switch (face.visibility) {
           case 'visible':
@@ -1692,8 +1486,6 @@ function render() {
         ctx.strokeStyle = isAnimating ? '#e74c3c' : '#333';
         ctx.lineWidth = isAnimating ? 1.5 : 1;
       }
-      
-      // Dessiner le contour du quad
       ctx.beginPath();
       ctx.moveTo(projectedVertices[indices[0]].x, projectedVertices[indices[0]].y);
       ctx.lineTo(projectedVertices[indices[1]].x, projectedVertices[indices[1]].y);
@@ -1703,13 +1495,11 @@ function render() {
       ctx.stroke();
     });
   }
-  
-  // Grille supplémentaire si demandée (mode wireframe)
   if (showGrid && !showTexture) {
-    pd('renderGridWireframe', 'main.js', `🔲 Rendu grille wireframe: ${sortedFaces.length} faces`);
+    pd('renderGridWireframe', 'main.js', `🔷 Rendu grille wireframe: ${sortedFaces.length} faces`);
     sortedFaces.forEach(face => {
       const indices = face.vertices;
-      ctx.strokeStyle = 'rgba(255,0,0,0.8)'; // Rouge pour debug wireframe
+      ctx.strokeStyle = 'rgba(255,0,0,0.8)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(projectedVertices[indices[0]].x, projectedVertices[indices[0]].y);
@@ -1720,8 +1510,22 @@ function render() {
       ctx.stroke();
     });
   }
-  
-  // Debug info supprimé pour voir si boucle persiste
+  // Juste après le tri des faces et la projection :
+  if (window.currentSurface === 'cylinder') {
+    sortedFaces.forEach((face, sortedIndex) => {
+      const gridX = face.originalIndex % MESH_U;
+      const gridY = Math.floor(face.originalIndex / MESH_U);
+      if ((gridX === 2 && (gridY === 19 || gridY === 10))) {
+        const quadProjected = face.vertices.map(vertexIndex => projectedVertices[vertexIndex]);
+        console.log(`\n[DEBUG FACE] gridX=${gridX}, gridY=${gridY}, originalIndex=${face.originalIndex}`);
+        face.vertices.forEach((vi, i) => {
+          const v = currentMesh.vertices[vi];
+          const p = quadProjected[i];
+          console.log(`   V${i} (index ${vi}): gridU=${v.gridU.toFixed(3)}, gridV=${v.gridV.toFixed(3)}, x=${v.x.toFixed(3)}, y=${v.y.toFixed(3)}, z=${v.z.toFixed(3)}, xProj=${p.x.toFixed(1)}, yProj=${p.y.toFixed(1)}`);
+        });
+      }
+    });
+  }
 }
 
 // Boucle d'animation avec autostop intelligent
@@ -1870,15 +1674,13 @@ document.addEventListener('mouseup', () => {
   }
 });
 
-// Démarrer l'animation initiale
-startAnimation();
-
 // === INITIALISATION DYNAMIQUE DES TEXTURES ===
 // Remplacer l'IIFE par une fonction globale
 async function initializeTextures() {
+  pd('initializeTextures', 'main.js', 'Entrée dans initializeTextures');
   await detectAvailableTextures();
   generateTextureInterface();
-  loadTexture();
+loadTexture();
   // Initialiser l'affichage de la projection
   const moveOverlay = document.getElementById('moveOverlay');
   if (moveOverlay) {
@@ -1929,15 +1731,15 @@ const topologyIcons = {
 // === SYSTÈME DE TRADUCTION GLOBAL ===
 window.translationAPI = null;
 window.translationLoaded = false;
-(async function initTranslations() {
-  if (window.TranslationAPI) {
-    window.translationAPI = new window.TranslationAPI();
-    window.translationLoaded = await window.translationAPI.init('trads/translations.csv');
-    pd('initTranslations', 'main.js', window.translationLoaded ? '✅ Traductions chargées' : '❌ Échec chargement traductions');
-        } else {
-    pd('initTranslations', 'main.js', '❌ TranslationAPI non disponible');
-  }
-})();
+// (async function initTranslations() {
+//   if (window.TranslationAPI) {
+//     window.translationAPI = new window.TranslationAPI();
+//     window.translationLoaded = await window.translationAPI.init('trads/translations.csv');
+//     pd('initTranslations', 'main.js', window.translationLoaded ? '✅ Traductions chargées' : '❌ Échec chargement traductions');
+//   } else {
+//     pd('initTranslations', 'main.js', '❌ TranslationAPI non disponible');
+//   }
+// })();
 
 /**
  * Met à jour l'affichage compact topologie + texture avec traduction
@@ -1990,11 +1792,6 @@ document.querySelectorAll('input[name="mapChoice"]').forEach(radio => {
     }
   });
 });
-
-// Contrôle d'échelle supprimé - utiliser le zoom molette
-
-// Drag rotation toujours activé (plus de contrôle)
-dragEnabled = true;
 
 // Gestionnaire pour le bouton grille 🌐 (toggle du checkbox caché)
 document.querySelector('label[for="showTexture"], .map-option:has(#showTexture)').addEventListener('click', (e) => {
@@ -2095,37 +1892,27 @@ document.getElementById('rotZRight').addEventListener('click', () => {
 // === ÉVÉNEMENTS SOURIS ===
 canvas.addEventListener('mousedown', (e) => {
   // MODE 2D : Clic pour debug tuile
-  if (view2DMode) {
+  pd('mousedown', 'main.js', `Clic souris | view2DMode: ${window.currentSurface === 'view2d'}`);
+  if (window.currentSurface === 'view2d') {
     const rect = canvas.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
-    
-    // Trouver la tuile cliquée
-    const tileCoords = findTileAtPosition(clickX, clickY);
-    
-    if (tileCoords) {
-      console.log(`🎯 Clic tuile (${tileCoords.x}, ${tileCoords.y})`);
-      if (typeof debugTileClick === 'function') {
-        debugTileClick(tileCoords.x, tileCoords.y);
-      } else {
-        console.error('❌ debugTileClick non disponible');
-      }
-    }
+    debugTileClick(clickX, clickY);
     return;
   }
   
   // MODE 3D : Drag normal
-  if (dragEnabled && !view2DMode) {
+  if (window.currentSurface !== 'view2d') {
     isDragging = true;
     lastMouseX = e.clientX;
     lastMouseY = e.clientY;
     canvas.style.cursor = 'grabbing';
-    startAnimation(); // Redémarrer animation pour drag
+    render()
   }
 });
 
 canvas.addEventListener('mousemove', (e) => {
-  if (!isDragging || !dragEnabled || view2DMode) return;
+  if (!isDragging || window.currentSurface === 'view2d') return;
   
   const deltaX = e.clientX - lastMouseX;
   const deltaY = e.clientY - lastMouseY;
@@ -2140,7 +1927,7 @@ canvas.addEventListener('mousemove', (e) => {
     rotZ += deltaX * config.mouseSensitivity * 0.01;
   } else {
     // DRAG ADAPTATIF PAR SURFACE
-    if (currentSurface === 'projective') {
+    if (window.currentSurface === 'projective') {
       // PROJECTIF : Drag X = rotation autour axe principal de la forme
       rotShape += deltaX * config.mouseSensitivity * 0.01;
       // Drag Y = rotation X INVERSÉE (vertical opposé)
@@ -2149,15 +1936,15 @@ canvas.addEventListener('mousemove', (e) => {
     } else {
       // Rotation Y (horizontal) - normale pour autres surfaces
       let rotYMultiplier = 1;
-      if (currentSurface === 'cylinder') {
+      if (window.currentSurface === 'cylinder') {
         rotYMultiplier = -1; // Inverser le sens pour cylindre
       }
       rotY += deltaX * config.mouseSensitivity * 0.01 * rotYMultiplier;
       
       // Rotation X (vertical) - adaptée par surface
-      if (currentSurface === 'cylinder') {
+      if (window.currentSurface === 'cylinder') {
         // Cylindre : pas de rotation verticale
-      } else if (currentSurface === 'torus') {
+      } else if (window.currentSurface === 'torus') {
         // Tore : dragY = rotZ (inclinaison autour de l'axe Z)
         rotZ += deltaY * config.mouseSensitivity * 0.01;
       } else {
@@ -2179,18 +1966,18 @@ canvas.addEventListener('mousemove', (e) => {
 
 canvas.addEventListener('mouseup', () => {
   isDragging = false;
-  canvas.style.cursor = dragEnabled ? 'grab' : 'default';
+  canvas.style.cursor = window.currentSurface !== 'view2d' ? 'grab' : 'default';
 });
 
 canvas.addEventListener('mouseleave', () => {
   isDragging = false;
-  canvas.style.cursor = dragEnabled ? 'grab' : 'default';
+  canvas.style.cursor = window.currentSurface !== 'view2d' ? 'grab' : 'default';
 });
 
 // Update cursor style based on drag state
 setInterval(() => {
   if (!isDragging) {
-    canvas.style.cursor = (dragEnabled && !view2DMode) ? 'grab' : 'default';
+    canvas.style.cursor = (window.currentSurface !== 'view2d') ? 'grab' : 'default';
   }
 }, 100);
 
@@ -2202,7 +1989,8 @@ canvas.addEventListener('wheel', (e) => {
   const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
   scale = Math.max(10, Math.min(500, scale * zoomFactor)); // ScaleMin à 10 !
   // DEBUG SCALE
-  const surfaceConf = (typeof window.currentSurface !== 'undefined' && config.privilegedAngles[window.currentSurface]) ? config.privilegedAngles[window.currentSurface] : {};
+  pd('scaleDebug', 'main.js', `Scale courant après molette : ${scale.toFixed(2)}`);
+  const surfaceConf = currentConfig || {};
   pd('zoomWheel', 'main.js', `🔍 Zoom molette | Surface: ${window.currentSurface} | scale=${scale.toFixed(2)} | config.scale=${surfaceConf.scale} | config.defaultRotation=${JSON.stringify(surfaceConf)}`);
   // Annuler le timeout précédent s'il existe
   if (wheelTimeout) {
@@ -2241,13 +2029,7 @@ updateAngleDisplay();
  * @returns {Object|null} - {x, y} coordonnées de la tuile ou null si non trouvée
  */
 function findTileAtPosition(clickX, clickY) {
-  if (!view2DMode || !currentMesh || !currentMesh.faces) {
-    console.log('❌ Conditions non remplies:', {view2DMode, currentMesh: !!currentMesh, faces: currentMesh?.faces?.length});
-    return null;
-  }
-  
-  // EN MODE 2D : Conversion directe coordonnées → grille (plus simple et fiable)
-  if (view2DMode) {
+  if (window.currentSurface === 'view2d') {
     const tileWidth = canvas.width / MESH_U;   // Largeur d'une tuile = 800/30 ≈ 26.67
     const tileHeight = canvas.height / MESH_V; // Hauteur d'une tuile = 450/20 = 22.5
     
@@ -2990,11 +2772,6 @@ function getOppositeBorderSide(borderSide) {
 // Exposer la fonction de debug globalement pour utilisation en console
 window.debugTileBorderColors = debugTileBorderColors;
 
-// Debug automatique de la tuile (1,8) bord droit au démarrage
-// Debug supprimé pour éviter boucle infinie
-
-// === DEBUG RENDU SPÉCIFIQUE TUILE ===
-
 /**
  * Debug le rendu d'une tuile spécifique pour détecter les problèmes d'affichage
  * @param {number} targetX - Coordonnée X de la tuile
@@ -3633,9 +3410,9 @@ function capitalizeWords(str) {
 }
 
 // Après initialisation de window.currentSurface et window.currentMapName
-if (typeof window !== 'undefined' && window.currentSurface && config.privilegedAngles[window.currentSurface]) {
-  const configSource = 'config.privilegedAngles';
-  const configObj = config.privilegedAngles[window.currentSurface];
+if (typeof window !== 'undefined' && window.currentSurface && surfaces[window.currentSurface]?.config) {
+  const configSource = 'surfaces';
+  const configObj = surfaces[window.currentSurface]?.config;
   pd('CONFIG', 'main.js', `CONFIG | INIT | source: ${configSource} | surface: ${window.currentSurface} | valeurs: ${JSON.stringify(configObj)}`);
 }
 
@@ -3644,6 +3421,7 @@ window.translations = {};
 window.currentLang = 'fr'; // Langue par défaut
 
 async function loadAllTranslations() {
+  pd('loadAllTranslations', 'main.js', 'Entrée dans loadAllTranslations');
   const t0 = performance.now();
   const response = await fetch('trads/translations.csv');
   const csv = await response.text();
@@ -3679,6 +3457,10 @@ async function loadAllTranslations() {
   console.log('[DEBUG][loadAllTranslations] Toutes les langues chargées en', (t1-t0).toFixed(1), 'ms');
   console.log('[DEBUG][loadAllTranslations] Clés FR:', Object.keys(translations.fr));
   console.log('[DEBUG][loadAllTranslations] Structure:', window.translations);
+  window.translationsReady = true;
+  if (typeof refreshAllTranslations === 'function') {
+    refreshAllTranslations();
+  }
 }
 
 function t(key) {
@@ -3691,9 +3473,6 @@ function t(key) {
   return value;
 }
 window.t = t;
-
-// Appeler loadAllTranslations au démarrage
-loadAllTranslations();
 
 // === SCRIPT DE NETTOYAGE CSV (à exécuter une fois, pas en prod) ===
 // Copie ce code dans un fichier Node.js ou dans la console du navigateur avec le contenu du CSV en variable.
@@ -3714,13 +3493,73 @@ function cleanCsv(csvText) {
 // Puis copier/coller le résultat dans trads/translations.csv
 
 async function startApp() {
+  pd('startApp', 'main.js', 'Entrée dans startApp');
   await loadAllTranslations();
-  // Initialisation de l'UI et scan des textures APRES chargement des traductions
+  window.currentSurface = 'view2d';
+  await loadSurfaceModule(); // Correction : nom du module dynamique
   await initializeTextures();
-  // ... autres initialisations si besoin ...
+  await initializeShape();
 }
 
-startApp();
-// ...
-// Supprimer ou commenter tout appel direct à loadAllTranslations() ou initializeTextures() ailleurs dans le code
-// ... existing code ...
+// Attendre que le DOM soit prêt avant de lancer l'init principale
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    pd('init', 'main.js', 'DOM prêt, lancement startApp()');
+    startApp();
+  });
+    } else {
+  pd('init', 'main.js', 'DOM déjà prêt, lancement startApp()');
+  startApp();
+}
+
+async function initializeShape() {
+  const surfaceName = window.currentSurface;
+  pd('initializeShape', 'main.js', `Entrée dans initializeShape pour ${surfaceName}`);
+  if (typeof createSurface !== 'function') {
+    throw new Error('createSurface is not initialized or not a function');
+  }
+  if (currentConfig) {
+    const angles = currentConfig;
+    rotX = (angles.rotX * Math.PI) / 180;
+    rotY = (angles.rotY * Math.PI) / 180;
+    rotZ = (angles.rotZ * Math.PI) / 180;
+    scale = angles.scale;
+    pd('CONFIG', 'main.js', `CONFIG | SHAPE | surface: ${surfaceName} | valeurs: ${JSON.stringify(angles)}`);
+    } else {
+    pd('CONFIG', 'main.js', `Aucune config trouvée pour ${surfaceName}`);
+  }
+  currentMesh = initializeMesh(createSurface);
+  window.currentMesh = currentMesh;
+  // Debug DEST (échantillon)
+  if (currentMesh && currentMesh.vertices && currentMesh.vertices.length > 0) {
+    const n = currentMesh.vertices.length;
+    const indices = [0, Math.floor(n/2), n-1];
+    indices.forEach(i => {
+      const v = currentMesh.vertices[i];
+      pd('DEST', 'main.js', `DEST vertex[${i}]: xDest=${v.xDest?.toFixed(2)}, yDest=${v.yDest?.toFixed(2)}, zDest=${v.zDest?.toFixed(2)}`);
+    });
+  }
+  // Afficher la shape directement (pas d'anim)
+  updateAngleDisplay();
+    render();
+}
+
+async function morphToSurface(newSurfaceName) {
+  pd('morphToSurface', 'main.js', `Morphing vers ${newSurfaceName}`);
+  window.currentSurface = newSurfaceName;
+  await loadSurfaceModule();
+  await initializeShape();
+}
+window.morphToSurface = morphToSurface;
+
+// Après l'initialisation du canvas et des variables globales :
+setupCameraControls(canvas, config, updateAngleDisplay, render, typeof debugUVCorners !== 'undefined' ? debugUVCorners : undefined, {
+  get rotX() { return rotX; },
+  set rotX(val) { rotX = val; },
+  get rotY() { return rotY; },
+  set rotY(val) { rotY = val; },
+  get rotZ() { return rotZ; },
+  set rotZ(val) { rotZ = val; },
+  get rotShape() { return rotShape; },
+  set rotShape(val) { rotShape = val; }
+});

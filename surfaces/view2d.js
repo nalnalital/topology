@@ -13,11 +13,16 @@
  * @param {number} v - Paramètre V normalisé [0,1] (inversé pour Y)
  * @returns {Object} Point 3D {x, y, z}
  */
-export function surface2D(u, v) {
+export function createSurface(u, v) {
   // Inversion de l'ordre des tuiles en Y comme demandé
   const vInversed = 1 - v;
   // Inversion droite/gauche en X comme demandé
   const uInversed = 1 - u;
+  
+  u = u + getTextureOffsetU();
+  if (u > 1.0) u -= 1.0; if (u < 0) u += 1.0;
+  v = v + getTextureOffsetV();
+  if (v > 1.0) v -= 1.0; if (v < 0) v += 1.0;
   
   return {
     x: (uInversed - 0.5) * 6, // Étalement horizontal avec inversion X (droite/gauche)
@@ -28,18 +33,15 @@ export function surface2D(u, v) {
 
 // Configuration spécifique 2D
 export const config = {
-  scale: 108,                    // Scale optimal pour 2D
-  defaultRotation: { x: 0, y: 135 }, // Vue par défaut
-  name: 'Vue 2D',
-  emoji: '🔄'
+  scale: 108,
+  rotX: 0,
+  rotY: 135,
+  rotZ: 0
 };
 
-// Fonction Three.js (legacy - pour homogénéité)
-export function createSurface() {
-  const geometry = new THREE.PlaneGeometry(6, 4, 30, 20);
-  const material = new THREE.MeshStandardMaterial({ color: 0x3399ff, wireframe: true });
-  return new THREE.Mesh(geometry, material);
-}
+// Décalage texture spécifique 2D (offset paramétrique)
+export function getTextureOffsetU() { return 0; }
+export function getTextureOffsetV() { return 0; }
 
 // Export par défaut pour compatibilité
-export default surface2D; 
+export default createSurface; 

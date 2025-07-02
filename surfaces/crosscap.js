@@ -16,21 +16,24 @@ export const topologyIcon = {
   bottom: '◀️'
 };
 
-export function crosscap(u, v) {
+// Décalage texture spécifique crosscap (offset paramétrique)
+export function getTextureOffsetU() { return 0; }
+export function getTextureOffsetV() { return 0; }
+
+export function createSurface(u, v) {
+  u = u + getTextureOffsetU();
+  if (u > 1.0) u -= 1.0; if (u < 0) u += 1.0;
+  v = v + getTextureOffsetV();
+  if (v > 1.0) v -= 1.0; if (v < 0) v += 1.0;
   u *= Math.PI;
   v *= 2 * Math.PI;
-  
-  const sinU = Math.sin(u);
-  const cosU = Math.cos(u);
-  const cosV = Math.cos(v);
-  const sinV = Math.sin(v);
-  const cos2V = Math.cos(2 * v);
-  
-  return {
-    x: sinU * cosV * 2,
-    y: sinU * sinV * 2,
-    z: (Math.sin(u) * Math.cos(v)) / 2
-  };
+
+  // Paramétrisation standard du crosscap
+  const x = Math.sin(u) * Math.sin(v);
+  const y = Math.sin(2 * u) * Math.cos(v) / 2;
+  const z = Math.cos(u);
+  // Mise à l'échelle pour affichage
+  return { x: x * 2.2, y: y * 2.2, z: z * 2.2 };
 }
 
 // Structure d'identification pour le carré fondamental
@@ -42,16 +45,15 @@ export const identification = [
 
 // Configuration spécifique crosscap
 export const config = {
-  scale: 180,                    // Scale optimal pour cross-cap
-  defaultRotation: { x: 0, y: -90 }, // Vue par défaut
-  name: 'Cross-cap',
-  emoji: '🪢'
+  scale: 180,
+  rotX: 0,
+  rotY: -90,
+  rotZ: 0
 };
 
-// Fonction Three.js (legacy - pour homogénéité)
-export function createSurface() {
-  // Géométrie approximative pour cross-cap
-  const geometry = new THREE.SphereGeometry(2, 16, 16);
-  const material = new THREE.MeshStandardMaterial({ color: 0x3399ff });
-  return new THREE.Mesh(geometry, material);
+// Gestion du drag spécifique crosscap
+export function handleDrag(deltaX, deltaY, angles, config) {
+  angles.rotY += deltaX * config.mouseSensitivity * 0.01;
+  angles.rotX += deltaY * config.mouseSensitivity * 0.01;
+  angles.rotX = Math.max(-Math.PI, Math.min(Math.PI, angles.rotX));
 } 

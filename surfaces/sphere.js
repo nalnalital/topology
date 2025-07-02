@@ -13,11 +13,17 @@ export const topologyIcon = {
   center: '🌍'
 };
 
-export function sphere(u, v) {
+// Décalage texture spécifique sphère (offset paramétrique)
+export function getTextureOffsetU() { return 0; }
+export function getTextureOffsetV() { return 0; }
+
+export function createSurface(u, v) {
+  u = u + getTextureOffsetU();
+  if (u > 1.0) u -= 1.0; if (u < 0) u += 1.0;
+  v = v + getTextureOffsetV();
+  if (v > 1.0) v -= 1.0; if (v < 0) v += 1.0;
   // Paramètres sphériques standards
   // u = longitude (0 à 1 → 0 à 2π)
-  // v = latitude (0 à 1 → 0 à π)
-  
   const phi = u * 2 * Math.PI;      // Longitude: 0 à 2π
   const theta = v * Math.PI;        // Latitude: 0 à π
   
@@ -32,15 +38,15 @@ export function sphere(u, v) {
 
 // Configuration spécifique sphère
 export const config = {
-  scale: 70,                        // Scale ajusté pour meilleur affichage
-  defaultRotation: { x: 25, y: 45 }, // Vue 3/4 par défaut
-  name: 'Sphère',
-  emoji: '🌍'
+  scale: 70,
+  rotX: 25,
+  rotY: 45,
+  rotZ: 0
 };
 
-// Fonction Three.js (legacy - pour homogénéité)
-export function createSurface() {
-  const geometry = new THREE.SphereGeometry(2.5, 30, 20);
-  const material = new THREE.MeshStandardMaterial({ color: 0x3399ff });
-  return new THREE.Mesh(geometry, material);
+// Gestion du drag spécifique sphère
+export function handleDrag(deltaX, deltaY, angles, config) {
+  angles.rotY += deltaX * config.mouseSensitivity * 0.01;
+  angles.rotX += deltaY * config.mouseSensitivity * 0.01;
+  angles.rotX = Math.max(-Math.PI, Math.min(Math.PI, angles.rotX));
 } 

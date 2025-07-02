@@ -21,7 +21,15 @@ export const topologyIcon = {
   bottom: '⏪'
 };
 
-export function projective(u, v) {
+// Décalage texture spécifique projectif (offset paramétrique)
+export function getTextureOffsetU() { return 0; }
+export function getTextureOffsetV() { return 0; }
+
+export function createSurface(u, v) {
+  u = u + getTextureOffsetU();
+  if (u > 1.0) u -= 1.0; if (u < 0) u += 1.0;
+  v = v + getTextureOffsetV();
+  if (v > 1.0) v -= 1.0; if (v < 0) v += 1.0;
   u *= Math.PI;
   v *= 2 * Math.PI;
   
@@ -69,15 +77,14 @@ export const identification = [
 // Configuration spécifique
 export const config = {
   scale: 80,
-  defaultRotation: { x: 10, y: 20 },
-  name: 'Surface de Steiner',
-  emoji: '🍎'
+  rotX: 10,
+  rotY: 20,
+  rotZ: 0
 };
 
-// Fonction Three.js (legacy - pour homogénéité)
-export function createSurface() {
-  // Géométrie approximative pour plan projectif
-  const geometry = new THREE.SphereGeometry(3, 16, 16);
-  const material = new THREE.MeshStandardMaterial({ color: 0x3399ff, transparent: true, opacity: 0.8 });
-  return new THREE.Mesh(geometry, material);
+// Gestion du drag spécifique projectif
+export function handleDrag(deltaX, deltaY, angles, config) {
+  angles.rotShape += deltaX * config.mouseSensitivity * 0.01;
+  angles.rotX -= deltaY * config.mouseSensitivity * 0.01;
+  angles.rotX = Math.max(-Math.PI, Math.min(Math.PI, angles.rotX));
 } 

@@ -196,6 +196,7 @@
   </div>
   <script src="trads/translations.js"></script>
   <script type="module" src="shape-selector.js"></script>
+  <script type="module" src="debug/debug.js"></script>
   <script>
     // Cache busting pour main.js
     const version = new Date().getTime();
@@ -274,8 +275,6 @@
       });
       // Sélectionner FR par défaut au chargement
       flags.forEach(f => f.style.borderColor = (f.getAttribute('data-lang') === 'fr') ? '#2196f3' : 'transparent');
-      // Rafraîchir tous les textes traduits au chargement (si trads déjà prêtes)
-      setTimeout(refreshAllTranslations, 500);
     });
   </script>
 </body>

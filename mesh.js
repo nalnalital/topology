@@ -46,7 +46,7 @@ export function createMesh(width = 30, height = 20) {
  * @param {Object} params - Paramètres transformation {scale, offsetX, offsetY, ...}
  * @returns {Array} [x2D, y2D] coordonnées 2D finales
  */
-export function createSurface(gridPoint, params = {}) {
+export function homeomorphism(gridPoint, params = {}) {
   const [gridX, gridY] = gridPoint;
   
   // Paramètres par défaut
@@ -75,13 +75,13 @@ export function createSurface(gridPoint, params = {}) {
 }
 
 /**
- * Applique createSurface à toute une case (4 points)
+ * Applique homeomorphism à toute une case (4 points)
  * @param {Array} case_quad - [[x0,y0],[x1,y1],[x2,y2],[x3,y3]]
  * @param {Object} params - Paramètres transformation
  * @returns {Array} Case transformée [[x2D0,y2D0], ...]
  */
 export function transformCase(case_quad, params = {}) {
-  return case_quad.map(gridPoint => createSurface(gridPoint, params));
+  return case_quad.map(gridPoint => homeomorphism(gridPoint, params));
 }
 
 /**

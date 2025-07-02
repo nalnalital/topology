@@ -13,53 +13,46 @@ export const topologyIcon = {
   center: '💿'
 };
 
-export function disk(u, v) {
-  // Projection stéréographique inverse
-  // u = rayon de 0 à 1 (centre vers bord)
-  // v = angle de 0 à 1 (0 à 2π)
-  
+// Décalage texture spécifique disque (offset paramétrique)
+export function getTextureOffsetU() { return 0; }
+export function getTextureOffsetV() { return 0; }
+
+export function createSurface(u, v) {
+  // Décalage offset si besoin (optionnel, wrap uniquement sur v)
+  // u = u + getTextureOffsetU();
+  // u = Math.max(0, Math.min(1, u));
+  v = v + getTextureOffsetV();
+  if (v > 1.0) v -= 1.0; if (v < 0) v += 1.0;
+
+  // u = rayon [0,1] (centre = pôle nord, bord = pôle sud)
+  // v = angle [0,1] (0 à 2π)
   const r = u; // Rayon dans le plan du disque
   const theta = v * 2 * Math.PI; // Angle autour du centre
-  
-  // Projection stéréographique inverse : disque → hémisphère sud
-  // Centre du disque (r=0) → pôle nord (0, 1, 0)
-  // Bord du disque (r=1) → pôle sud (0, -1, 0) tout autour
-  
-  const radius = 2.5; // Rayon de la sphère de référence
-  
-  if (r < 0.001) {
-    // Centre : pôle nord
-    return {
-      x: 0,
-      y: radius,
-      z: 0
-    };
-  }
-  
-  // Projection stéréographique inverse
-  // Formule : (x, y) → (2x/(1+x²+y²), 2y/(1+x²+y²), (x²+y²-1)/(1+x²+y²))
-  const x_plane = r * Math.cos(theta);
-  const z_plane = r * Math.sin(theta);
-  const denom = 1 + x_plane * x_plane + z_plane * z_plane;
-  
+
+  // Disque plat : Y=0, XZ dans le plan
+  // Mapping UV platistes :
+  //   - textureU = v (angle)
+  //   - textureV = u (rayon)
   return {
-    x: (2 * x_plane / denom) * radius,
-    y: ((1 - x_plane * x_plane - z_plane * z_plane) / denom) * radius,
-    z: (2 * z_plane / denom) * radius
+    x: r * Math.cos(theta) * 2.5,
+    y: 0,
+    z: r * Math.sin(theta) * 2.5,
+    textureU: v, // angle
+    textureV: u  // rayon (0=centre, 1=bord)
   };
 }
 
 // Configuration spécifique disk
 export const config = {
-  scale: 162,                    // Scale optimal pour disque
-  defaultRotation: { x: 5, y: 0 }, // Vue par défaut
-  name: 'Disque',
-  emoji: '💿'
+  scale: 162,
+  rotX: 5,
+  rotY: 0,
+  rotZ: 0
 };
 
-// Fonction Three.js (legacy - pour homogénéité)
-export function createSurface() {
-  const geometry = new THREE.CircleGeometry(2.5, 32);
-  const material = new THREE.MeshStandardMaterial({ color: 0x3399ff });
-  return new THREE.Mesh(geometry, material);
+// Gestion du drag spécifique disque
+export function handleDrag(deltaX, deltaY, angles, config) {
+  angles.rotY += deltaX * config.mouseSensitivity * 0.01;
+  angles.rotX += deltaY * config.mouseSensitivity * 0.01;
+  angles.rotX = Math.max(-Math.PI, Math.min(Math.PI, angles.rotX));
 } 

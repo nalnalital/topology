@@ -20,32 +20,31 @@ export const topologyIcon = {
 
 // Configuration spécifique torus
 export const config = {
-  scale: 120,                    // Scale optimal pour torus (plus petit que défaut 150)
-  defaultRotation: { x: -140, y: 90, z: -60 }, // Vue historique (config.js)
-  name: 'Tore',
-  emoji: '🍩'
+  scale: 120,
+  rotX: -140,
+  rotY: 90,
+  rotZ: -60
 };
 
-// Fonction mathématique du torus
-export function torus(u, v) {
-  const phi = u * 2 * Math.PI;
-  // CORRECTION PÔLE SUD: Décaler theta de π/2 pour que pôle sud soit à l'intérieur
-  const theta = (v + 0.5) * 2 * Math.PI; // v=0 → theta=π (pôle sud intérieur)
-  const R = 2; // Rayon majeur
-  const r = 0.8; // Rayon mineur
-  
-  return {
-    x: (R + r * Math.cos(theta)) * Math.cos(phi),
-    y: r * Math.sin(theta),
-    z: (R + r * Math.cos(theta)) * Math.sin(phi)
-  };
-}
+// Décalage texture spécifique tore (offset paramétrique)
+export function getTextureOffsetU() { return 0; }
+export function getTextureOffsetV() { return 0.5; }
 
-// Fonction Three.js (legacy)
-export function createSurface() {
-  const geometry = new THREE.TorusGeometry(1, 0.4, 32, 64);
-  const material = new THREE.MeshStandardMaterial({ color: 0x3399ff });
-  return new THREE.Mesh(geometry, material);
+// Fonction mathématique du torus
+export function createSurface(u, v) {
+  u = u + getTextureOffsetU();
+  if (u > 1.0) u -= 1.0; if (u < 0) u += 1.0;
+  v = v + getTextureOffsetV();
+  if (v > 1.0) v -= 1.0; if (v < 0) v += 1.0;
+  u *= 2 * Math.PI;
+  v *= 2 * Math.PI;
+  const R = 2.2;
+  const r = 0.8;
+  return {
+    x: (R + r * Math.cos(v)) * Math.cos(u),
+    y: (R + r * Math.cos(v)) * Math.sin(u),
+    z: r * Math.sin(v)
+  };
 }
 
 // Structure d'identification pour le carré fondamental
@@ -53,3 +52,12 @@ export const identification = [
   { edge1: 'left', edge2: 'right', orientation: 'same' },
   { edge1: 'top', edge2: 'bottom', orientation: 'same' }
 ];
+
+// Gestion du drag spécifique tore
+export function handleDrag(deltaX, deltaY, angles, config) {
+  // dragX = rotY (normal)
+  angles.rotY += deltaX * config.mouseSensitivity * 0.01;
+  // dragY = rotX + rotZ (effet combiné)
+  angles.rotX += deltaY * config.mouseSensitivity * 0.5 * 0.01;
+  angles.rotZ += deltaY * config.mouseSensitivity * 0.5 * 0.01;
+}
