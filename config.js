@@ -50,20 +50,5 @@ export const config = {
     'crosscap': { rotX: 0, rotY: -90, rotZ: -45, scale: 180 },    // Cross : 0° -90° -45° 180
     'projective': { rotX: 40, rotY: 5, rotZ: 160, scale: 85 }     // Projectif : 40° 5° 160° 85
   },
-  
-  // Icônes alternatives intéressantes pour les surfaces topologiques
-  // 💠 - étoile à six branches (géométrie complexe)
-  // 🌌 - galaxie spirale (cosmos, infini)
-  // 🪐 - planète avec anneaux (géométrie toroïdale)
-
-  surfaces: {
-    'sphere': { rotX: 3, rotY: 223, rotZ: -45, scale: 60 },
-    'disk': { rotX: 0, rotY: 0, rotZ: 0, scale: 100 },
-    'cylinder': { rotX: 15, rotY: 335, rotZ: 10, scale: 70 },
-    'mobius': { rotX: 0, rotY: 0, rotZ: 0, scale: 60 },
-    'torus': { rotX: 25, rotY: 325, rotZ: 350, scale: 80 },
-    'projective': { rotX: 0, rotY: 0, rotZ: 0, scale: 75 },
-    'klein': { rotX: 15, rotY: 350, rotZ: 10, scale: 70 },
-    'crosscap': { rotX: 0, rotY: 0, rotZ: 0, scale: 80 }
-  },
+  // NOTE : La seule source de vérité pour les angles et échelles est 'privilegedAngles'.
 }; 

@@ -122,6 +122,11 @@ class TranslationManager {
         // Log statistiques
         $count = count($this->translations);
         error_log("Traductions chargées: $count entrées depuis $csvFile");
+        if (isset($this->translations['projectionTitle']) || isset($this->translations['"projectionTitle"']) || isset($this->translations['"""projectionTitle"""'])) {
+            error_log('[DEBUG][PHP] Clé projectionTitle présente dans $this->translations');
+        } else {
+            error_log('[DEBUG][PHP] Clé projectionTitle ABSENTE dans $this->translations');
+        }
     }
     
     /**

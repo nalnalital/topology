@@ -8,14 +8,21 @@
       <!-- Version 2.53.0 - Refactoring CSS -->
 </head>
 <body>
-  <h1>Square Topologicon</h1>
+  <div id="langSelector" style="margin: 10px 0; display: flex; gap: 8px;">
+    <span class="lang-flag" data-lang="fr" style="font-size: 2em; cursor: pointer; border: 2px solid #2196f3; border-radius: 6px; padding: 2px 8px;">🇫🇷</span>
+    <span class="lang-flag" data-lang="en" style="font-size: 2em; cursor: pointer; border: 2px solid transparent; border-radius: 6px; padding: 2px 8px;">🇬🇧</span>
+    <span class="lang-flag" data-lang="es" style="font-size: 2em; cursor: pointer; border: 2px solid transparent; border-radius: 6px; padding: 2px 8px;">🇪🇸</span>
+    <span class="lang-flag" data-lang="it" style="font-size: 2em; cursor: pointer; border: 2px solid transparent; border-radius: 6px; padding: 2px 8px;">🇮🇹</span>
+    <span class="lang-flag" data-lang="de" style="font-size: 2em; cursor: pointer; border: 2px solid transparent; border-radius: 6px; padding: 2px 8px;">🇩🇪</span>
+  </div>
+  <h1 trad="mainTitle">Square Topologicon</h1>
   <div class="control-row-single">
     <label class="map-option">
       <input type="radio" name="topology" value="view2d" checked>
       <span class="map-name">🔄</span>
     </label>
     
-    <div id="selectedProjection" class="selected-projection-inline">Steam Texture</div>
+    <div id="selectedProjection" class="selected-projection-inline" trad="projectionTitle">Steam Texture</div>
     
     <label class="map-option">
       <input type="checkbox" id="showTexture" style="display: none;">
@@ -184,9 +191,10 @@
   
   <div class="info-panel">
     <div class="mouse-help">
-      <small>🖱️ Drag pour faire tourner • Shift+Drag pour incliner • Molette pour zoomer</small>
+      <small trad="mouseHelp">🖱️ Drag pour faire tourner • Shift+Drag pour incliner • Molette pour zoomer</small>
     </div>
   </div>
+  <script src="trads/translations.js"></script>
   <script type="module" src="shape-selector.js"></script>
   <script>
     // Cache busting pour main.js
@@ -195,6 +203,80 @@
     script.type = 'module';
     script.src = `main.js?v=${version}`;
     document.body.appendChild(script);
+
+    function refreshMainTitle() {
+      const el = document.querySelector('h1[trad]');
+      if (el) {
+        const key = el.getAttribute('trad');
+        el.textContent = window.t(key);
+        console.log('[DEBUG][refreshMainTitle]', {key, value: el.textContent});
+      }
+    }
+
+    function refreshProjectionTitle() {
+      const el = document.getElementById('selectedProjection');
+      if (el) {
+        const key = el.getAttribute('trad');
+        // Forcer la définition de la shape si absente
+        if (!window.currentTopology) {
+          window.currentTopology = 'view2d';
+        }
+        // Paramètres dynamiques
+        let selectedTexture = window.currentMapName || '[noMap]';
+        if (window.availableMaps && window.currentMapName) {
+          const mapConfig = window.availableMaps.find(m => m.name === window.currentMapName);
+          selectedTexture = mapConfig ? mapConfig.title : window.currentMapName;
+        }
+        // Mettre une majuscule au début
+        if (selectedTexture && typeof selectedTexture === 'string') {
+          selectedTexture = selectedTexture.charAt(0).toUpperCase() + selectedTexture.slice(1);
+        }
+        let selectedShape = window.currentTopology || '[noShape]';
+        if (window.topologyNames && window.currentTopology) {
+          selectedShape = window.topologyNames[window.currentTopology] || window.currentTopology;
+        }
+        let txt = window.t(key);
+        txt = txt.replace(/%currentMapName/g, selectedTexture).replace(/%currentTopology/g, selectedShape);
+        el.textContent = txt;
+        console.log('[DEBUG][refreshProjectionTitle]', {key, selectedTexture, selectedShape, value: txt});
+      }
+    }
+
+    function refreshTextureButtons() {
+      document.querySelectorAll('.map-option [trad]').forEach(el => {
+        const key = el.getAttribute('trad');
+        el.textContent = window.t(key);
+        console.log('[DEBUG][refreshTextureButtons]', {key, value: el.textContent});
+      });
+    }
+
+    function refreshAllTranslations() {
+      refreshMainTitle();
+      refreshProjectionTitle();
+      refreshTextureButtons();
+    }
+
+    // Gestion du changement de langue via les drapeaux
+    document.addEventListener('DOMContentLoaded', function() {
+      const flags = document.querySelectorAll('#langSelector .lang-flag');
+      flags.forEach(flag => {
+        flag.addEventListener('click', async function() {
+          const lang = this.getAttribute('data-lang');
+          flags.forEach(f => f.style.borderColor = (f === this) ? '#2196f3' : 'transparent');
+          window.currentLang = lang;
+          console.log('[DEBUG][langChange] Changement de langue:', lang);
+          if (window.translations && window.translations[lang]) {
+            refreshAllTranslations();
+          } else {
+            console.warn('[DEBUG][langChange] Traductions non prêtes pour', lang);
+          }
+        });
+      });
+      // Sélectionner FR par défaut au chargement
+      flags.forEach(f => f.style.borderColor = (f.getAttribute('data-lang') === 'fr') ? '#2196f3' : 'transparent');
+      // Rafraîchir tous les textes traduits au chargement (si trads déjà prêtes)
+      setTimeout(refreshAllTranslations, 500);
+    });
   </script>
 </body>
 </html>

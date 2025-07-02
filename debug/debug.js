@@ -744,52 +744,46 @@ window.fixTransparentPixels = function() {
 // === DEBUG FONCTIONS SPÉCIALISÉES (LEGACY) ===
 
 // Fonctions spécifiques gardées pour compatibilité - peuvent être nettoyées plus tard
-window.debugTile18 = function() {
-  debugTileClick(1, 8);
-};
+// window.debugTile18 = function() {
+//   debugTileClick(1, 8);
+// };
 
-window.analyzeSourceTexture18 = function() {
-  if (!mapCanvas) {
-    console.log('❌ Pas de texture source');
-    return;
-  }
-  
-  const ctx = mapCanvas.getContext('2d');
-  const width = mapCanvas.width;
-  const height = mapCanvas.height;
-  
-  console.log(`🔍 TEXTURE SOURCE: ${width}x${height}`);
-  
-  // Analyser zone tuile (1,8)
-  const tileX = 1;
-  const tileY = 8;
-  const srcX = Math.floor((tileX / MESH_U) * width);
-  const srcY = Math.floor((tileY / MESH_V) * height);
-  const srcW = Math.floor(width / MESH_U);
-  const srcH = Math.floor(height / MESH_V);
-  
-  console.log(`📍 Zone tuile (1,8): srcX=${srcX}, srcY=${srcY}, srcW=${srcW}, srcH=${srcH}`);
-  
-  // Échantillonner quelques pixels dans cette zone
-  try {
-    const samples = [
-      { name: 'Coin haut-gauche', x: srcX, y: srcY },
-      { name: 'Coin haut-droite', x: srcX + srcW - 1, y: srcY },
-      { name: 'Coin bas-gauche', x: srcX, y: srcY + srcH - 1 },
-      { name: 'Coin bas-droite', x: srcX + srcW - 1, y: srcY + srcH - 1 },
-      { name: 'Centre', x: srcX + Math.floor(srcW/2), y: srcY + Math.floor(srcH/2) }
-    ];
-    
-    console.log(`🎨 ÉCHANTILLONS COULEUR:`);
-    samples.forEach(sample => {
-      const imageData = ctx.getImageData(sample.x, sample.y, 1, 1);
-      const [r, g, b, a] = imageData.data;
-      console.log(`   ${sample.name} (${sample.x},${sample.y}): rgba(${r},${g},${b},${a})`);
-    });
-  } catch (e) {
-    console.log(`❌ Erreur échantillonnage: ${e.message}`);
-  }
-};
+// window.analyzeSourceTexture18 = function() {
+//   if (!mapCanvas) {
+//     console.log('❌ Pas de texture source');
+//     return;
+//   }
+//   const ctx = mapCanvas.getContext('2d');
+//   const width = mapCanvas.width;
+//   const height = mapCanvas.height;
+//   console.log(`🔍 TEXTURE SOURCE: ${width}x${height}`);
+//   // Analyser zone tuile (1,8)
+//   const tileX = 1;
+//   const tileY = 8;
+//   const srcX = Math.floor((tileX / MESH_U) * width);
+//   const srcY = Math.floor((tileY / MESH_V) * height);
+//   const srcW = Math.floor(width / MESH_U);
+//   const srcH = Math.floor(height / MESH_V);
+//   console.log(`📍 Zone tuile (1,8): srcX=${srcX}, srcY=${srcY}, srcW=${srcW}, srcH=${srcH}`);
+//   // Échantillonner quelques pixels dans cette zone
+//   try {
+//     const samples = [
+//       { name: 'Coin haut-gauche', x: srcX, y: srcY },
+//       { name: 'Coin haut-droite', x: srcX + srcW - 1, y: srcY },
+//       { name: 'Coin bas-gauche', x: srcX, y: srcY + srcH - 1 },
+//       { name: 'Coin bas-droite', x: srcX + srcW - 1, y: srcY + srcH - 1 },
+//       { name: 'Centre', x: srcX + Math.floor(srcW/2), y: srcY + Math.floor(srcH/2) }
+//     ];
+//     console.log(`🎨 ÉCHANTILLONS COULEUR:`);
+//     samples.forEach(sample => {
+//       const imageData = ctx.getImageData(sample.x, sample.y, 1, 1);
+//       const [r, g, b, a] = imageData.data;
+//       console.log(`   ${sample.name} (${sample.x},${sample.y}): rgba(${r},${g},${b},${a})`);
+//     });
+//   } catch (e) {
+//     console.log(`❌ Erreur échantillonnage: ${e.message}`);
+//   }
+// };
 
 console.log('🔧 Debug module loaded - Functions available: debugTileClick, debugOverlaps, debugTileRendering, debugUVCorners'); 
-console.log('🔧 Debug module loaded - Functions available: debugTileClick, debugOverlaps, debugTileRendering, debugUVCorners'); 
+window.debugTileClick = debugTileClick; 

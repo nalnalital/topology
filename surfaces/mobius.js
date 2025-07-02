@@ -21,17 +21,14 @@ export const topologyIcon = {
 // Configuration spécifique mobius
 export const config = {
   scale: 140,                    // Scale optimal pour mobius
-  defaultRotation: { x: 30, y: 45 }, // Vue 3/4 légèrement inclinée
+  defaultRotation: { x: 27, y: -9, z: -45 }, // Vue historique (config.js)
   name: 'Ruban de Möbius',
   emoji: '♾️',
-  slider: {
-    // ... existing code ...
-  }
 };
 
 // Structure d'identification pour le carré fondamental
 export const identification = [
-    { edge1: 'left', edge2: 'right', orientation: 'opposite' }
+  { edge1: 'left', edge2: 'right', orientation: 'opposite' }
 ];
 
 // Fonction mathématique du ruban de Möbius

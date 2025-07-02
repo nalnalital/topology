@@ -21,7 +21,7 @@ export const topologyIcon = {
 // Configuration spécifique cylindre
 export const config = {
   scale: 180,                    // Scale optimal pour cylindre (plus grand que défaut 150)
-  defaultRotation: { x: 0, y: 90 }, // Vue de profil par défaut
+  defaultRotation: { x: 35, y: 250, z: -45 }, // Vue historique (config.js)
   name: 'Cylindre',
   emoji: '🫙',
   slider: {
@@ -49,5 +49,5 @@ export function createSurface() {
 
 // Structure d'identification pour le carré fondamental
 export const identification = [
-    { edge1: 'left', edge2: 'right', orientation: 'same' }
+  { edge1: 'left', edge2: 'right', orientation: 'same' }
 ];

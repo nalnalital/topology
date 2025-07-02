@@ -21,7 +21,7 @@ export const topologyIcon = {
 // Configuration spécifique torus
 export const config = {
   scale: 120,                    // Scale optimal pour torus (plus petit que défaut 150)
-  defaultRotation: { x: 0, y: 135 }, // Vue 3/4 par défaut
+  defaultRotation: { x: -140, y: 90, z: -60 }, // Vue historique (config.js)
   name: 'Tore',
   emoji: '🍩'
 };
@@ -50,6 +50,6 @@ export function createSurface() {
 
 // Structure d'identification pour le carré fondamental
 export const identification = [
-    { edge1: 'top', edge2: 'bottom', orientation: 'same' },
-    { edge1: 'left', edge2: 'right', orientation: 'same' }
+  { edge1: 'left', edge2: 'right', orientation: 'same' },
+  { edge1: 'top', edge2: 'bottom', orientation: 'same' }
 ];
