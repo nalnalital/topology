@@ -20,10 +20,10 @@ export const topologyIcon = {
 
 // Configuration spécifique torus
 export const config = {
-  scale: 120,
-  rotX: -140,
-  rotY: 90,
-  rotZ: -60
+  scale: 65,
+  rotX: -46,
+  rotY: 142,
+  rotZ: -7
 };
 
 // Décalage texture spécifique tore (offset paramétrique)

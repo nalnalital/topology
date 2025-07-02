@@ -78,21 +78,7 @@ function getBmp(x, y) {
   }
   
   const rectangle = textureRectangles[index];
-  
-  // DEBUG DÉSACTIVÉ pour éviter spam dans updateMorphing
-  // if (x === 1 && y === 8) {
-  //   pd('getBmp18', 'main.js', `🎯 getBmp(1,8) → index=${index} → ${rectangle ? `${rectangle.width}x${rectangle.height}` : 'NULL'}`);
-  // } else if (index < 10 || (x === 15 && y === 10) || y !== clampedY || x >= MESH_U) {
-  //   // Debug pour quelques tuiles et détection de dépassements
-  //   const overflow = y !== clampedY ? ` ⚠️Y-CLAMP(${y}→${clampedY})` : '';
-  //   const xOverflow = x >= MESH_U ? ` ⚠️X-WRAP(${x}→${wrappedX})` : '';
-  //   pd('getBmp', 'main.js', `🎯 getBmp(${x},${y}) → wrappedX=${wrappedX}, clampedY=${clampedY} → index=${index}${overflow}${xOverflow} → ${rectangle ? `${rectangle.width}x${rectangle.height}` : 'null'}`);
-  // }
-  
-  if (clampedY > 10) {
-    console.log(`[TILE DEBUG][getBmp] getBmp(${x},${y}) → index=${index}, rectW=${rectangle?.width}, rectH=${rectangle?.height}`);
-  }
-  
+
   return rectangle;
 }
 
@@ -416,15 +402,6 @@ function precalculateTextureRectangles() {
     const srcW = Math.ceil((maxU - minU) * texW);
     const srcH = Math.ceil((maxV - minV) * texH);
 
-    // DEBUG: Log détaillé pour chaque tuile du cylindre
-    if (window.currentSurface === 'cylinder') {
-      const gridX = face.originalIndex % MESH_U;
-      const gridY = Math.floor(face.originalIndex / MESH_U);
-      console.log(`[TILE DEBUG][cylinder] gridX=${gridX}, gridY=${gridY}, minV=${minV.toFixed(3)}, maxV=${maxV.toFixed(3)}, srcH=${srcH}, gridV=[${v0_tex.toFixed(3)},${v1_tex.toFixed(3)},${v2_tex.toFixed(3)},${v3_tex.toFixed(3)}]`);
-    }
-    
-    // Debug supprimé pour éviter boucle infinie
-    
     // SOLUTION: Créer rectangle fallback pour tuiles trop petites
     if (srcW < 2 || srcH < 2) {
       // Debug pour tuiles problématiques
@@ -1458,9 +1435,6 @@ function render() {
         } else {
           drawColoredGrid(ctx, face, projectedVertices, rectangle);
         }
-      }
-      if (gridY > 10) {
-        console.log(`[TILE DEBUG][render] gridX=${gridX}, gridY=${gridY}, originalIndex=${face.originalIndex}, rectW=${rectangle?.width}, rectH=${rectangle?.height}, verts=[${face.vertices.join(',')}]`);
       }
     });
   } else {
@@ -3506,10 +3480,12 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     pd('init', 'main.js', 'DOM prêt, lancement startApp()');
     startApp();
+    updateMoveOverlay(); // <-- Ajout ici
   });
     } else {
   pd('init', 'main.js', 'DOM déjà prêt, lancement startApp()');
   startApp();
+  updateMoveOverlay(); // <-- Ajout ici
 }
 
 async function initializeShape() {
@@ -3548,7 +3524,8 @@ async function morphToSurface(newSurfaceName) {
   pd('morphToSurface', 'main.js', `Morphing vers ${newSurfaceName}`);
   window.currentSurface = newSurfaceName;
   await loadSurfaceModule();
-  await initializeShape();
+  initializeShape();
+  updateMoveOverlay(); // <-- Ajout ici
 }
 window.morphToSurface = morphToSurface;
 
@@ -3563,3 +3540,13 @@ setupCameraControls(canvas, config, updateAngleDisplay, render, typeof debugUVCo
   get rotShape() { return rotShape; },
   set rotShape(val) { rotShape = val; }
 });
+
+function updateMoveOverlay() {
+  const moveOverlay = document.getElementById('moveOverlay');
+  if (!moveOverlay) return;
+  if (window.currentSurface === 'view2d') {
+    moveOverlay.classList.add('active');
+  } else {
+    moveOverlay.classList.remove('active');
+  }
+}

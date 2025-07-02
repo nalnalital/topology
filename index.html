@@ -46,16 +46,6 @@
     <!-- Boutons gauche -->
     <div class="left-controls">
       <label class="topology-option">
-        <input type="radio" name="topology" value="sphere">
-        <span class="topology-visual">🌍</span>
-      </label>
-      
-      <label class="topology-option">
-        <input type="radio" name="topology" value="disk">
-        <span class="topology-visual">💿</span>
-      </label>
-      
-      <label class="topology-option">
         <input type="radio" name="topology" value="cylinder">
         <div class="quotient-container"></div>
         <span class="topology-visual cross-pattern">
@@ -71,6 +61,46 @@
         <span class="topology-visual cross-pattern">
           <span class="cross-top">▶️</span>
           <span class="cross-left"></span><span class="cross-center">🎀</span><span class="cross-right"></span>
+          <span class="cross-bottom">◀️</span>
+        </span>
+      </label>
+      
+      <label class="topology-option">
+        <input type="radio" name="topology" value="torus">
+        <div class="quotient-container"></div>
+        <span class="topology-visual cross-pattern">
+          <span class="cross-top">▶️</span>
+          <span class="cross-left">⏫</span><span class="cross-center">🍩</span><span class="cross-right">⏫</span>
+          <span class="cross-bottom">▶️</span>
+        </span>
+      </label>
+      
+      <label class="topology-option">
+        <input type="radio" name="topology" value="projective">
+        <div class="quotient-container"></div>
+        <span class="topology-visual cross-pattern">
+          <span class="cross-top">▶️</span>
+          <span class="cross-left">⏬</span><span class="cross-center">🍎</span><span class="cross-right">🔼</span>
+          <span class="cross-bottom">⏪</span>
+        </span>
+      </label>
+      
+      <label class="topology-option">
+        <input type="radio" name="topology" value="klein">
+        <div class="quotient-container"></div>
+        <span class="topology-visual cross-pattern">
+          <span class="cross-top">▶️</span>
+          <span class="cross-left">⏫</span><span class="cross-center">🖇️</span><span class="cross-right">⏫</span>
+          <span class="cross-bottom">◀️</span>
+        </span>
+      </label>
+      
+      <label class="topology-option">
+        <input type="radio" name="topology" value="crosscap">
+        <div class="quotient-container"></div>
+        <span class="topology-visual cross-pattern">
+          <span class="cross-top">▶️</span>
+          <span class="cross-left">⏬</span><span class="cross-center">🪢</span><span class="cross-right">⏫</span>
           <span class="cross-bottom">◀️</span>
         </span>
       </label>
@@ -139,43 +169,13 @@
     <!-- Boutons droite -->
     <div class="right-controls">
       <label class="topology-option">
-        <input type="radio" name="topology" value="torus">
-        <div class="quotient-container"></div>
-        <span class="topology-visual cross-pattern">
-          <span class="cross-top">▶️</span>
-          <span class="cross-left">⏫</span><span class="cross-center">🍩</span><span class="cross-right">⏫</span>
-          <span class="cross-bottom">▶️</span>
-        </span>
+        <input type="radio" name="topology" value="sphere">
+        <span class="topology-visual">🌍</span>
       </label>
       
       <label class="topology-option">
-        <input type="radio" name="topology" value="projective">
-        <div class="quotient-container"></div>
-        <span class="topology-visual cross-pattern">
-          <span class="cross-top">▶️</span>
-          <span class="cross-left">⏬</span><span class="cross-center">🍎</span><span class="cross-right">🔼</span>
-          <span class="cross-bottom">⏪</span>
-        </span>
-      </label>
-      
-      <label class="topology-option">
-        <input type="radio" name="topology" value="klein">
-        <div class="quotient-container"></div>
-        <span class="topology-visual cross-pattern">
-          <span class="cross-top">▶️</span>
-          <span class="cross-left">⏫</span><span class="cross-center">🖇️</span><span class="cross-right">⏫</span>
-          <span class="cross-bottom">◀️</span>
-        </span>
-      </label>
-      
-      <label class="topology-option">
-        <input type="radio" name="topology" value="crosscap">
-        <div class="quotient-container"></div>
-        <span class="topology-visual cross-pattern">
-          <span class="cross-top">▶️</span>
-          <span class="cross-left">⏬</span><span class="cross-center">🪢</span><span class="cross-right">⏫</span>
-          <span class="cross-bottom">◀️</span>
-        </span>
+        <input type="radio" name="topology" value="disk">
+        <span class="topology-visual">💿</span>
       </label>
     </div>
   </div>

@@ -76,10 +76,10 @@ export const identification = [
 
 // Configuration spécifique
 export const config = {
-  scale: 80,
-  rotX: 10,
-  rotY: 20,
-  rotZ: 0
+  scale: 75,
+  rotX: -50,
+  rotY: -45,
+  rotZ: -10
 };
 
 // Gestion du drag spécifique projectif

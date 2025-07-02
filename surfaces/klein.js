@@ -50,9 +50,9 @@ export const identification = [
 
 // Configuration spécifique bouteille de Klein
 export const config = {
-  scale: 100,
-  rotX: 30,
-  rotY: 60,
+  scale: 190,
+  rotX: -40,
+  rotY: 65,
   rotZ: 0
 };
 

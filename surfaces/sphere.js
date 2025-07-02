@@ -46,7 +46,14 @@ export const config = {
 
 // Gestion du drag spécifique sphère
 export function handleDrag(deltaX, deltaY, angles, config) {
-  angles.rotY += deltaX * config.mouseSensitivity * 0.01;
+  console.log('avant rotY', angles.rotY*180/Math.PI,deltaX,config.mouseSensitivity);
+  angles.rotY -= deltaX * config.mouseSensitivity * 0.01;
+  // Normalisation dans [0, 2π]
+  //while (angles.rotY < 0) angles.rotY += 2 * Math.PI;
+  //while (angles.rotY > 2 * Math.PI) angles.rotY -= 2 * Math.PI;
+
+  console.log('apres rotY', angles.rotY*180/Math.PI,deltaX,config.mouseSensitivity);
+
   angles.rotX += deltaY * config.mouseSensitivity * 0.01;
   angles.rotX = Math.max(-Math.PI, Math.min(Math.PI, angles.rotX));
 } 

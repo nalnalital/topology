@@ -20,7 +20,7 @@ export const topologyIcon = {
 
 // Configuration spécifique mobius
 export const config = {
-  scale: 140,
+  scale: 90,
   rotX: 27,
   rotY: -9,
   rotZ: -45
