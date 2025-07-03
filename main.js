@@ -3518,11 +3518,15 @@ async function initializeShape() {
     render();
 }
 
-async function morphToSurface(newSurfaceName) {
+async function morphToSurface(newSurfaceName, skipAnimation = false) {
   pd('morphToSurface', 'main.js', `Morphing vers ${newSurfaceName}`);
   window.currentSurface = newSurfaceName;
   await loadSurfaceModule();
   await initializeShape();
+  // Forcer la mise à jour de toute l'UI traduite (titre inclus)
+  if (typeof window.refreshAllTranslations === 'function') {
+    window.refreshAllTranslations();
+  }
 }
 window.morphToSurface = morphToSurface;
 
@@ -3538,18 +3542,46 @@ setupCameraControls(canvas, config, updateAngleDisplay, render, typeof debugUVCo
   set rotShape(val) { rotShape = val; }
 });
 
-function refreshAllTranslations() {
-  // Parcourt tous les éléments avec l'attribut trad
+export function refreshAllTranslations() {
+  console.log('[DEBUG][refreshAllTranslations] === DÉBUT ===');
   document.querySelectorAll('[trad]').forEach(el => {
     const key = el.getAttribute('trad');
     if (typeof t === 'function') {
-      el.textContent = t(key);
+      let value = t(key);
+      if (key === 'projectionTitle') {
+        // Remplacement dynamique
+        let textureName = '';
+        let currentTopologyName = '';
+        if (window.currentMapName) {
+          // Utiliser la traduction dynamique du nom de la texture
+          if (typeof t === 'function') {
+            const mapKey = 'map' + window.currentMapName.charAt(0).toUpperCase() + window.currentMapName.slice(1);
+            textureName = t(mapKey);
+          } else if (window.availableMaps) {
+            const mapConfig = window.availableMaps.find(m => m.name === window.currentMapName);
+            textureName = mapConfig ? mapConfig.title : window.currentMapName;
+          } else {
+            textureName = window.currentMapName;
+          }
+          if (textureName && typeof textureName === 'string') {
+            textureName = textureName.charAt(0).toUpperCase() + textureName.slice(1);
+          }
+        }
+        if (window.topologyNames && window.currentTopology) {
+          currentTopologyName = window.topologyNames[window.currentTopology] || window.currentTopology;
+        }
+        const before = value;
+        value = value.replace(/%currentMapName/g, textureName).replace(/%currentTopology/g, currentTopologyName);
+        console.log(`[DEBUG][refreshAllTranslations] key=${key} | before='${before}' | textureName='${textureName}' | currentTopologyName='${currentTopologyName}' | after='${value}'`);
+      } else {
+        console.log(`[DEBUG][refreshAllTranslations] key=${key} | value='${value}'`);
+      }
+      el.textContent = value;
+    } else {
+      console.log(`[DEBUG][refreshAllTranslations] t n'est pas une fonction pour key=${key}`);
     }
   });
-}
-// Appel automatique après chargement des traductions
-if (window.translationsReady) {
-  refreshAllTranslations();
+  console.log('[DEBUG][refreshAllTranslations] === FIN ===');
 }
 // ... existing code ...
 // À appeler aussi après tout changement de langue

@@ -8,16 +8,17 @@
       <!-- Version 2.53.0 - Refactoring CSS -->
 </head>
 <body>
-  <div id="langSelector" style="margin: 0; display: flex; gap: 8px;">
+  <div id="langSelector" style="margin: 0; display: flex; gap: 8px; align-items: center;">
     <span class="lang-flag" data-lang="fr" style="font-size: 2em; cursor: pointer; border: 2px solid #2196f3; border-radius: 6px; padding: 2px 8px;">🇫🇷</span>
     <span class="lang-flag" data-lang="en" style="font-size: 2em; cursor: pointer; border: 2px solid transparent; border-radius: 6px; padding: 2px 8px;">🇬🇧</span>
     <span class="lang-flag" data-lang="es" style="font-size: 2em; cursor: pointer; border: 2px solid transparent; border-radius: 6px; padding: 2px 8px;">🇪🇸</span>
     <span class="lang-flag" data-lang="it" style="font-size: 2em; cursor: pointer; border: 2px solid transparent; border-radius: 6px; padding: 2px 8px;">🇮🇹</span>
     <span class="lang-flag" data-lang="de" style="font-size: 2em; cursor: pointer; border: 2px solid transparent; border-radius: 6px; padding: 2px 8px;">🇩🇪</span>
+    <button id="pdfBtn" title="Ouvrir le Topologicon PDF" style="font-size: 1.7em; margin-left: 10px; background: none; border: none; cursor: pointer;">📄</button>
   </div>
   <h1 trad="mainTitle">Square Topologicon</h1>
   <div class="control-row-single">
-    <div id="selectedProjection" class="selected-projection-inline" trad="projectionTitle">Steam Texture</div>
+    <div id="selectedProjection" class="selected-projection-inline" trad="projectionTitle"></div>
   </div>
 
   
@@ -129,11 +130,15 @@
       <small trad="mouseHelp">🖱️ Drag pour faire tourner • Shift+Drag pour incliner • Molette pour zoomer</small>
     </div>
   </div>
+  <div id="pdfModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
+    <img src="trads/topologicon.jpg" alt="Topologicon BD" style="max-width:90vw; max-height:90vh; border-radius:12px; box-shadow:0 4px 32px #000; cursor:pointer;" id="pdfModalImg">
+  </div>
   <script src="trads/translations.js"></script>
   <script type="module" src="shape-selector.js"></script>
   <script type="module" src="debug/debug.js"></script>
   <script type="module">
     import { buildTopologyButtons } from './interface.js';
+    import { pdfLinks } from './trads/pdf.js';
     function attachShapeListeners() {
       const radios = document.querySelectorAll('input[name="topology"]');
       console.log('[DEBUG] attachShapeListeners: boutons trouvés =', radios.length);
@@ -154,13 +159,94 @@
         });
       });
     }
+    function setLang(lang) {
+      console.log('[DEBUG][setLang] Appel avec', lang);
+      window.currentLang = lang;
+      // Met à jour le style des drapeaux
+      document.querySelectorAll('.lang-flag').forEach(flag => {
+        flag.style.borderColor = (flag.dataset.lang === lang) ? '#2196f3' : 'transparent';
+      });
+      // Rafraîchit les traductions si la fonction existe
+      if (typeof window.refreshAllTranslations === 'function') {
+        console.log('[DEBUG][setLang] Appel de refreshAllTranslations');
+        window.refreshAllTranslations();
+      }
+      // Met à jour le titre principal si la fonction existe
+      if (typeof window.updateProjectionName === 'function') {
+        console.log('[DEBUG][setLang] Appel de updateProjectionName');
+        window.updateProjectionName(window.currentMapName || '');
+      }
+      console.log('[DEBUG][setLang] window.currentLang =', window.currentLang);
+    }
     document.addEventListener('DOMContentLoaded', () => {
       console.log('[DEBUG] buildTopologyButtons start');
       buildTopologyButtons().then(() => {
         attachShapeListeners();
+        // Gestion du changement de langue
+        document.querySelectorAll('.lang-flag').forEach(flag => {
+          flag.addEventListener('click', () => {
+            console.log('[DEBUG][lang-flag] Clic sur', flag.dataset.lang);
+            setLang(flag.dataset.lang);
+          });
+        });
+        // Gestion du changement de texture (radio mapChoice)
+        document.querySelectorAll('input[name="mapChoice"]').forEach(radio => {
+          radio.addEventListener('change', (e) => {
+            if (e.target.checked) {
+              const mapName = e.target.value;
+              if (typeof window.changeTexture === 'function') {
+                window.changeTexture(mapName);
+              }
+              if (typeof window.refreshProjectionTitle === 'function') {
+                window.refreshProjectionTitle();
+              }
+            }
+          });
+        });
+        // Initialisation : sélectionne la langue par défaut
+        setLang(window.currentLang || 'fr');
+        // Bouton PDF : affiche la pochette puis ouvre le PDF de la langue courante
+        const pdfBtn = document.getElementById('pdfBtn');
+        const pdfModal = document.getElementById('pdfModal');
+        const pdfModalImg = document.getElementById('pdfModalImg');
+        pdfBtn.addEventListener('click', () => {
+          pdfModal.style.display = 'flex';
+        });
+        // Fermer la modale au clic sur l'image ou en dehors
+        pdfModal.addEventListener('click', (e) => {
+          if (e.target === pdfModal || e.target === pdfModalImg) {
+            pdfModal.style.display = 'none';
+            // Ouvrir le PDF après fermeture
+            const lang = window.currentLang || 'fr';
+            const pdf = pdfLinks[lang] || pdfLinks['fr'];
+            window.open(pdf.url, '_blank');
+          }
+        });
       }).catch(e => {
         console.error('[buildTopologyButtons ERROR]', e);
       });
+    });
+    // Exposer la fonction t sur window pour garantir l'accès global
+    if (typeof window.t !== 'function') {
+      window.t = function(key) {
+        const lang = window.currentLang || 'fr';
+        if (window.translations && window.translations[lang] && window.translations[lang][key]) {
+          return window.translations[lang][key];
+        }
+        return key;
+      };
+    }
+    // Exposer explicitement refreshAllTranslations sur window
+    import("./main.js").then(mod => {
+      if (typeof mod.refreshAllTranslations === 'function') {
+        window.refreshAllTranslations = function() {
+          console.log('[DEBUG][refreshAllTranslations] appelée');
+          mod.refreshAllTranslations();
+        };
+      }
+      if (typeof mod.updateProjectionName === 'function') {
+        window.updateProjectionName = mod.updateProjectionName;
+      }
     });
   </script>
   <script>

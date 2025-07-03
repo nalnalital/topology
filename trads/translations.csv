@@ -33,3 +33,16 @@ mapRoom,Chambre,Room,Habitación,Stanza,Zimmer
 mapWater,Eau,Water,Agua,Acqua,Wasser
 mapFace,Visage,Face,Cara,Faccia,Gesicht
 mapJanus,Modèle Janus,Janus Model,Modelo Janus,Modello Janus,Janus-Modell
+"mapSteam","Texture vapeur","Steam Texture","Textura de vapor","Texture vapore","Dampfbild"
+"mapWorld","Monde","World","Mundo","Mondo","Welt"
+"mapNight","Nuit","Night","Noche","Notte","Nacht"
+"mapBrick","Brique","Brick","Ladrillo","Mattone","Ziegel"
+"mapSheet","Feuille","Sheet","Hoja","Foglio","Blatt"
+"mapGeoView","Vue géo","GeoView","Vista geo","Vista geo","Geo-Ansicht"
+"mapRelief","Relief","Relief","Relieve","Rilievo","Relief"
+"mapGreat","Grande","Great","Grande","Grande","Groß"
+"mapSchool","École","School","Escuela","Scuola","Schule"
+"mapEye","Œil","Eye","Ojo","Occhio","Auge"
+"mapMaze","Labyrinthe","Maze","Laberinto","Labirinto","Labyrinth"
+"mapRoom","Pièce","Room","Habitación","Stanza","Zimmer"
+"mapWater","Eau","Water","Agua","Acqua","Wasser"
