@@ -12,6 +12,54 @@
     height: 100%; /* Occupe toute la hauteur de la cellule de grille */
 }
 
+.left-controls {
+  gap: 12px;
+  height: auto;
+
+  width: 170px;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.left-controls-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+  width: 80px;
+  height: 80px;
+  justify-items: center;
+  align-items: center;
+  margin: 0 auto;
+}
+
+.left-controls-header .map-option input[type="radio"] {
+  display: none;
+}
+
+.left-controls-header .map-name {
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  margin: 0;
+}
+
+.left-controls-header .map-option {
+  min-width: 30px !important;
+  max-width: 30px !important;
+  width: 30px !important;
+  height: 30px !important;
+  padding: 0 !important;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .topology-option {
   position: relative;
   display: flex;
@@ -117,13 +165,52 @@
     transform: translate(-50%, -50%);
     width: 78%;
     height: 78%;
-    background-color: rgba(255, 255, 255, 0.6);
-    border: 3px solid #aaaaaa; /* Default color, JS will override */
+    background: none;
+    border-style: solid;
+    border-width: 2px;
+    border-color: #e0e0e0; /* Couleur par défaut, JS va override chaque côté */
     z-index: 1;
-    opacity: 0.8;
-    box-sizing: border-box; /* Important! */
+    opacity: 1;
+    box-sizing: border-box;
 }
 
 .topology-option:hover .quotient-container {
     opacity: 1;
+}
+
+.quotient-side {
+  position: absolute;
+  z-index: 2;
+  border-radius: 2px;
+  opacity: 1;
+}
+.quotient-side.side-top {
+  top: 0; left: 0; right: 0; height: 5px; width: 100%;
+}
+.quotient-side.side-bottom {
+  bottom: 0; left: 0; right: 0; height: 5px; width: 100%;
+}
+.quotient-side.side-left {
+  left: 0; top: 0; bottom: 0; width: 5px; height: 100%;
+}
+.quotient-side.side-right {
+  right: 0; top: 0; bottom: 0; width: 5px; height: 100%;
+}
+
+.left-shapes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(3, 1fr);
+  gap: 10px;
+  justify-items: center;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: relative;
+  z-index: 2;
+}
+
+.left-shapes-grid .topology-option {
+  box-sizing: border-box;
 } 

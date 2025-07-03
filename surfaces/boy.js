@@ -34,4 +34,12 @@ export function createSurface(u, v) {
 
   // Mise à l'échelle pour correspondre aux autres surfaces
   return { x: x, y: y, z: z };
-} 
+}
+
+export const topologyIcon = {
+  center: '🥨',
+  top: '',
+  left: '',
+  right: '',
+  bottom: ''
+}; 

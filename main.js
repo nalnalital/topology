@@ -78,7 +78,7 @@ function getBmp(x, y) {
   }
   
   const rectangle = textureRectangles[index];
-
+  
   return rectangle;
 }
 
@@ -392,16 +392,16 @@ function precalculateTextureRectangles() {
      const v3_tex = v3.gridV;
     
     // Rectangle UV dans la texture (en pixels)
-    const minU = Math.min(u0, u1, u2, u3);
-    const maxU = Math.max(u0, u1, u2, u3);
-    const minV = Math.min(v0_tex, v1_tex, v2_tex, v3_tex);
-    const maxV = Math.max(v0_tex, v1_tex, v2_tex, v3_tex);
-    
-    const srcX = Math.round(minU * texW);
+  const minU = Math.min(u0, u1, u2, u3);
+  const maxU = Math.max(u0, u1, u2, u3);
+  const minV = Math.min(v0_tex, v1_tex, v2_tex, v3_tex);
+  const maxV = Math.max(v0_tex, v1_tex, v2_tex, v3_tex);
+  
+      const srcX = Math.round(minU * texW);
     const srcY = Math.round(minV * texH); // Pas d'inversion Y
-    const srcW = Math.ceil((maxU - minU) * texW);
-    const srcH = Math.ceil((maxV - minV) * texH);
-
+  const srcW = Math.ceil((maxU - minU) * texW);
+  const srcH = Math.ceil((maxV - minV) * texH);
+    
     // SOLUTION: Créer rectangle fallback pour tuiles trop petites
     if (srcW < 2 || srcH < 2) {
       // Debug pour tuiles problématiques
@@ -1378,7 +1378,7 @@ function render() {
       const gridX = face.originalIndex % MESH_U;
       const gridY = Math.floor(face.originalIndex / MESH_U);
       const rectangle = textureRectangles ? getBmp(gridX, gridY) : null;
-
+      
       let success = false;
       if (showColorDebug) {
         success = drawColorGrid(ctx, quadProjected, face.originalIndex);
@@ -3480,12 +3480,10 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     pd('init', 'main.js', 'DOM prêt, lancement startApp()');
     startApp();
-    updateMoveOverlay(); // <-- Ajout ici
   });
     } else {
   pd('init', 'main.js', 'DOM déjà prêt, lancement startApp()');
   startApp();
-  updateMoveOverlay(); // <-- Ajout ici
 }
 
 async function initializeShape() {
@@ -3524,8 +3522,7 @@ async function morphToSurface(newSurfaceName) {
   pd('morphToSurface', 'main.js', `Morphing vers ${newSurfaceName}`);
   window.currentSurface = newSurfaceName;
   await loadSurfaceModule();
-  initializeShape();
-  updateMoveOverlay(); // <-- Ajout ici
+  await initializeShape();
 }
 window.morphToSurface = morphToSurface;
 
@@ -3541,12 +3538,73 @@ setupCameraControls(canvas, config, updateAngleDisplay, render, typeof debugUVCo
   set rotShape(val) { rotShape = val; }
 });
 
-function updateMoveOverlay() {
-  const moveOverlay = document.getElementById('moveOverlay');
-  if (!moveOverlay) return;
-  if (window.currentSurface === 'view2d') {
-    moveOverlay.classList.add('active');
-  } else {
-    moveOverlay.classList.remove('active');
+function refreshAllTranslations() {
+  // Parcourt tous les éléments avec l'attribut trad
+  document.querySelectorAll('[trad]').forEach(el => {
+    const key = el.getAttribute('trad');
+    if (typeof t === 'function') {
+      el.textContent = t(key);
+    }
+  });
+}
+// Appel automatique après chargement des traductions
+if (window.translationsReady) {
+  refreshAllTranslations();
+}
+// ... existing code ...
+// À appeler aussi après tout changement de langue
+
+function refreshProjectionTitle() {
+  const el = document.getElementById('selectedProjection');
+  if (el) {
+    const key = el.getAttribute('trad');
+    // Forcer la définition de la shape si absente
+    if (!window.currentTopology) {
+      window.currentTopology = 'view2d';
+    }
+    // Paramètres dynamiques
+    let selectedTexture = window.currentMapName || '[noMap]';
+    if (window.availableMaps && window.currentMapName) {
+      const mapConfig = window.availableMaps.find(m => m.name === window.currentMapName);
+      selectedTexture = mapConfig ? mapConfig.title : window.currentMapName;
+    }
+    // Mettre une majuscule au début
+    if (selectedTexture && typeof selectedTexture === 'string') {
+      selectedTexture = selectedTexture.charAt(0).toUpperCase() + selectedTexture.slice(1);
+    }
+    let selectedShape = window.currentTopology || '[noShape]';
+    if (window.topologyNames && window.currentTopology) {
+      selectedShape = window.topologyNames[window.currentTopology] || window.currentTopology;
+    }
+    let txt = window.t(key);
+    txt = txt.replace(/%currentMapName/g, selectedTexture).replace(/%currentTopology/g, selectedShape);
+    el.textContent = txt;
+    console.log('[DEBUG][refreshProjectionTitle]', {key, selectedTexture, selectedShape, value: txt});
   }
 }
+
+function attachShapeListeners() {
+  const radios = document.querySelectorAll('input[name="topology"]');
+  console.log('[DEBUG] attachShapeListeners: boutons trouvés =', radios.length);
+  radios.forEach(radio => {
+    console.log('[DEBUG] Bouton radio trouvé:', radio.value);
+    radio.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        const newValue = e.target.value;
+        console.log('[DEBUG] Changement de shape détecté:', newValue);
+        currentTopology = newValue;
+        window.currentTopology = newValue;
+        morphToSurface(newValue);
+        refreshProjectionTitle();
+      }
+    });
+  });
+}
+// ... existing code ...
+// Appeler attachShapeListeners UNIQUEMENT après buildTopologyButtons
+if (typeof buildTopologyButtons === 'function') {
+  buildTopologyButtons().then(() => {
+    attachShapeListeners();
+  });
+}
+// ... existing code ...

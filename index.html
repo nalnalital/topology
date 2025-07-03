@@ -8,7 +8,7 @@
       <!-- Version 2.53.0 - Refactoring CSS -->
 </head>
 <body>
-  <div id="langSelector" style="margin: 10px 0; display: flex; gap: 8px;">
+  <div id="langSelector" style="margin: 0; display: flex; gap: 8px;">
     <span class="lang-flag" data-lang="fr" style="font-size: 2em; cursor: pointer; border: 2px solid #2196f3; border-radius: 6px; padding: 2px 8px;">🇫🇷</span>
     <span class="lang-flag" data-lang="en" style="font-size: 2em; cursor: pointer; border: 2px solid transparent; border-radius: 6px; padding: 2px 8px;">🇬🇧</span>
     <span class="lang-flag" data-lang="es" style="font-size: 2em; cursor: pointer; border: 2px solid transparent; border-radius: 6px; padding: 2px 8px;">🇪🇸</span>
@@ -17,27 +17,7 @@
   </div>
   <h1 trad="mainTitle">Square Topologicon</h1>
   <div class="control-row-single">
-    <label class="map-option">
-      <input type="radio" name="topology" value="view2d" checked>
-      <span class="map-name">🔄</span>
-    </label>
-    
     <div id="selectedProjection" class="selected-projection-inline" trad="projectionTitle">Steam Texture</div>
-    
-    <label class="map-option">
-      <input type="checkbox" id="showTexture" style="display: none;">
-      <span class="map-name">🌐</span>
-    </label>
-    
-    <label class="map-option">
-      <input type="checkbox" id="showColorDebug" style="display: none;">
-      <span class="map-name">🎨</span>
-    </label>
-    
-    <label class="map-option">
-      <input type="checkbox" id="showCoordinates" style="display: none;">
-      <span class="map-name">📍</span>
-    </label>
   </div>
 
   
@@ -45,65 +25,28 @@
   <div class="simulation-grid">
     <!-- Boutons gauche -->
     <div class="left-controls">
-      <label class="topology-option">
-        <input type="radio" name="topology" value="cylinder">
-        <div class="quotient-container"></div>
-        <span class="topology-visual cross-pattern">
-          <span class="cross-top"></span>
-          <span class="cross-left">🔼</span><span class="cross-center">🫙</span><span class="cross-right">🔼</span>
-          <span class="cross-bottom"></span>
-        </span>
-      </label>
-      
-      <label class="topology-option">
-        <input type="radio" name="topology" value="mobius">
-        <div class="quotient-container"></div>
-        <span class="topology-visual cross-pattern">
-          <span class="cross-top">▶️</span>
-          <span class="cross-left"></span><span class="cross-center">🎀</span><span class="cross-right"></span>
-          <span class="cross-bottom">◀️</span>
-        </span>
-      </label>
-      
-      <label class="topology-option">
-        <input type="radio" name="topology" value="torus">
-        <div class="quotient-container"></div>
-        <span class="topology-visual cross-pattern">
-          <span class="cross-top">▶️</span>
-          <span class="cross-left">⏫</span><span class="cross-center">🍩</span><span class="cross-right">⏫</span>
-          <span class="cross-bottom">▶️</span>
-        </span>
-      </label>
-      
-      <label class="topology-option">
-        <input type="radio" name="topology" value="projective">
-        <div class="quotient-container"></div>
-        <span class="topology-visual cross-pattern">
-          <span class="cross-top">▶️</span>
-          <span class="cross-left">⏬</span><span class="cross-center">🍎</span><span class="cross-right">🔼</span>
-          <span class="cross-bottom">⏪</span>
-        </span>
-      </label>
-      
-      <label class="topology-option">
-        <input type="radio" name="topology" value="klein">
-        <div class="quotient-container"></div>
-        <span class="topology-visual cross-pattern">
-          <span class="cross-top">▶️</span>
-          <span class="cross-left">⏫</span><span class="cross-center">🖇️</span><span class="cross-right">⏫</span>
-          <span class="cross-bottom">◀️</span>
-        </span>
-      </label>
-      
-      <label class="topology-option">
-        <input type="radio" name="topology" value="crosscap">
-        <div class="quotient-container"></div>
-        <span class="topology-visual cross-pattern">
-          <span class="cross-top">▶️</span>
-          <span class="cross-left">⏬</span><span class="cross-center">🪢</span><span class="cross-right">⏫</span>
-          <span class="cross-bottom">◀️</span>
-        </span>
-      </label>
+      <div class="left-controls-header">
+        <label class="map-option">
+          <input type="radio" name="topology" value="view2d" checked>
+          <span class="map-name">🔄</span>
+        </label>
+        <label class="map-option">
+          <input type="checkbox" id="showTexture">
+          <span class="map-name">🌐</span>
+        </label>
+        <label class="map-option">
+          <input type="checkbox" id="showColorDebug">
+          <span class="map-name">🎨</span>
+        </label>
+        <label class="map-option">
+          <input type="checkbox" id="showCoordinates">
+          <span class="map-name">📍</span>
+        </label>
+        <!-- Titre ou contenu personnalisé -->
+      </div>
+      <div class="left-shapes-grid">
+        <!-- Les boutons de topologie seront générés dynamiquement ici -->
+      </div>
     </div>
   
     <!-- Zone centrale avec simulation uniquement -->
@@ -168,15 +111,7 @@
     
     <!-- Boutons droite -->
     <div class="right-controls">
-      <label class="topology-option">
-        <input type="radio" name="topology" value="sphere">
-        <span class="topology-visual">🌍</span>
-      </label>
-      
-      <label class="topology-option">
-        <input type="radio" name="topology" value="disk">
-        <span class="topology-visual">💿</span>
-      </label>
+      <!-- Les boutons de topologie seront générés dynamiquement ici -->
     </div>
   </div>
   <!-- Ligne unique : Reinit - Steam Texture - Grille -->
@@ -197,6 +132,37 @@
   <script src="trads/translations.js"></script>
   <script type="module" src="shape-selector.js"></script>
   <script type="module" src="debug/debug.js"></script>
+  <script type="module">
+    import { buildTopologyButtons } from './interface.js';
+    function attachShapeListeners() {
+      const radios = document.querySelectorAll('input[name="topology"]');
+      console.log('[DEBUG] attachShapeListeners: boutons trouvés =', radios.length);
+      radios.forEach(radio => {
+        console.log('[DEBUG] Bouton radio trouvé:', radio.value);
+        radio.addEventListener('change', (e) => {
+          if (e.target.checked) {
+            const newValue = e.target.value;
+            console.log('[DEBUG] Changement de shape détecté:', newValue);
+            window.currentTopology = newValue;
+            if (typeof window.morphToSurface === 'function') {
+              window.morphToSurface(newValue);
+            }
+            if (typeof window.refreshProjectionTitle === 'function') {
+              window.refreshProjectionTitle();
+            }
+          }
+        });
+      });
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('[DEBUG] buildTopologyButtons start');
+      buildTopologyButtons().then(() => {
+        attachShapeListeners();
+      }).catch(e => {
+        console.error('[buildTopologyButtons ERROR]', e);
+      });
+    });
+  </script>
   <script>
     // Cache busting pour main.js
     const version = new Date().getTime();
@@ -204,78 +170,6 @@
     script.type = 'module';
     script.src = `main.js?v=${version}`;
     document.body.appendChild(script);
-
-    function refreshMainTitle() {
-      const el = document.querySelector('h1[trad]');
-      if (el) {
-        const key = el.getAttribute('trad');
-        el.textContent = window.t(key);
-        console.log('[DEBUG][refreshMainTitle]', {key, value: el.textContent});
-      }
-    }
-
-    function refreshProjectionTitle() {
-      const el = document.getElementById('selectedProjection');
-      if (el) {
-        const key = el.getAttribute('trad');
-        // Forcer la définition de la shape si absente
-        if (!window.currentTopology) {
-          window.currentTopology = 'view2d';
-        }
-        // Paramètres dynamiques
-        let selectedTexture = window.currentMapName || '[noMap]';
-        if (window.availableMaps && window.currentMapName) {
-          const mapConfig = window.availableMaps.find(m => m.name === window.currentMapName);
-          selectedTexture = mapConfig ? mapConfig.title : window.currentMapName;
-        }
-        // Mettre une majuscule au début
-        if (selectedTexture && typeof selectedTexture === 'string') {
-          selectedTexture = selectedTexture.charAt(0).toUpperCase() + selectedTexture.slice(1);
-        }
-        let selectedShape = window.currentTopology || '[noShape]';
-        if (window.topologyNames && window.currentTopology) {
-          selectedShape = window.topologyNames[window.currentTopology] || window.currentTopology;
-        }
-        let txt = window.t(key);
-        txt = txt.replace(/%currentMapName/g, selectedTexture).replace(/%currentTopology/g, selectedShape);
-        el.textContent = txt;
-        console.log('[DEBUG][refreshProjectionTitle]', {key, selectedTexture, selectedShape, value: txt});
-      }
-    }
-
-    function refreshTextureButtons() {
-      document.querySelectorAll('.map-option [trad]').forEach(el => {
-        const key = el.getAttribute('trad');
-        el.textContent = window.t(key);
-        console.log('[DEBUG][refreshTextureButtons]', {key, value: el.textContent});
-      });
-    }
-
-    function refreshAllTranslations() {
-      refreshMainTitle();
-      refreshProjectionTitle();
-      refreshTextureButtons();
-    }
-
-    // Gestion du changement de langue via les drapeaux
-    document.addEventListener('DOMContentLoaded', function() {
-      const flags = document.querySelectorAll('#langSelector .lang-flag');
-      flags.forEach(flag => {
-        flag.addEventListener('click', async function() {
-          const lang = this.getAttribute('data-lang');
-          flags.forEach(f => f.style.borderColor = (f === this) ? '#2196f3' : 'transparent');
-          window.currentLang = lang;
-          console.log('[DEBUG][langChange] Changement de langue:', lang);
-          if (window.translations && window.translations[lang]) {
-            refreshAllTranslations();
-          } else {
-            console.warn('[DEBUG][langChange] Traductions non prêtes pour', lang);
-          }
-        });
-      });
-      // Sélectionner FR par défaut au chargement
-      flags.forEach(f => f.style.borderColor = (f.getAttribute('data-lang') === 'fr') ? '#2196f3' : 'transparent');
-    });
   </script>
 </body>
 </html>
