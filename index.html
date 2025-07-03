@@ -17,11 +17,6 @@
     <button id="pdfBtn" title="Ouvrir le Topologicon PDF" style="font-size: 1.7em; margin-left: 10px; background: none; border: none; cursor: pointer;">📄</button>
   </div>
   <h1 trad="mainTitle">Square Topologicon</h1>
-  <div class="control-row-single">
-    <div id="selectedProjection" class="selected-projection-inline" trad="projectionTitle"></div>
-  </div>
-
-  
   <!-- Nouvelle structure avec grille CSS pour alignement parfait -->
   <div class="simulation-grid">
     <!-- Boutons gauche -->
@@ -53,6 +48,8 @@
     <!-- Zone centrale avec simulation uniquement -->
     <div class="center-area">
       <canvas id="canvas" width="800" height="450"></canvas>
+      <!-- Titre de la carte déplacé sous la carte -->
+      <div id="selectedProjection" class="selected-projection-inline" trad="projectionTitle"></div>
       <!-- CACHE MISÈRE : Overlay UNIQUEMENT sur le canvas -->
       <div id="loading-overlay"></div>
       

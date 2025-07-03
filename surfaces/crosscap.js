@@ -45,9 +45,9 @@ export const identification = [
 
 // Configuration spécifique crosscap
 export const config = {
-  scale: 180,
-  rotX: -30,
-  rotY: -75,
+  scale: 70,
+  rotX: -100,
+  rotY: -60,
   rotZ: 0
 };
 

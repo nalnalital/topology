@@ -24,7 +24,7 @@ export const pdfLinks = {
   },
   es: {
     label: '🇪🇸 Espagnol',
-    url: 'http://www.savoir-sans-frontieres.com/JPP/telechargeables/ESPANOL/'
+    url: 'http://www.savoir-sans-frontieres.com/JPP/telechargeables/ESPANOL/El_Topologicon_es.pdf'
   },
   de: {
     label: '🇩🇪 Allemand',

@@ -239,19 +239,15 @@ function generateTextureInterface() {
 }
 
 // === CHARGEMENT TEXTURE ===
-function loadTexture(mapName = currentMapName) {
+function loadTexture() {
   pd('loadTexture', 'main.js', 'Entrée dans loadTexture');
-  const mapConfig = availableMaps.find(m => m.name === mapName);
+  const mapConfig = availableMaps.find(m => m.name === window.currentMapName);
   if (!mapConfig) {
-    pd('loadTexture', 'main.js', `🔴 Texture inconnue: ${mapName}`);
+    pd('loadTexture', 'main.js', `🔴 Texture inconnue: ${window.currentMapName}`);
     return;
   }
-  
-  currentMapName = mapName;
-  window.currentMapName = currentMapName; // 🔗 Sync window
-  
   // Mettre à jour l'affichage de la projection
-  updateProjectionName(mapName);
+  updateProjectionName();
   
   const img = new Image();
   img.onload = function() {
@@ -270,14 +266,12 @@ function loadTexture(mapName = currentMapName) {
     // AUTO-RETOUR 3D avec petit timeout pour éviter mélange tuiles
     if (previousSurfaceBeforeMapChange && previousSurfaceBeforeMapChange !== 'view2d') {
       pd('loadTexture', 'main.js', `⚡ Auto-retour 3D vers: ${previousSurfaceBeforeMapChange}`);
-      
                     // Petit timeout pour laisser le recalcul se stabiliser
        setTimeout(() => {
-         // Retourner à la surface précédente SANS ANIMATION
+        // Retourner à la surface précédente AVEC ANIMATION (barycentrique)
          view2DMode = false;
         currentSurface = previousSurfaceBeforeMapChange; // FORCER la surface cible
-         morphToSurface(previousSurfaceBeforeMapChange, true); // SKIP ANIMATION
-         
+        morphToSurface(previousSurfaceBeforeMapChange, false); // ANIMATION !
         // RESTAURER les angles mémorisés (au lieu des angles privilégiés)
         if (previousAnglesBeforeMapChange) {
           rotX = previousAnglesBeforeMapChange.rotX;
@@ -287,7 +281,7 @@ function loadTexture(mapName = currentMapName) {
           pd('loadTexture', 'main.js', `📐 Angles restaurés: X=${Math.round(rotX * 180 / Math.PI)}° Y=${Math.round(rotY * 180 / Math.PI)}° Z=${Math.round(rotZ * 180 / Math.PI)}° Scale=${scale.toFixed(1)}`);
         } else if (surfaces[newSurfaceName]?.config) {
           // Fallback : angles privilégiés si pas de mémorisation
-           const angles = surfaces[newSurfaceName]?.config;
+          const angles = surfaces[newSurfaceName]?.config;
            rotX = (angles.rotX * Math.PI) / 180;
            rotY = (angles.rotY * Math.PI) / 180;
            rotZ = (angles.rotZ * Math.PI) / 180;
@@ -302,13 +296,11 @@ function loadTexture(mapName = currentMapName) {
           pd('loadTexture', 'main.js', `📐 Angles par défaut appliqués (fallback)`);
          }
          updateAngleDisplay();
-         
          // Mettre à jour l'interface
          const radioButton = document.querySelector(`input[value="${previousSurfaceBeforeMapChange}"]`);
          if (radioButton) {
            radioButton.checked = true;
          }
-         
          // CACHE MISÈRE : Masquer overlay après retour 3D
          const overlay = document.getElementById('loading-overlay');
          if (overlay) {
@@ -316,17 +308,14 @@ function loadTexture(mapName = currentMapName) {
            overlay.innerHTML = ''; // Nettoyer capture
           pd('loadTexture', 'main.js', `🎭 Cache misère désactivé`);
         }
-        
         // DÉSACTIVER moveOverlay pour réactiver contrôles caméra en 3D
         const moveOverlay = document.getElementById('moveOverlay');
         if (moveOverlay) {
           moveOverlay.classList.remove('active');
           pd('loadTexture', 'main.js', `🔓 Contrôles caméra réactivés`);
         }
-        
         // FORCER rendu pour afficher le retour 3D immédiatement
         requestAnimationFrame(render);
-         
          // Réinitialiser pour prochain changement
          previousSurfaceBeforeMapChange = null;
         previousAnglesBeforeMapChange = null;
@@ -358,8 +347,9 @@ function changeTexture(mapName) {
   if (mapName !== window.currentMapName) {
     window.currentMapName = mapName;
     currentMapName = mapName;
-    loadTexture(mapName);
-    refreshProjectionTitle(); // Uniquement le titre de projection
+    console.log(`[DEBUG][changeTexture] Nouvelle texture sélectionnée : window.currentMapName = '${window.currentMapName}'`);
+    loadTexture();
+    refreshProjectionTitle();
   }
 }
 
@@ -765,28 +755,40 @@ function drawTriangleTexture(ctx, image, triangle, textureCoords) {
 function pd(func, file, msg) {
   // Détection automatique du type de message par icônes dans le message
   let icon = '📄'; // Par défaut : info neutre
-  
-  if (msg.includes('🟢') || msg.includes('✓')) {
+  let msgStr = '';
+  if (typeof msg === 'string') {
+    msgStr = msg;
+  } else if (typeof msg === 'object') {
+    try {
+      msgStr = JSON.stringify(msg);
+    } catch (e) {
+      msgStr = String(msg);
+    }
+  } else {
+    msgStr = String(msg);
+  }
+
+  if (msgStr.includes('🟢') || msgStr.includes('✓')) {
     icon = '🟢'; // Succès
-  } else if (msg.includes('🔧') || msg.includes('⚡') || msg.includes('🔄')) {
+  } else if (msgStr.includes('🔧') || msgStr.includes('⚡') || msgStr.includes('🔄')) {
     icon = '🔧'; // Technique/Process
-  } else if (msg.includes('📊') || msg.includes('📍') || msg.includes('📐')) {
+  } else if (msgStr.includes('📊') || msgStr.includes('📍') || msgStr.includes('📐')) {
     icon = '📊'; // Info/Stats
-  } else if (msg.includes('🎭') || msg.includes('🗺️')) {
+  } else if (msgStr.includes('🎭') || msgStr.includes('🗺️')) {
     icon = '🎭'; // Interface/Display
-  } else if (msg.includes('⏱️') || msg.includes('TIMEOUT') || msg.includes('timeout')) {
+  } else if (msgStr.includes('⏱️') || msgStr.includes('TIMEOUT') || msgStr.includes('timeout')) {
     icon = '⏱️'; // Debug spécial timeout
-  } else if (msg.includes('TRACE') || msg.includes('CALL') || msg.includes('→')) {
+  } else if (msgStr.includes('TRACE') || msgStr.includes('CALL') || msgStr.includes('→')) {
     icon = '🔍'; // Debug trace
-  } else if (msg.includes('🔴') || msg.includes('ERREUR') || msg.includes('ERROR')) {
+  } else if (msgStr.includes('🔴') || msgStr.includes('ERREUR') || msgStr.includes('ERROR')) {
     icon = '🔴'; // Erreur explicite
-  } else if (msg.includes('SKIP') || msg.includes('⏸️')) {
+  } else if (msgStr.includes('SKIP') || msgStr.includes('⏸️')) {
     icon = '⏸️'; // Skip/Pause normal
-  } else if (msg.includes('STABLE') || msg.includes('MORPHING') || msg.includes('Mode de vue')) {
+  } else if (msgStr.includes('STABLE') || msgStr.includes('MORPHING') || msgStr.includes('Mode de vue')) {
     icon = '📊'; // Messages d'état
   }
   
-  console.log(`${icon} [${func}][${file}] ${msg}`);
+  console.log(`${icon} [${func}][${file}] ${msgStr}`);
 }
 
 // DEBUG: Afficher la structure complète du maillage
@@ -1697,7 +1699,7 @@ const topologyIcons = {
 (function checkTranslationSystem() {
   if (typeof window.TranslationAPI === 'undefined' || typeof window.TranslationManager === 'undefined') {
     pd('init', 'main.js', '❌ Système de traductions (TranslationAPI/Manager) NON chargé dans window');
-  } else {
+        } else {
     pd('init', 'main.js', '✅ Système de traductions détecté dans window');
   }
 })();
@@ -1719,29 +1721,46 @@ window.translationLoaded = false;
  * Met à jour l'affichage compact topologie + texture avec traduction
  * Utilise l'API de traduction si disponible et chargée
  */
-function updateProjectionName(mapName) {
-  // Utiliser currentTopology comme unique référence
-  const mapConfig = availableMaps.find(m => m.name === mapName);
-  let textureName = mapConfig ? mapConfig.title : mapName;
-  // Capitaliser la première lettre
+function updateProjectionName() {
+  console.log('[DEBUG][updateProjectionName] window.currentMapName =', window.currentMapName);
+  console.log('[DEBUG][updateProjectionName] window.currentSurface =', window.currentSurface);
+  console.log('[DEBUG][updateProjectionName] availableMaps =', availableMaps.map(m => m.name));
+  // Utiliser la traduction dynamique pour la texture
+  let textureKey = 'map' + (window.currentMapName ? window.currentMapName.charAt(0).toUpperCase() + window.currentMapName.slice(1) : '');
+  let textureName = (typeof t === 'function') ? t(textureKey) : window.currentMapName;
+  if (!textureName || textureName === textureKey) {
+    // Fallback sur le titre brut si pas de traduction
+    const mapConfig = availableMaps.find(m => m.name === window.currentMapName);
+    textureName = mapConfig ? mapConfig.title : window.currentMapName;
+  }
   if (textureName && typeof textureName === 'string') {
     textureName = textureName.charAt(0).toUpperCase() + textureName.slice(1);
   }
-  let currentTopology = topologyNames[currentSurface] || currentSurface;
-  // Utiliser une clé de traduction paramétrique UNIQUEMENT pour le template
+  // Utiliser la traduction dynamique pour la topologie
+  let currentTopology = (typeof t === 'function') ? t(window.currentSurface) : window.currentSurface;
+  if (!currentTopology || currentTopology === window.currentSurface) {
+    // Fallback sur le nom anglais si pas de traduction
+    currentTopology = topologyNames[window.currentSurface] || window.currentSurface;
+  }
+  console.log('[DEBUG][updateProjectionName] textureKey =', textureKey, '| textureName =', textureName, '| currentTopology =', currentTopology);
   let projectionTitle = '';
   if (window.translationAPI && window.translationLoaded) {
     let template = window.translationAPI.manager.get('projectionTitle');
     projectionTitle = template.replace(/%1/g, textureName).replace(/%2/g, currentTopology);
-  } else {
+      } else {
     projectionTitle = `${textureName} ${currentTopology}`;
   }
-  // Mettre à jour le DOM avec le titre calculé
   const el = document.getElementById('selectedProjection');
   if (el) {
     el.innerText = projectionTitle;
   }
-  pd('updateProjection', 'main.js', `📊 Affichage traduit: ${projectionTitle}`);
+  console.log('[DEBUG][updateProjectionName] projectionTitle =', projectionTitle);
+  pd('updateProjection', 'main.js', `[DEBUG] updateProjectionName: '${projectionTitle}' (texture: ${window.currentMapName}, shape: ${window.currentSurface})`);
+}
+
+function refreshProjectionTitle() {
+  console.log('[DEBUG][refreshProjectionTitle] window.currentMapName =', window.currentMapName, '| window.currentSurface =', window.currentSurface);
+  updateProjectionName();
 }
 
 // Boutons radio pour sélection de topologie
@@ -3399,11 +3418,16 @@ async function loadAllTranslations() {
   const t0 = performance.now();
   const response = await fetch('trads/translations.csv');
   const csv = await response.text();
-  const lines = csv.split(/\r?\n/).filter(l => l.trim() && !l.startsWith('#'));
+  // Filtrer toutes les lignes vides et commentaires
+  const allLines = csv.split(/\r?\n/).map(l => l.trim());
+  const lines = allLines.filter(l => l && !l.startsWith('#'));
+  // DEBUG : afficher le CSV nettoyé avant parsing
+  console.log('[DEBUG][loadAllTranslations] CSV nettoyé avant parsing :\n' + lines.join('\n'));
   if (lines.length < 2) return;
 
-  // 1. Utiliser la première ligne comme labels
-  const labels = lines[0].split(',').map(l => l.trim());
+  // 1. Utiliser la première ligne non commentée comme labels
+  let labelLineIdx = allLines.findIndex(l => l && !l.startsWith('#'));
+  const labels = allLines[labelLineIdx].split(',').map(l => l.trim());
   // labels[0] = clé, labels[1] = FR, labels[2] = EN, etc.
   const langIdx = {
     fr: labels.findIndex(l => l.toLowerCase() === 'fr'),
@@ -3415,8 +3439,10 @@ async function loadAllTranslations() {
 
   const translations = { fr: {}, en: {}, es: {}, it: {}, de: {} };
 
-  for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(',').map(c => c.trim());
+  for (let i = labelLineIdx + 1; i < allLines.length; i++) {
+    const line = allLines[i];
+    if (!line || line.startsWith('#')) continue;
+    const cols = line.split(',').map(c => c.trim());
     const key = cols[0];
     if (!key) continue;
     Object.keys(langIdx).forEach(lang => {
@@ -3435,15 +3461,15 @@ async function loadAllTranslations() {
   if (typeof refreshAllTranslations === 'function') {
     refreshAllTranslations();
   }
+  // ... après window.translations = translations;
+  console.log('[DEBUG][window.translations.fr] Clés chargées :', Object.keys(window.translations.fr));
 }
 
-function t(key) {
-  const lang = window.currentLang || 'fr';
-  const value = window.translations[lang] && window.translations[lang][key];
-  if (!value) {
-    console.warn(`[TRAD][${lang}] Clé manquante:`, key);
-    return key;
-  }
+function t(key, lang) {
+  lang = lang || window.currentLang || 'fr';
+  let value = window.translations && window.translations[lang] ? window.translations[lang][key] : undefined;
+  console.log(`[DEBUG][t()] key='${key}' | lang='${lang}' | value=`, value);
+  if (typeof value === 'undefined') return `[${key}]`;
   return value;
 }
 window.t = t;
@@ -3499,7 +3525,7 @@ async function initializeShape() {
     rotZ = (angles.rotZ * Math.PI) / 180;
     scale = angles.scale;
     pd('CONFIG', 'main.js', `CONFIG | SHAPE | surface: ${surfaceName} | valeurs: ${JSON.stringify(angles)}`);
-    } else {
+        } else {
     pd('CONFIG', 'main.js', `Aucune config trouvée pour ${surfaceName}`);
   }
   currentMesh = initializeMesh(createSurface);
@@ -3526,6 +3552,12 @@ async function morphToSurface(newSurfaceName, skipAnimation = false) {
   // Forcer la mise à jour de toute l'UI traduite (titre inclus)
   if (typeof window.refreshAllTranslations === 'function') {
     window.refreshAllTranslations();
+  }
+  // Correction DNAvatar.org 2025-06-08 :
+  // Toujours recharger la texture courante après changement de shape
+  if (typeof loadTexture === 'function') {
+    loadTexture();
+    pd('morphToSurface', 'main.js', `[SYNC] Texture rechargée après changement de shape : ${window.currentMapName}`);
   }
 }
 window.morphToSurface = morphToSurface;
@@ -3560,18 +3592,30 @@ export function refreshAllTranslations() {
           } else if (window.availableMaps) {
             const mapConfig = window.availableMaps.find(m => m.name === window.currentMapName);
             textureName = mapConfig ? mapConfig.title : window.currentMapName;
-          } else {
+    } else {
             textureName = window.currentMapName;
           }
           if (textureName && typeof textureName === 'string') {
             textureName = textureName.charAt(0).toUpperCase() + textureName.slice(1);
           }
         }
-        if (window.topologyNames && window.currentTopology) {
-          currentTopologyName = window.topologyNames[window.currentTopology] || window.currentTopology;
+        // Utiliser UNIQUEMENT la traduction de la clé interne pour la topologie
+        if (window.currentTopology) {
+          currentTopologyName = t(window.currentTopology);
         }
         const before = value;
-        value = value.replace(/%currentMapName/g, textureName).replace(/%currentTopology/g, currentTopologyName);
+        // Ordre FR : Carte Tore, autres langues : Tore Carte
+        if ((window.currentLang || 'fr') === 'fr') {
+          value = `${textureName} ${currentTopologyName}`;
+    } else {
+          value = `${currentTopologyName} ${textureName}`;
+        }
+        // Cas spécial : ne pas afficher "Texture" comme shape
+        if (currentTopologyName === t('view2d')) {
+          value = textureName;
+        }
+        // ... logs éventuels ...
+        // el.textContent = value plus bas
         console.log(`[DEBUG][refreshAllTranslations] key=${key} | before='${before}' | textureName='${textureName}' | currentTopologyName='${currentTopologyName}' | after='${value}'`);
       } else {
         console.log(`[DEBUG][refreshAllTranslations] key=${key} | value='${value}'`);
@@ -3585,35 +3629,6 @@ export function refreshAllTranslations() {
 }
 // ... existing code ...
 // À appeler aussi après tout changement de langue
-
-function refreshProjectionTitle() {
-  const el = document.getElementById('selectedProjection');
-  if (el) {
-    const key = el.getAttribute('trad');
-    // Forcer la définition de la shape si absente
-    if (!window.currentTopology) {
-      window.currentTopology = 'view2d';
-    }
-    // Paramètres dynamiques
-    let selectedTexture = window.currentMapName || '[noMap]';
-    if (window.availableMaps && window.currentMapName) {
-      const mapConfig = window.availableMaps.find(m => m.name === window.currentMapName);
-      selectedTexture = mapConfig ? mapConfig.title : window.currentMapName;
-    }
-    // Mettre une majuscule au début
-    if (selectedTexture && typeof selectedTexture === 'string') {
-      selectedTexture = selectedTexture.charAt(0).toUpperCase() + selectedTexture.slice(1);
-    }
-    let selectedShape = window.currentTopology || '[noShape]';
-    if (window.topologyNames && window.currentTopology) {
-      selectedShape = window.topologyNames[window.currentTopology] || window.currentTopology;
-    }
-    let txt = window.t(key);
-    txt = txt.replace(/%currentMapName/g, selectedTexture).replace(/%currentTopology/g, selectedShape);
-    el.textContent = txt;
-    console.log('[DEBUG][refreshProjectionTitle]', {key, selectedTexture, selectedShape, value: txt});
-  }
-}
 
 function attachShapeListeners() {
   const radios = document.querySelectorAll('input[name="topology"]');
@@ -3640,3 +3655,47 @@ if (typeof buildTopologyButtons === 'function') {
   });
 }
 // ... existing code ...
+
+// Affichage du titre principal avec gestion \n et tailles différentes
+function renderMainTitle() {
+  const el = document.querySelector('[trad="mainTitle"]');
+  if (!el) return;
+  console.log('[DEBUG][renderMainTitle] window.currentLang =', window.currentLang);
+  console.log('[DEBUG][renderMainTitle] window.translations[window.currentLang] =', window.translations[window.currentLang]);
+  console.log('[DEBUG][renderMainTitle] mainTitle direct =', window.translations[window.currentLang]?.mainTitle);
+  let title = t('mainTitle');
+  if (title === '[mainTitle]') {
+    // Fallback direct
+    title = window.translations[window.currentLang]?.mainTitle || '[mainTitle]';
+    console.log('[DEBUG][renderMainTitle] Fallback direct mainTitle =', title);
+  }
+  // DEBUG : afficher la chaîne brute
+  console.log('[DEBUG][renderMainTitle] Chaîne brute depuis CSV:', JSON.stringify(title));
+  // Remplacer explicitement toutes les séquences '\n' (antislash+n) par un vrai retour à la ligne
+  const replaced = title.replaceAll('\\n', '\n');
+  console.log('[DEBUG][renderMainTitle] Après replaceAll("\\n", "\n"):', JSON.stringify(replaced));
+  const lines = replaced.split('\n');
+  if (lines.length === 1) {
+    el.innerHTML = `<span class="main-title-line1">${lines[0]}</span>`;
+  } else if (lines.length === 2) {
+    el.innerHTML = `<span class="main-title-line1">${lines[0]}</span><br><span style="font-size:1.2em; font-weight:400;">${lines[1]}</span>`;
+  } else if (lines.length >= 3) {
+    el.innerHTML = `<span class="main-title-line1">${lines[0]}</span><br><span style="font-size:1.2em; font-weight:400;">${lines[1]}</span><br><span style="font-size:1em; font-weight:300;">${lines.slice(2).join(' ')}</span>`;
+  }
+}
+// Appeler renderMainTitle après chaque changement de langue ou de titre
+if (typeof window !== 'undefined') {
+  window.renderMainTitle = renderMainTitle;
+}
+// Appel initial après chargement
+if (document.readyState !== 'loading') {
+  renderMainTitle();
+} else {
+  document.addEventListener('DOMContentLoaded', renderMainTitle);
+}
+// Appeler aussi après refreshAllTranslations
+const oldRefreshAllTranslations = window.refreshAllTranslations;
+window.refreshAllTranslations = function() {
+  if (typeof oldRefreshAllTranslations === 'function') oldRefreshAllTranslations();
+  renderMainTitle();
+};

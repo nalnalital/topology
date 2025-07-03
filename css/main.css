@@ -839,3 +839,11 @@ canvas:active {
 }
 
 /* --- STYLES QUOTIENT (maintenant dans css/shapes_buttons.css) --- */
+
+.main-title-line1 {
+  display: inline;
+  font-size: 2.1em;
+  font-weight: 700;
+  white-space: normal !important;
+  word-break: break-word;
+}
