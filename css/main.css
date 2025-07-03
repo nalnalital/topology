@@ -1,3 +1,36 @@
+/* Removed external font import */
+/* @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap'); */
+
+# File: main.css - Styles principaux pour l'interface topologique
+# Desc: En français, dans l'architecture, je suis les styles principaux pour l'interface de visualisation topologique avec layout responsive
+# Version 2.56.5 (correction chemin police locale)
+# Author: DNAvatar.org - Arnaud Maignan
+# Date: [June 08, 2025] [19:45 UTC+1]
+# Logs:
+#   - Fixed local font path in @font-face declaration
+#   - Declared other available local fonts
+
+/* Déclaration des polices locales */
+@font-face {
+  font-family: 'MyKomikaFont'; /* Nom personnalisé pour éviter les conflits */
+  src: url('/fonts/KomikaHand.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Viner Hand ITC';
+  src: url('/fonts/VINERIT0.TTF') format('truetype');
+}
+
+@font-face {
+  font-family: 'Soopafresh';
+  src: url('/fonts/soopafre.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Yuji Hentaigana Akari';
+  src: url('/fonts/YujiHentaiganaAkari.ttf') format('truetype');
+}
+
 /* File: css.css - Styles for isometric topology viewer */
 /* Desc: En français, dans l'architecture, je suis les styles pour l'interface de projection isométrique avec système multi-cartes */
 /* Version 2.53.0 (CSS refactoring) */
@@ -27,8 +60,200 @@ body {
 }
 
 h1 {
-  color: #3498db;
-  margin-bottom: 10px;
+  text-align: center;
+  color: #2c3e50;
+  margin-bottom: 20px;
+}
+
+/* Élargir la zone titre pour éviter retours à la ligne en 1280px */
+.title-container {
+  display: grid;
+  grid-template-columns: 1fr 60% 1fr; /* Zone titre élargie à 60% */
+  align-items: end; /* Aligner les items en bas */
+  padding: 10px 20px;
+  background: #d9230f; /* Rouge style "Anselme Lanturlu" */
+  border-bottom: 5px solid #a31a0b; /* Rouge plus foncé */
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  position: relative; /* Nécessaire pour que z-index fonctionne */
+  z-index: 10; /* Doit être supérieur à celui de .center-area */
+}
+
+.title-left, .title-center, .title-right {
+  flex: 1;
+}
+
+.title-center {
+  text-align: center;
+}
+
+.title-center h1 {
+  font-family: 'Soopafresh', cursive; /* Test avec une autre police */
+  line-height: 1;
+  color: #fbc02d; /* Jaune style "Anselme Lanturlu" */
+  margin: 0;
+  text-shadow: 2px 2px 0px #a31a0b, 3px 3px 6px rgba(0,0,0,0.4);
+  letter-spacing: 1px;
+  font-weight: 700;
+}
+
+/* On retire la taille de police globale pour la gérer par ligne */
+.title-center h1 .title-line-1,
+.title-center h1 .title-line-2,
+.title-center h1 .title-line-3 {
+  display: inline-block; /* Pour que les styles s'appliquent bien */
+}
+
+.title-line-1 {
+  font-size: 0.5em; /* Ligne 1 plus petite */
+  margin-bottom: 1.5em;
+  display: block;
+}
+
+.title-line-2 {
+  font-size: 1.5em; /* Ligne 2 la plus grosse */
+}
+
+.title-line-3 {
+  font-size: 0.8em; /* Ligne 3 la plus petite */
+}
+
+.title-left {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.title-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+/* Conteneur PDF avec cadre */
+.pdf-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 5px;
+  border: 2px solid #ddd;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* URL du site au-dessus du bouton PDF */
+.pdf-site-url {
+  font-size: 0.7em;
+  text-align: center;
+}
+
+.pdf-site-url a {
+  color: #2196f3;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.pdf-site-url a:hover {
+  text-decoration: underline;
+}
+
+/* Bouton PDF agrandi */
+.pdf-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pdf-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.pdf-icon {
+  width: 64px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+/* Drapeaux réduits sous le bouton PDF */
+.pdf-label {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+}
+
+.pdf-label .lang-flag {
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  padding: 2px 4px;
+  transition: all 0.2s ease;
+}
+
+.pdf-label .lang-flag:hover {
+  border-color: #2196f3;
+  transform: scale(1.1);
+}
+
+/* Ligne avec bouton PDF et drapeau courant */
+.pdf-button-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pdf-lang-flag {
+  font-size: 1.5em;
+}
+
+/* Drapeau de la langue courante à droite du bouton PDF */
+.current-lang-flag {
+  font-size: 1.2em;
+  padding: 4px 6px;
+  border: 2px solid #2196f3;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+}
+
+/* Sélecteur de langues en bas */
+.language-selector-bottom {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#langSelector {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.lang-flag {
+  font-size: 1.5em; /* Taille réduite */
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  padding: 2px 8px;
+  transition: all 0.3s ease;
+}
+
+.lang-flag:hover {
+  border-color: #fbc02d;
+  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 select {
@@ -842,8 +1067,20 @@ canvas:active {
 
 .main-title-line1 {
   display: inline;
-  font-size: 2.1em;
+  font-size: 1.5em;
   font-weight: 700;
   white-space: normal !important;
   word-break: break-word;
+}
+
+/* Styles pour les boutons header gauche sélectionnés */
+.left-controls-header .map-option:has(input[type="checkbox"]:checked) {
+  background: linear-gradient(145deg, #e3f2fd, #bbdefb);
+  border: 2px solid #3498db;
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+}
+
+.left-controls-header .map-option:has(input[type="checkbox"]:checked) .map-name {
+  color: #3498db;
 }

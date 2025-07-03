@@ -1427,6 +1427,7 @@ function render() {
         if (showGrid) {
           ctx.strokeStyle = 'rgba(0,0,0,0.6)';
           ctx.lineWidth = 1;
+          pd('render', 'main.js', `🔷 Grille noire dessinée pour face ${sortedIndex} (z=${face.avgZ.toFixed(2)})`);
         ctx.beginPath();
         ctx.moveTo(projectedVertices[indices[0]].x, projectedVertices[indices[0]].y);
         ctx.lineTo(projectedVertices[indices[1]].x, projectedVertices[indices[1]].y);
@@ -1435,6 +1436,7 @@ function render() {
         ctx.closePath();
         ctx.stroke();
         } else {
+          pd('render', 'main.js', `🎨 Coutures colorées pour face ${sortedIndex} (z=${face.avgZ.toFixed(2)})`);
           drawColoredGrid(ctx, face, projectedVertices, rectangle);
         }
       }
@@ -1471,20 +1473,11 @@ function render() {
       ctx.stroke();
     });
   }
-  if (showGrid && !showTexture) {
-    pd('renderGridWireframe', 'main.js', `🔷 Rendu grille wireframe: ${sortedFaces.length} faces`);
-    sortedFaces.forEach(face => {
-      const indices = face.vertices;
-      ctx.strokeStyle = 'rgba(255,0,0,0.8)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(projectedVertices[indices[0]].x, projectedVertices[indices[0]].y);
-      ctx.lineTo(projectedVertices[indices[1]].x, projectedVertices[indices[1]].y);
-      ctx.lineTo(projectedVertices[indices[2]].x, projectedVertices[indices[2]].y);
-      ctx.lineTo(projectedVertices[indices[3]].x, projectedVertices[indices[3]].y);
-      ctx.closePath();
-      ctx.stroke();
-    });
+  // Rendu grille wireframe supplémentaire si activée (indépendamment de la texture)
+  if (showGrid) {
+    pd('renderGridWireframe', 'main.js', `🔷 Rendu grille wireframe: ${sortedFaces.length} faces - SUPPRIMÉ POUR CORRIGER Z-INDEX`);
+    // SUPPRIMÉ : Cette boucle dessinait une grille rouge par-dessus tout, causant des problèmes de z-index
+    // La grille est maintenant gérée dans la boucle principale avec le bon tri de profondeur
   }
   // Juste après le tri des faces et la projection :
   if (window.currentSurface === 'cylinder') {
@@ -1787,14 +1780,14 @@ document.querySelectorAll('input[name="mapChoice"]').forEach(radio => {
 });
 
 // Gestionnaire pour le bouton grille 🌐 (toggle du checkbox caché)
-document.querySelector('label[for="showTexture"], .map-option:has(#showTexture)').addEventListener('click', (e) => {
+document.querySelector('label[for="showGrille"], .map-option:has(#showGrille)').addEventListener('click', (e) => {
   e.preventDefault();
-  const checkbox = document.getElementById('showTexture');
+  const checkbox = document.getElementById('showGrille');
   checkbox.checked = !checkbox.checked;
   checkbox.dispatchEvent(new Event('change'));
 });
 
-document.getElementById('showTexture').addEventListener('change', (e) => {
+document.getElementById('showGrille').addEventListener('change', (e) => {
   showGrid = e.target.checked;
   pd('showGrid', 'main.js', `Lignes de grille: ${showGrid ? 'ACTIVÉES' : 'DÉSACTIVÉES'} - Scale actuel: ${scale.toFixed(1)}`);
   
@@ -2693,7 +2686,6 @@ function debugTileBorderColors(targetX, targetY, borderSide = 'right') {
     pd('debugTileBorderColors', 'main.js', `⚠️ Voisine (${neighborX},${neighborY}) introuvable`);
   }
 }
-
 /**
  * Échantillonne les pixels d'un bord spécifique d'un rectangle
  * @param {Object} rectangle - Rectangle de texture avec canvas
@@ -3624,9 +3616,11 @@ export function refreshAllTranslations() {
     } else {
       console.log(`[DEBUG][refreshAllTranslations] t n'est pas une fonction pour key=${key}`);
     }
-  });
-  console.log('[DEBUG][refreshAllTranslations] === FIN ===');
-}
+      });
+    // Appeler renderMainTitle pour gérer les retours à la ligne dans le titre
+    renderMainTitle();
+    console.log('[DEBUG][refreshAllTranslations] === FIN ===');
+  }
 // ... existing code ...
 // À appeler aussi après tout changement de langue
 
@@ -3658,29 +3652,16 @@ if (typeof buildTopologyButtons === 'function') {
 
 // Affichage du titre principal avec gestion \n et tailles différentes
 function renderMainTitle() {
-  const el = document.querySelector('[trad="mainTitle"]');
-  if (!el) return;
-  console.log('[DEBUG][renderMainTitle] window.currentLang =', window.currentLang);
-  console.log('[DEBUG][renderMainTitle] window.translations[window.currentLang] =', window.translations[window.currentLang]);
-  console.log('[DEBUG][renderMainTitle] mainTitle direct =', window.translations[window.currentLang]?.mainTitle);
-  let title = t('mainTitle');
-  if (title === '[mainTitle]') {
-    // Fallback direct
-    title = window.translations[window.currentLang]?.mainTitle || '[mainTitle]';
-    console.log('[DEBUG][renderMainTitle] Fallback direct mainTitle =', title);
-  }
-  // DEBUG : afficher la chaîne brute
-  console.log('[DEBUG][renderMainTitle] Chaîne brute depuis CSV:', JSON.stringify(title));
-  // Remplacer explicitement toutes les séquences '\n' (antislash+n) par un vrai retour à la ligne
-  const replaced = title.replaceAll('\\n', '\n');
-  console.log('[DEBUG][renderMainTitle] Après replaceAll("\\n", "\n"):', JSON.stringify(replaced));
-  const lines = replaced.split('\n');
-  if (lines.length === 1) {
-    el.innerHTML = `<span class="main-title-line1">${lines[0]}</span>`;
-  } else if (lines.length === 2) {
-    el.innerHTML = `<span class="main-title-line1">${lines[0]}</span><br><span style="font-size:1.2em; font-weight:400;">${lines[1]}</span>`;
-  } else if (lines.length >= 3) {
-    el.innerHTML = `<span class="main-title-line1">${lines[0]}</span><br><span style="font-size:1.2em; font-weight:400;">${lines[1]}</span><br><span style="font-size:1em; font-weight:300;">${lines.slice(2).join(' ')}</span>`;
+  const titleElement = document.querySelector('[trad="mainTitle"]');
+  if (titleElement) {
+    const translationKey = titleElement.getAttribute('trad');
+    const translatedText = t(translationKey);
+    
+    // Sépare le titre en lignes et les enveloppe dans des spans
+    const lines = translatedText.split('\\n');
+    const html = lines.map((line, index) => `<span class="title-line-${index + 1}">${line}</span>`).join('<br>');
+    
+    titleElement.innerHTML = html;
   }
 }
 // Appeler renderMainTitle après chaque changement de langue ou de titre
@@ -3693,9 +3674,5 @@ if (document.readyState !== 'loading') {
 } else {
   document.addEventListener('DOMContentLoaded', renderMainTitle);
 }
-// Appeler aussi après refreshAllTranslations
-const oldRefreshAllTranslations = window.refreshAllTranslations;
-window.refreshAllTranslations = function() {
-  if (typeof oldRefreshAllTranslations === 'function') oldRefreshAllTranslations();
-  renderMainTitle();
-};
+  // renderMainTitle est maintenant appelée directement dans refreshAllTranslations
+

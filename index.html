@@ -2,21 +2,48 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Visualisation de Surfaces Topologiques - Projection Isométrique</title>
-  <link rel="stylesheet" href="css/main.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Topologicon</title>
+  <link rel="stylesheet" href="css/main.css?v=2.56.8">
   <link rel="stylesheet" href="css/shapes_buttons.css">
+  <link rel="icon" href="cartes/favicon.ico" type="image/x-icon">
       <!-- Version 2.53.0 - Refactoring CSS -->
 </head>
 <body>
-  <div id="langSelector" style="margin: 0; display: flex; gap: 8px; align-items: center;">
-    <span class="lang-flag" data-lang="fr" style="font-size: 2em; cursor: pointer; border: 2px solid #2196f3; border-radius: 6px; padding: 2px 8px;">🇫🇷</span>
-    <span class="lang-flag" data-lang="en" style="font-size: 2em; cursor: pointer; border: 2px solid transparent; border-radius: 6px; padding: 2px 8px;">🇬🇧</span>
-    <span class="lang-flag" data-lang="es" style="font-size: 2em; cursor: pointer; border: 2px solid transparent; border-radius: 6px; padding: 2px 8px;">🇪🇸</span>
-    <span class="lang-flag" data-lang="it" style="font-size: 2em; cursor: pointer; border: 2px solid transparent; border-radius: 6px; padding: 2px 8px;">🇮🇹</span>
-    <span class="lang-flag" data-lang="de" style="font-size: 2em; cursor: pointer; border: 2px solid transparent; border-radius: 6px; padding: 2px 8px;">🇩🇪</span>
-    <button id="pdfBtn" title="Ouvrir le Topologicon PDF" style="font-size: 1.7em; margin-left: 10px; background: none; border: none; cursor: pointer;">📄</button>
+
+  <!-- Structure à 3 colonnes pour titre centré + bouton PDF à droite -->
+  <div class="title-container">
+    <div class="title-left">
+      <div id="langSelector">
+        <span class="lang-flag" data-lang="fr">🇫🇷</span>
+        <span class="lang-flag" data-lang="en">🇬🇧</span>
+        <span class="lang-flag" data-lang="es">🇪🇸</span>
+        <span class="lang-flag" data-lang="it">🇮🇹</span>
+        <span class="lang-flag" data-lang="de">🇩🇪</span>
+      </div>
+    </div>
+    <div class="title-center">
+      <h1 trad="mainTitle">Square Topologicon</h1>
+    </div>
+    <div class="title-right">
+      <!-- Conteneur PDF avec cadre -->
+      <div class="pdf-container">
+        <!-- URL du site au-dessus -->
+        <div id="pdfSiteUrl" class="pdf-site-url">
+          <a href="#" id="siteUrlLink" target="_blank">topologicon.net</a>
+        </div>
+        
+        <!-- Ligne avec bouton PDF et drapeau courant -->
+        <div class="pdf-button-row">
+          <button id="pdfBtn" class="pdf-button" title="Ouvrir le Topologicon PDF">
+            <img src="trads/topologicon.jpg" alt="Topologicon PDF" class="pdf-icon">
+          </button>
+          <span id="pdfCurrentLangFlag" class="pdf-lang-flag"></span>
+        </div>
+      </div>
+    </div>
   </div>
-  <h1 trad="mainTitle">Square Topologicon</h1>
+  
   <!-- Nouvelle structure avec grille CSS pour alignement parfait -->
   <div class="simulation-grid">
     <!-- Boutons gauche -->
@@ -27,7 +54,7 @@
           <span class="map-name">🔄</span>
         </label>
         <label class="map-option">
-          <input type="checkbox" id="showTexture">
+          <input type="checkbox" id="showGrille">
           <span class="map-name">🌐</span>
         </label>
         <label class="map-option">
@@ -159,10 +186,19 @@
     function setLang(lang) {
       console.log('[DEBUG][setLang] Appel avec', lang);
       window.currentLang = lang;
+      
       // Met à jour le style des drapeaux
       document.querySelectorAll('.lang-flag').forEach(flag => {
         flag.style.borderColor = (flag.dataset.lang === lang) ? '#2196f3' : 'transparent';
       });
+      
+      // Met à jour le drapeau dans le cadre PDF
+      const pdfFlag = document.getElementById('pdfCurrentLangFlag');
+      const flagEmojis = { 'fr': '🇫🇷', 'en': '🇬🇧', 'es': '🇪🇸', 'it': '🇮🇹', 'de': '🇩🇪' };
+      if (pdfFlag) {
+        pdfFlag.textContent = flagEmojis[lang] || '🇫🇷';
+      }
+      
       // Rafraîchit les traductions si la fonction existe
       if (typeof window.refreshAllTranslations === 'function') {
         console.log('[DEBUG][setLang] Appel de refreshAllTranslations');
@@ -202,23 +238,34 @@
         });
         // Initialisation : sélectionne la langue par défaut
         setLang(window.currentLang || 'fr');
-        // Bouton PDF : affiche la pochette puis ouvre le PDF de la langue courante
+        // Bouton PDF : ouverture directe du PDF selon la langue
         const pdfBtn = document.getElementById('pdfBtn');
-        const pdfModal = document.getElementById('pdfModal');
-        const pdfModalImg = document.getElementById('pdfModalImg');
+        const siteUrlLink = document.getElementById('siteUrlLink');
+        
+        // Fonction pour mettre à jour l'URL du site
+        function updateSiteUrl() {
+          const lang = window.currentLang || 'fr';
+          const pdf = pdfLinks[lang] || pdfLinks['fr'];
+          siteUrlLink.href = pdf.siteUrl;
+          siteUrlLink.textContent = 'www.savoir-sans-frontieres.com';
+        }
+        
+        // Ouverture directe du PDF
         pdfBtn.addEventListener('click', () => {
-          pdfModal.style.display = 'flex';
+          const lang = window.currentLang || 'fr';
+          const pdf = pdfLinks[lang] || pdfLinks['fr'];
+          window.open(pdf.url, '_blank');
         });
-        // Fermer la modale au clic sur l'image ou en dehors
-        pdfModal.addEventListener('click', (e) => {
-          if (e.target === pdfModal || e.target === pdfModalImg) {
-            pdfModal.style.display = 'none';
-            // Ouvrir le PDF après fermeture
-            const lang = window.currentLang || 'fr';
-            const pdf = pdfLinks[lang] || pdfLinks['fr'];
-            window.open(pdf.url, '_blank');
-          }
-        });
+        
+        // Initialiser l'URL du site
+        updateSiteUrl();
+        
+        // Mettre à jour l'URL du site quand la langue change
+        const originalSetLang = setLang;
+        setLang = function(lang) {
+          originalSetLang(lang);
+          updateSiteUrl();
+        };
       }).catch(e => {
         console.error('[buildTopologyButtons ERROR]', e);
       });
@@ -246,13 +293,22 @@
       }
     });
   </script>
+  
+  <!-- Script de débogage pour le chargement de la police -->
+  <script>
+    (async () => {
+      try {
+        await document.fonts.load('1em "Soopafresh"');
+        console.log('✅ [DEBUG][FONT] La police "Soopafresh" a été chargée avec succès !');
+      } catch (e) {
+        console.error('❌ [DEBUG][FONT] Le chargement de la police "Soopafresh" a échoué.', e);
+      }
+    })();
+  </script>
+
   <script>
     // Cache busting pour main.js
     const version = new Date().getTime();
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = `main.js?v=${version}`;
-    document.body.appendChild(script);
-  </script>
-</body>
-</html>
+    script.src = `main.js?v=${version}`
