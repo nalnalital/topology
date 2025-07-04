@@ -603,7 +603,7 @@ canvas:active {
   justify-content: center;
   gap: 8px;
   min-height: 40px;
-  max-width: 100%;
+  max-width: 55%;
 }
 
 .map-option {
@@ -766,7 +766,7 @@ canvas:active {
 .camera-translation-floating {
   position: absolute;
   bottom: 20px;
-  left: 20px;
+  right: 20px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 12px;

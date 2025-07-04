@@ -57,6 +57,18 @@ export const identification = [
   { edge1: 'left', edge2: 'right', orientation: 'same' }
 ];
 
+// Groupe de Poincaré (premier groupe d'homotopie)
+export const quotientGroup = 'ℤ';
+
+// Invariants algébriques complets
+export const algebraicInvariants = {
+  pi1: 'ℤ',       // Groupe fondamental π₁
+  H1: 'ℤ',        // Premier groupe d'homologie H₁
+  chi: 0,         // Caractéristique d'Euler χ
+  H2: '{0}',      // Deuxième groupe d'homologie H₂
+  orientable: '○' // Orientabilité
+};
+
 // Gestion du drag spécifique cylindre
 export function handleDrag(deltaX, deltaY, angles, config) {
   // dragX = rotY (inversé), dragY = rien

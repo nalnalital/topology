@@ -13,6 +13,18 @@ export const topologyIcon = {
   center: '🔷'
 };
 
+// Groupe de Poincaré (premier groupe d'homotopie)
+export const quotientGroup = '{∅}';
+
+// Invariants algébriques complets
+export const algebraicInvariants = {
+  pi1: '{∅}',     // Groupe fondamental π₁
+  H1: '{0}',      // Premier groupe d'homologie H₁
+  chi: 1,         // Caractéristique d'Euler χ
+  H2: '{0}',      // Deuxième groupe d'homologie H₂
+  orientable: '○' // Orientabilité
+};
+
 // Décalage texture spécifique plan (offset paramétrique)
 export function getTextureOffsetU() { return 0; }
 export function getTextureOffsetV() { return 0; }

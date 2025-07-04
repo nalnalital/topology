@@ -31,6 +31,18 @@ export const identification = [
   { edge1: 'left', edge2: 'right', orientation: 'opposite' }
 ];
 
+// Groupe de Poincaré (premier groupe d'homotopie)
+export const quotientGroup = 'ℤ/2ℤ';
+
+// Invariants algébriques complets
+export const algebraicInvariants = {
+  pi1: 'ℤ/2ℤ',    // Groupe fondamental π₁
+  H1: 'ℤ/2ℤ',     // Premier groupe d'homologie H₁
+  chi: 0,         // Caractéristique d'Euler χ
+  H2: '{0}',      // Deuxième groupe d'homologie H₂
+  orientable: '⊗' // Orientabilité
+};
+
 // Décalage texture spécifique ruban de Möbius (offset paramétrique)
 export function getTextureOffsetU() { return 0; }
 export function getTextureOffsetV() { return 0; }

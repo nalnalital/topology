@@ -34,12 +34,13 @@ mapRoom,Pièce,Room,Habitación,Stanza,Zimmer
 mapWater,Eau,Water,Agua,Acqua,Wasser
 mapFace,Visage,Face,Cara,Faccia,Gesicht
 mapJanus,Janus,Janus Model,Modelo Janus,Modello Janus,Janus-Modell
+mapColors,Couleurs,Colors,Colores,Colori,Farben
 
 # --- AUTRES CLÉS ---
 projectionTitle,Projection du plan sur un(e) {surface} avec la carte "{mapName}",Projection of the plane onto a {surface} with the map "{mapName}",Proyección del plano sobre un(a) {surface} con el mapa "{mapName}",Proiezione del piano su un(a) {surface} con la mappa "{mapName}",Projektion der Ebene auf eine(n) {surface} mit der Karte "{mapName}"
 topologyTitle,Surfaces topologiques - Projection 3D Isométrique,Topological Surfaces - 3D Isometric Projection,Superficies Topológicas - Proyección 3D Isométrica,Superfici Topologiche - Proiezione 3D Isometrica,Topologische Oberflächen - 3D Isometrische Projektion
 mainTitle,Librement inspiré par\n"le TOPOLOGICON"\nde J.P. Petit,Freely inspired by\n"The TOPOLOGICON"\nby J.P. Petit,Libremente inspirado por\n"El TOPOLOGICON"\nde J.P. Petit,Liberamente ispirato da\n"Il TOPOLOGICON"\ndi J.P. Petit,Frei inspiriert von\n"Das TOPOLOGICON"\nvon J.P. Petit
-mouseHelp,🖱️ Drag pour faire tourner • Shift+Drag pour incliner • Molette pour zoomer,🖱️ Drag to rotate • Shift+Drag to tilt • Wheel to zoom,🖱️ Arrastra para rotar • Shift+Arrastra para inclinar • Rueda para zoom,🖱️ Trascina per ruotare • Shift+Trascina per inclinare • Rotella per zoom,🖱️ Ziehen zum Drehen • Shift+Ziehen zum Neigen • Mausrad zum Zoomen
+mouseHelp,🖱️ Drag pour faire tourner • Molette pour zoomer,🖱️ Drag to rotate • Wheel to zoom,🖱️ Arrastra para rotar • Rueda para zoom,🖱️ Trascina per ruotare • Rotella per zoom,🖱️ Ziehen zum Drehen • Mausrad zum Zoomen
 rotationX,Rotation X,Rotation X,Rotación X,Rotazione X,Rotation X
 rotationY,Rotation Y,Rotation Y,Rotación Y,Rotazione Y,Rotation Y
 rotationZ,Rotation Z,Rotation Z,Rotación Z,Rotazione Z,Rotation Z

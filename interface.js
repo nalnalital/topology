@@ -113,6 +113,155 @@ export async function buildTopologyButtons() {
   }
 }
 
+// Fonction pour afficher les invariants algébriques à droite du titre
+export function displayTopologyGroups(surfaceName) {
+  const projectionTitle = document.getElementById('selectedProjection');
+  if (!projectionTitle) {
+    console.log('[DEBUG] Élément selectedProjection non trouvé');
+    return;
+  }
+
+  // Supprimer l'ancien groupe s'il existe
+  const existingGroup = projectionTitle.querySelector('.topology-groups');
+  if (existingGroup) {
+    existingGroup.remove();
+  }
+
+  // Importer dynamiquement la surface pour obtenir les invariants
+  import(`./surfaces/${surfaceName}.js`).then(module => {
+    console.log(`[DEBUG] Module chargé pour ${surfaceName}:`, module);
+    
+    if (!module.algebraicInvariants) {
+      console.log(`[DEBUG] Surface ${surfaceName} n'a pas d'invariants algébriques`);
+      return;
+    }
+
+    console.log(`[DEBUG] Affichage invariants pour ${surfaceName}:`, module.algebraicInvariants);
+
+    // Créer un conteneur principal pour le titre et l'algèbre
+    const mainContainer = document.createElement('div');
+    mainContainer.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      position: relative;
+      z-index: 1000;
+    `;
+
+    // Conteneur pour le titre centré
+    const titleContainer = document.createElement('div');
+    titleContainer.style.cssText = `
+      flex: 1;
+      text-align: center;
+      font-family: 'Soopafresh', cursive;
+      font-size: 1.2em;
+      color: #fbc02d;
+      text-shadow: 1px 1px 0px #a31a0b, 2px 2px 4px rgba(0,0,0,0.2);
+    `;
+    
+    // En mode 2D, garder le titre original sans modification
+    if (surfaceName === 'view2d') {
+      titleContainer.textContent = projectionTitle.textContent;
+    } else {
+      titleContainer.textContent = projectionTitle.textContent;
+    }
+
+    // Conteneur pour l'algèbre à droite
+    const algebraContainer = document.createElement('div');
+    algebraContainer.className = 'topology-groups';
+    algebraContainer.style.cssText = `
+      position: absolute;
+      right: ${surfaceName === 'view2d' ? '200px' : '-190px'};
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      font-family: 'Times New Roman', serif;
+      font-size: 1.0em;
+      color: #000;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 8px 12px;
+      border-radius: 8px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+      backdrop-filter: blur(5px);
+      z-index: 1001;
+    `;
+
+    // Afficher tous les invariants en colonne
+    const invariants = module.algebraicInvariants;
+    const labels = [
+      { key: 'pi1', symbol: 'π₁' },
+      { key: 'chi', symbol: 'χ' },
+      { key: 'H2', symbol: 'H₂' },
+      { key: 'orientable', symbol: 'ω' }
+    ];
+
+    labels.forEach(({ key, symbol }) => {
+      if (invariants[key] !== undefined) {
+        const invariantDiv = document.createElement('div');
+        invariantDiv.style.cssText = `
+          display: flex;
+          align-items: baseline;
+          margin: 2px 0;
+          white-space: nowrap;
+        `;
+
+        const symbolSpan = document.createElement('span');
+        symbolSpan.textContent = symbol;
+        symbolSpan.style.cssText = `
+          font-size: ${symbol === 'π₁' ? '1.3em' : symbol === 'ω' ? '1.4em' : '1.1em'};
+          color: #000;
+          margin-right: 2px;
+          min-width: 20px;
+          font-weight: 100;
+          line-height: 1;
+          transform: ${symbol === 'π₁' ? 'translateY(-2px)' : symbol === 'χ' ? 'translateY(-4px)' : 'none'};
+        `;
+
+        const separator = document.createElement('span');
+        separator.textContent = '=';
+        separator.style.cssText = `
+          font-size: 1.1em;
+          color: #000;
+          margin: 0 2px;
+          font-weight: bold;
+          line-height: 1;
+        `;
+
+        const valueSpan = document.createElement('span');
+        valueSpan.textContent = invariants[key];
+        valueSpan.style.cssText = `
+          font-weight: bold;
+          font-size: 1.1em;
+          line-height: 1;
+        `;
+
+        invariantDiv.appendChild(symbolSpan);
+        invariantDiv.appendChild(separator);
+        invariantDiv.appendChild(valueSpan);
+        algebraContainer.appendChild(invariantDiv);
+      }
+    });
+
+    // Assembler le tout
+    mainContainer.appendChild(titleContainer);
+    mainContainer.appendChild(algebraContainer);
+
+    // Remplacer le contenu du titre (sauf en mode 2D)
+    if (surfaceName === 'view2d') {
+      // En mode 2D, juste ajouter le panneau algèbre sans modifier le titre
+      projectionTitle.appendChild(algebraContainer);
+    } else {
+      // Pour les autres modes, remplacer complètement le contenu
+      projectionTitle.innerHTML = '';
+      projectionTitle.appendChild(mainContainer);
+    }
+  }).catch(error => {
+    console.log(`[DEBUG] Erreur import surface ${surfaceName}:`, error);
+  });
+}
+
 // À appeler au chargement du DOM :
 // import { buildTopologyButtons } from './interface.js';
 // buildTopologyButtons(); 

@@ -21,6 +21,7 @@
         <span class="lang-flag" data-lang="it">🇮🇹</span>
         <span class="lang-flag" data-lang="de">🇩🇪</span>
       </div>
+      <!-- BOUTON PALETTE UV SUPPRIMÉ D'ICI -->
     </div>
     <div class="title-center">
       <h1 trad="mainTitle">Square Topologicon</h1>
@@ -49,26 +50,16 @@
     <!-- Boutons gauche -->
     <div class="left-controls">
       <div class="left-controls-header">
-        <label class="map-option">
-          <input type="radio" name="topology" value="view2d" checked>
-          <span class="map-name">🔄</span>
-        </label>
-        <label class="map-option">
-          <input type="checkbox" id="showGrille">
-          <span class="map-name">🌐</span>
-        </label>
-        <label class="map-option">
-          <input type="checkbox" id="showUVPalette">
-          <span class="map-name">🎨</span>
-        </label>
-        <label class="map-option">
-          <input type="checkbox" id="showCoordinates">
-          <span class="map-name">📍</span>
-        </label>
         <!-- Titre ou contenu personnalisé -->
       </div>
       <div class="left-shapes-grid">
         <!-- Les boutons de topologie seront générés dynamiquement ici -->
+      </div>
+      <div style="display: flex; justify-content: center; margin-top: 10px;">
+        <label class="map-option">
+          <input type="radio" name="topology" value="view2d" checked>
+          <span class="map-name">🔄</span>
+        </label>
       </div>
     </div>
   
@@ -143,9 +134,25 @@
   <div class="map-selection">
     
     
-    <!-- Ligne du bas : Textures dynamiques -->
-    <div class="map-options">
-      <!-- Les textures seront générées dynamiquement ici -->
+    <!-- Ligne du bas : Textures dynamiques + Palette UV -->
+    <div style="display: flex; justify-content: center; align-items: center; gap: 0;">
+      <div style="display: flex; flex-direction: column; gap: 5px; margin-right: 10px;">
+        <label class="map-option" style="max-width:30px; min-width:30px; height:30px; padding:0;">
+          <input type="checkbox" id="showGrille">
+          <span class="map-name" style="font-size:16px;">🌐</span>
+        </label>
+        <label class="map-option" style="max-width:30px; min-width:30px; height:30px; padding:0;">
+          <input type="checkbox" id="showUVPalette">
+          <span class="map-name" style="font-size:16px;">🎨</span>
+        </label>
+        <label class="map-option" style="max-width:30px; min-width:30px; height:30px; padding:0;">
+          <input type="checkbox" id="showCoordinates">
+          <span class="map-name" style="font-size:16px;">📍</span>
+        </label>
+      </div>
+      <div class="map-options">
+        <!-- Les textures seront générées dynamiquement ici -->
+      </div>
     </div>
   </div>
   

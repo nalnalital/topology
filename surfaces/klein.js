@@ -18,7 +18,7 @@ export const topologyIcon = {
 
 // Décalage texture spécifique Klein (offset paramétrique)
 export function getTextureOffsetU() { return 0; }
-export function getTextureOffsetV() { return 0; }
+export function getTextureOffsetV() { return 0.5; }
 
 export function createSurface(u, v) {
   u = u + getTextureOffsetU();
@@ -43,10 +43,26 @@ export function createSurface(u, v) {
 }
 
 // Structure d'identification pour le carré fondamental
+// Bouteille de Klein : identification avec twist horizontal
 export const identification = [
     { edge1: 'top', edge2: 'bottom', orientation: 'same' },
-    { edge1: 'left', edge2: 'right', orientation: 'opposite' }
+    { edge1: 'left', edge2: 'right', orientation: 'twisted' }
 ];
+
+// Groupe de Poincaré (premier groupe d'homotopie)
+export const quotientGroup = 'ℤ²';
+
+// Type de surface pour distinction
+export const surfaceType = 'Bouteille de Klein (twist)';
+
+// Invariants algébriques complets
+export const algebraicInvariants = {
+  pi1: 'ℤ²',      // Groupe fondamental π₁
+  H1: 'ℤ²',       // Premier groupe d'homologie H₁
+  chi: 0,         // Caractéristique d'Euler χ
+  H2: '{0}',      // Deuxième groupe d'homologie H₂
+  orientable: '⊗' // Orientabilité
+};
 
 // Configuration spécifique bouteille de Klein
 export const config = {

@@ -14,6 +14,7 @@ import { config } from './config.js';
 import { createMesh, homeomorphism, transformCase, transformMesh, debugCase, debugMesh } from './mesh.js';
 import { drawUVPalette } from './3D/3Diso.js';
 import { setupCameraControls } from './3D/camera.js';
+import { displayTopologyGroups } from './interface.js';
 
 // === CONFIGURATION MAILLAGE ===
 // ========================================================================
@@ -1757,6 +1758,12 @@ function updateProjectionName() {
 function refreshProjectionTitle() {
   //console.log('[DEBUG][refreshProjectionTitle] window.currentMapName =', window.currentMapName, '| window.currentSurface =', window.currentSurface);
   updateProjectionName();
+  
+  // Afficher les invariants algébriques pour la surface actuelle
+  if (window.currentSurface) {
+    console.log('[DEBUG] Appel displayTopologyGroups pour', window.currentSurface);
+    displayTopologyGroups(window.currentSurface);
+  }
 }
 
 // Boutons radio pour sélection de topologie
@@ -2964,10 +2971,18 @@ function cleanCsv(csvText) {
 async function startApp() {
   pd('startApp', 'main.js', 'Entrée dans startApp');
   await loadAllTranslations();
-  window.currentSurface = 'view2d';
+  window.currentSurface = 'plane';
   await loadSurfaceModule(); // Correction : nom du module dynamique
   await initializeTextures();
   await initializeShape();
+  
+  // Afficher les invariants algébriques au démarrage
+  setTimeout(() => {
+    if (window.currentSurface) {
+      console.log('[DEBUG] Affichage algèbre au démarrage pour', window.currentSurface);
+      displayTopologyGroups(window.currentSurface);
+    }
+  }, 100);
 }
 
 // Attendre que le DOM soit prêt avant de lancer l'init principale
@@ -3028,6 +3043,11 @@ async function morphToSurface(newSurfaceName, skipAnimation = false) {
     loadTexture();
     pd('morphToSurface', 'main.js', `[SYNC] Texture rechargée après changement de shape : ${window.currentMapName}`);
   }
+  // Rafraîchir le titre de projection pour afficher le GP
+refreshProjectionTitle();
+
+// Exporter la fonction globalement pour l'HTML
+window.displayTopologyGroups = displayTopologyGroups;
 }
 window.morphToSurface = morphToSurface;
 

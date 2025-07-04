@@ -53,6 +53,18 @@ export const identification = [
   { edge1: 'top', edge2: 'bottom', orientation: 'same' }
 ];
 
+// Groupe de Poincaré (premier groupe d'homotopie)
+export const quotientGroup = 'ℤ²';
+
+// Invariants algébriques complets
+export const algebraicInvariants = {
+  pi1: 'ℤ²',      // Groupe fondamental π₁
+  H1: 'ℤ²',       // Premier groupe d'homologie H₁
+  chi: 0,         // Caractéristique d'Euler χ
+  H2: '{0}',      // Deuxième groupe d'homologie H₂
+  orientable: '○' // Orientabilité
+};
+
 // Gestion du drag spécifique tore
 export function handleDrag(deltaX, deltaY, angles, config) {
   // dragX = rotY (normal)

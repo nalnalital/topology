@@ -262,9 +262,9 @@ function drawUVPalette(ctx, projectedQuad, faceOriginalIndex) {
   const u = gridX / (window.MESH_U - 1); // 0 → 1 sur toute la largeur
   const v = gridY / (window.MESH_V - 1); // 0 → 1 sur toute la hauteur
 
-  const redAmount = Math.round(v * 255);
-  const blueAmount = Math.round(u * 255);
-  const greenAmount = Math.round((1 - v) * 255);
+  const redAmount = Math.round((1.0 - Math.abs(v - 0.5)*2.0) * 255);
+  const blueAmount = Math.round((v+u)/2.0 * 255);
+  const greenAmount = Math.round(Math.max((u-v), (1-u)/2.0) * 255);
 
   // Debug : log quelques cases pour vérification
   if ((gridY === 0 && (gridX % 5 === 0 || gridX === window.MESH_U - 1)) || (gridX === 0 && (gridY % 5 === 0 || gridY === window.MESH_V - 1))) {

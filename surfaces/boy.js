@@ -42,4 +42,17 @@ export const topologyIcon = {
   left: '',
   right: '',
   bottom: ''
+};
+
+// Groupe de Poincaré (premier groupe d'homotopie)
+// Surface de Boy = immersion de la sphère → groupe trivial
+export const quotientGroup = '{∅}';
+
+// Invariants algébriques complets
+export const algebraicInvariants = {
+  pi1: '{∅}',     // Groupe fondamental π₁
+  H1: '{0}',      // Premier groupe d'homologie H₁
+  chi: 2,         // Caractéristique d'Euler χ
+  H2: 'ℤ',        // Deuxième groupe d'homologie H₂
+  orientable: '○' // Orientabilité
 }; 

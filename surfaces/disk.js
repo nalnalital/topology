@@ -14,40 +14,47 @@ export const topologyIcon = {
   center: '💿'
 };
 
+// Groupe de Poincaré (premier groupe d'homotopie)
+export const quotientGroup = '{∅}';
+
+// Invariants algébriques complets
+export const algebraicInvariants = {
+  pi1: '{∅}',     // Groupe fondamental π₁
+  H1: '{0}',      // Premier groupe d'homologie H₁
+  chi: 1,         // Caractéristique d'Euler χ
+  H2: '{0}',      // Deuxième groupe d'homologie H₂
+  orientable: '○' // Orientabilité
+};
+
 // Décalage texture spécifique disque (offset paramétrique)
 export function getTextureOffsetU() { return 0; }
 export function getTextureOffsetV() { return 0; }
 
 export function createSurface(u, v) {
-  // Décalage offset si besoin (optionnel, wrap uniquement sur v)
-  // u = u + getTextureOffsetU();
-  // u = Math.max(0, Math.min(1, u));
-  v = v + getTextureOffsetV();
-  if (v > 1.0) v -= 1.0; if (v < 0) v += 1.0;
+  // Décalage offset si besoin (wrap uniquement sur u)
+  u = u + getTextureOffsetU();
+  if (u > 1.0) u -= 1.0; if (u < 0) u += 1.0;
 
-  // u = rayon [0,1] (centre = pôle nord, bord = pôle sud)
-  // v = angle [0,1] (0 à 2π)
-  const r = u; // Rayon dans le plan du disque
-  const theta = v * 2 * Math.PI; // Angle autour du centre
+  // Correction :
+  // u = angle (0..1), v = rayon (0..1)
+  const theta = u * 2 * Math.PI; // Angle [0, 2π]
+  const r = v; // Rayon direct du disque
+  const x = r * Math.cos(theta) * 2.5; // Échelle pour visibilité
+  const y = r * Math.sin(theta) * 2.5; // Plan XY (disque horizontal)
+  const z = 0; // Hauteur constante
 
-  // Calcul stéréographique pour la latitude
-  const R = 1;
-  const r_sphere = u * R;
-  const phi = Math.PI / 2 - 2 * Math.atan(r_sphere / 2); // latitude sphérique
-  const lat = phi / Math.PI; // normalisé [0,1] du pôle nord (1) au sud (0)
+  // Texture UV
+  const textureU = u; // Longitude (angle)
+  const textureV = 1 - v; // Latitude (1 au centre, 0 au bord)
 
-  // Disque plat : Y=0, XZ dans le plan
-  // Mapping UV stéréographique corrigé :
-  //   - textureU = u (rayon) → centre=pôle nord, bord=pôle sud
-  //   - textureV = v (angle) → rotation autour du centre
   return {
-    x: r * Math.cos(theta) * 2.5,
-    y: 0,
-    z: r * Math.sin(theta) * 2.5,
-    textureU: v,      // longitude
-    textureV: 1 - lat, // latitude stéréographique
-    gridU: v,
-    gridV: 1 - lat
+    x: x,
+    y: y,
+    z: z,
+    textureU: textureU,
+    textureV: textureV,
+    gridU: textureU,
+    gridV: textureV
   };
 }
 

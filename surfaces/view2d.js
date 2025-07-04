@@ -43,5 +43,18 @@ export const config = {
 export function getTextureOffsetU() { return 0; }
 export function getTextureOffsetV() { return 0; }
 
+// Groupe de Poincaré (premier groupe d'homotopie)
+// View2D = surface 2D plate → groupe trivial
+export const quotientGroup = '{∅}';
+
+// Invariants algébriques complets
+export const algebraicInvariants = {
+  pi1: '{∅}',     // Groupe fondamental π₁
+  H1: '{0}',      // Premier groupe d'homologie H₁
+  chi: 1,         // Caractéristique d'Euler χ
+  H2: '{0}',      // Deuxième groupe d'homologie H₂
+  orientable: '○' // Orientabilité
+};
+
 // Export par défaut pour compatibilité
 export default createSurface; 

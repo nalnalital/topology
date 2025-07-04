@@ -7,7 +7,7 @@
 //   - v1.1.0: Ajout createSurface() et config pour homogénéité avec autres surfaces
 
 // Icône topologique avec flèches directionnelles
-// Cross-cap [- -] : surface non-orientable avec singularité
+// Cross-cap [- -] : surface non-orientable avec singularité et twist
 export const topologyIcon = {
   center: '🪢',
   top: '▶️',
@@ -29,19 +29,35 @@ export function createSurface(u, v) {
   v *= 2 * Math.PI;
 
   // Paramétrisation standard du crosscap
-  const x = Math.sin(u) * Math.sin(v);
-  const y = Math.sin(2 * u) * Math.cos(v) / 2;
-  const z = Math.cos(u);
+  const x = Math.sin(u) * (1 + Math.cos(v)) * Math.cos(v);
+  const y = Math.sin(u) * (1 + Math.cos(v)) * Math.sin(v);
+  const z = Math.cos(u) * (1 + Math.cos(v));
   // Mise à l'échelle pour affichage
   return { x: x * 2.2, y: y * 2.2, z: z * 2.2 };
 }
 
 // Structure d'identification pour le carré fondamental
-// Note: C'est la même que le plan projectif
+// Cross-cap : identification avec twist (moebius-like)
 export const identification = [
     { edge1: 'top', edge2: 'bottom', orientation: 'opposite' },
-    { edge1: 'left', edge2: 'right', orientation: 'opposite' }
+    { edge1: 'left', edge2: 'right', orientation: 'twisted' }
 ];
+
+// Groupe de Poincaré (premier groupe d'homotopie)
+// Cross-cap = immersion du plan projectif → même groupe
+export const quotientGroup = 'ℤ/2ℤ';
+
+// Type de surface pour distinction
+export const surfaceType = 'Cross-cap (twist)';
+
+// Invariants algébriques complets
+export const algebraicInvariants = {
+  pi1: 'ℤ/2ℤ',    // Groupe fondamental π₁
+  H1: 'ℤ/2ℤ',     // Premier groupe d'homologie H₁
+  chi: 1,         // Caractéristique d'Euler χ
+  H2: '{0}',      // Deuxième groupe d'homologie H₂
+  orientable: '⊗' // Orientabilité
+};
 
 // Configuration spécifique crosscap
 export const config = {
