@@ -379,12 +379,13 @@ function getBoundingBox(rect) {
     ys = [rect.p0.y, rect.p1.y, rect.p2.y, rect.p3.y];
   } else if (rect.screenQuad) {
     // Structure alternative avec screenQuad
-    xs = rect.screenQuad.map(p => p.x);
-    ys = rect.screenQuad.map(p => p.y);
+    const sq = rect.screenQuad;
+    xs = [sq.p0.x, sq.p1.x, sq.p2.x, sq.p3.x];
+    ys = [sq.p0.y, sq.p1.y, sq.p2.y, sq.p3.y];
   } else {
-    // Structure inconnue, fallback
+    // Structure inconnue - essayer de détecter
     console.log('🔴 Structure rectangle inconnue:', Object.keys(rect));
-    return { left: 0, right: 0, top: 0, bottom: 0 };
+    throw new Error('Structure rectangle non supportée');
   }
   
   return {
@@ -630,10 +631,10 @@ function debugTileContent(targetX, targetY) {
 
 window.debugTileContent = debugTileContent;
 
+// === DEBUG: Analyser les transformations matricielles ===
 function debugTileMatrixTransforms(gridX, gridY) {
   const currentMesh = window.currentMesh;
   const textureRectangles = window.textureRectangles;
-  const getBmp = window.getBmp;
   const canvas = window.canvas;
   const rotX = window.rotX;
   const rotY = window.rotY;
@@ -644,18 +645,135 @@ function debugTileMatrixTransforms(gridX, gridY) {
   const projectIso = window.projectIso;
   const rotate3D = window.rotate3D;
   const rotate3DProjective = window.rotate3DProjective;
+  const cameraOffsetX = window.cameraOffsetX;
+  const cameraOffsetY = window.cameraOffsetY;
+  const MESH_U = window.MESH_U;
+  const getBmp = window.getBmp;
+  const bilinearInterpolation = window.bilinearInterpolation;
+  const distance2D = window.distance2D;
+  
   if (!currentMesh || !textureRectangles) {
     console.log('❌ Mesh ou rectangles non initialisés');
     return;
   }
+  
+  const originalIndex = gridX + gridY * MESH_U;
+  const face = currentMesh.faces.find(f => f.originalIndex === originalIndex);
+  
+  if (!face) {
+    console.log(`❌ Face non trouvée pour (${gridX},${gridY}) index=${originalIndex}`);
+    return;
+  }
+  
+  console.log(`🔍 === DEBUG TRANSFORMATIONS MATRICIELLES TUILE (${gridX},${gridY}) ===`);
+  console.log(`📍 Face originalIndex: ${originalIndex}`);
+  
+  // Récupérer le rectangle texture
+  const rectangle = getBmp(gridX, gridY);
+  if (!rectangle) {
+    console.log('❌ Rectangle texture non trouvé');
+    return;
+  }
+  
+  console.log(`📦 Rectangle: ${rectangle.width}x${rectangle.height}`);
+  
+  // Calculer les vertices projetés comme dans render()
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  
+  const projectedVertices = currentMesh.vertices.map(vertex => {
+    const rotated = currentSurface === 'projective' 
+      ? rotate3DProjective(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ, rotShape)
+      : rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
+    const projected = projectIso(rotated.x, rotated.y, rotated.z, scale);
+    
+    return {
+      x: centerX + projected.x + cameraOffsetX,
+      y: centerY - projected.y + cameraOffsetY,
+      z: rotated.z,
+      originalIndex: vertex.index
+    };
+  });
+  
+  // Construire le quad projeté
+  const quadProjected = face.vertices.map(vertexIndex => projectedVertices[vertexIndex]);
+  const [p0, p1, p2, p3] = quadProjected;
+  
+  // Calculer l'aire du quad
+  const area = Math.abs((p1.x - p0.x) * (p3.y - p0.y) - (p3.x - p0.x) * (p1.y - p0.y));
+
+  if (area < 1) {
+    console.log('⚠️ Quad trop petit (area < 1) - sera ignoré');
+    return;
+  }
+  
+  // Analyser les subdivisions
+  const maxDist = Math.max(
+    distance2D(p0, p1), distance2D(p1, p2), 
+    distance2D(p2, p3), distance2D(p3, p0)
+  );
+  const subdivisions = Math.min(8, Math.max(2, Math.floor(maxDist / 50)));
+  
+  // Analyser le premier triangle (corner00, corner10, corner01)
+  const u0 = 0, u1 = 1/subdivisions, v0 = 0, v1 = 1/subdivisions;
+  
+  const corner00 = bilinearInterpolation(p0, p1, p2, p3, u0, v0);
+  const corner10 = bilinearInterpolation(p0, p1, p2, p3, u1, v0);
+  const corner01 = bilinearInterpolation(p0, p1, p2, p3, u0, v1);
+  
+  // Coordonnées texture correspondantes
+  const srcW = rectangle.width;
+  const srcH = rectangle.height;
+  const srcX0 = u0 * srcW;
+  const srcY0 = v0 * srcH;
+  const srcW_sub = (u1 - u0) * srcW;
+  const srcH_sub = (v1 - v0) * srcH;
+  
+  const t0 = [srcX0, srcY0];
+  const t1 = [srcX0 + srcW_sub, srcY0];
+  const t2 = [srcX0, srcY0 + srcH_sub];
+  
+  // CALCULER LA MATRICE DE TRANSFORMATION (même calcul que drawTriangleTexture)
+  const denom = (t1[0] - t0[0]) * (t2[1] - t0[1]) - (t2[0] - t0[0]) * (t1[1] - t0[1]);
+  
+  if (Math.abs(denom) < 1e-10) {
+    console.log('❌ TRIANGLE DÉGÉNÉRÉ (denom trop petit) - sera ignoré');
+    return;
+  }
+  
+  const m11 = ((corner10.x - corner00.x) * (t2[1] - t0[1]) - (corner01.x - corner00.x) * (t1[1] - t0[1])) / denom;
+  const m12 = ((corner01.x - corner00.x) * (t1[0] - t0[0]) - (corner10.x - corner00.x) * (t2[0] - t0[0])) / denom;
+  const m21 = ((corner10.y - corner00.y) * (t2[1] - t0[1]) - (corner01.y - corner00.y) * (t1[1] - t0[1])) / denom;
+  const m22 = ((corner01.y - corner00.y) * (t1[0] - t0[0]) - (corner10.y - corner00.y) * (t2[0] - t0[0])) / denom;
+  const dx = corner00.x - m11 * t0[0] - m12 * t0[1];
+  const dy = corner00.y - m21 * t0[0] - m22 * t0[1];
+  
+  // Calculer le déterminant de la matrice 2x2
+  const det = m11 * m22 - m12 * m21;
+
+  if (Math.abs(det) < 1e-10) {
+    console.log('⚠️ MATRICE QUASI-SINGULIÈRE (det ≈ 0) - transformation dégénérée');
+  } else if (Math.abs(det) > 1000) {
+    console.log('⚠️ MATRICE TRÈS DÉFORMÉE (det > 1000) - transformation extrême');
+  } else {
+    console.log('✅ Matrice normale');
+  }
+  
+  // Analyser l'échelle de transformation
+  const scaleX = Math.sqrt(m11 * m11 + m21 * m21);
+  const scaleY = Math.sqrt(m12 * m12 + m22 * m22);
+  
+  if (scaleX > 100 || scaleY > 100) {
+    console.log('⚠️ ÉCHELLE EXTRÊME - peut causer du blanc par sur-étirement');
+  }
+  
+  console.log(`=== FIN DEBUG TRANSFORMATIONS MATRICIELLES ===`);
 }
 
-window.debugTileMatrixTransforms = debugTileMatrixTransforms;
-
+// === DEBUG: Tracer le rendu complet d'une tuile spécifique ===
 function debugTileRenderingPipeline(gridX, gridY) {
   const currentMesh = window.currentMesh;
   const textureRectangles = window.textureRectangles;
-  const getBmp = window.getBmp;
   const canvas = window.canvas;
   const rotX = window.rotX;
   const rotY = window.rotY;
@@ -666,41 +784,327 @@ function debugTileRenderingPipeline(gridX, gridY) {
   const projectIso = window.projectIso;
   const rotate3D = window.rotate3D;
   const rotate3DProjective = window.rotate3DProjective;
+  const cameraOffsetX = window.cameraOffsetX;
+  const cameraOffsetY = window.cameraOffsetY;
+  const MESH_U = window.MESH_U;
+  const getBmp = window.getBmp;
+  const bilinearInterpolation = window.bilinearInterpolation;
+  const distance2D = window.distance2D;
+  const drawTransformedRectangle = window.drawTransformedRectangle;
+  const showTexture = window.showTexture;
+  const showUVPalette = window.showUVPalette;
+  const showGrid = window.showGrid;
+  
   if (!currentMesh || !textureRectangles) {
     console.log('❌ Mesh ou rectangles non initialisés');
     return;
   }
-}
-
-window.debugTileRenderingPipeline = debugTileRenderingPipeline;
-
-// Exports window.* supplémentaires si besoin
-window.forceRecalculateRectangles = function() {
-  window.textureRectangles = null;
-  window.pd('forceRecalculate', 'debug.js', `🔧 FORCE RECALCUL: Cache rectangles vidé, prochaine render() recalculera`);
-  window.render();
-};
-
-window.debugOceanTile = function() {
-  window.debugCurrentTile = true;
-  window.pd('debugOcean', 'debug.js', `🌊 DEBUG OCÉAN ACTIVÉ: Prochaine désactivation grille montrera détails tuile (1,9)`);
-};
-
-window.analyzeTextureTransparency = function() {
-  const mapCanvas = window.mapCanvas;
-  if (!mapCanvas) {
-    console.log('❌ Aucune texture chargée');
+  
+  const originalIndex = gridX + gridY * MESH_U;
+  const face = currentMesh.faces.find(f => f.originalIndex === originalIndex);
+  
+  if (!face) {
+    console.log(`❌ Face non trouvée pour (${gridX},${gridY}) index=${originalIndex}`);
     return;
   }
-  const ctx = mapCanvas.getContext('2d');
-  const imageData = ctx.getImageData(0, 0, mapCanvas.width, mapCanvas.height);
-  const data = imageData.data;
-  let transparentPixels = 0;
-  let semiTransparentPixels = 0;
-  let totalPixels = mapCanvas.width * mapCanvas.height;
-};
+  
+  console.log(`🔍 === DEBUG PIPELINE RENDU TUILE (${gridX},${gridY}) ===`);
+  console.log(`📍 Face originalIndex: ${originalIndex}`);
+  
+  // 1. Vérifier le rectangle texture
+  const rectangle = getBmp(gridX, gridY);
+  if (!rectangle) {
+    console.log('❌ ÉCHEC: Rectangle texture non trouvé');
+    return;
+  }
+  
+  console.log(`📦 Rectangle: ${rectangle.width}x${rectangle.height}, fallback: ${!!rectangle.isFallback}`);
+  
+  // 2. Échantillonner le contenu du rectangle
+  const rectCanvas = rectangle.canvas;
+  const rectCtx = rectCanvas.getContext('2d', { willReadFrequently: true });
+  
+  console.log(`🎨 Échantillons rectangle (5 points):`);
+  for (let i = 0; i < 5; i++) {
+    const x = Math.floor((i / 4) * (rectCanvas.width - 1));
+    const y = Math.floor(rectCanvas.height / 2);
+    
+    try {
+      const imageData = rectCtx.getImageData(x, y, 1, 1);
+      const [r, g, b, a] = imageData.data;
+      const isWhite = r > 240 && g > 240 && b > 240;
+      console.log(`   Point ${i}: (${x},${y}) → rgba(${r},${g},${b},${a}) ${isWhite ? '⚠️ BLANC!' : '✅'}`);
+    } catch (e) {
+      console.log(`   Point ${i}: ERREUR lecture pixel`);
+    }
+  }
+  
+  // 3. Calculer le quad projeté
+  const centerX = canvas.width / 2;  // Canvas principal, pas rectangle texture
+  const centerY = canvas.height / 2;
+  
+  const projectedVertices = currentMesh.vertices.map(vertex => {
+    const rotated = currentSurface === 'projective' 
+      ? rotate3DProjective(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ, rotShape)
+      : rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
+    const projected = projectIso(rotated.x, rotated.y, rotated.z, scale);
+    
+    return {
+      x: centerX + projected.x + cameraOffsetX,
+      y: centerY - projected.y + cameraOffsetY,
+      z: rotated.z,
+      originalIndex: vertex.index
+    };
+  });
+  
+  const quadProjected = face.vertices.map(vertexIndex => projectedVertices[vertexIndex]);
+  
+  console.log(`🎯 Quad projeté:`);
+  quadProjected.forEach((point, i) => {
+    console.log(`   P${i}: (${point.x.toFixed(1)}, ${point.y.toFixed(1)})`);
+  });
+  
+  // 4. Tester si drawTransformedRectangle sera appelé
+  const [p0, p1, p2, p3] = quadProjected;
+  const area = Math.abs((p1.x - p0.x) * (p3.y - p0.y) - (p3.x - p0.x) * (p1.y - p0.y));
+  
+  console.log(`📐 Aire quad: ${area.toFixed(2)} pixels²`);
+  if (area < 1) {
+    console.log('❌ ÉCHEC: Quad trop petit (area < 1) - ne sera pas rendu');
+    return;
+  }
+  
+  // 5. Calculer les subdivisions
+  const maxDist = Math.max(
+    distance2D(p0, p1), distance2D(p1, p2), 
+    distance2D(p2, p3), distance2D(p3, p0)
+  );
+  const subdivisions = Math.min(8, Math.max(2, Math.floor(maxDist / 50)));
+  
+  console.log(`🔧 Distance max: ${maxDist.toFixed(1)}, Subdivisions: ${subdivisions}`);
+  
+  // 6. Analyser le premier sous-triangle
+  const u0 = 0, u1 = 1/subdivisions, v0 = 0, v1 = 1/subdivisions;
+  
+  const corner00 = bilinearInterpolation(p0, p1, p2, p3, u0, v0);
+  const corner10 = bilinearInterpolation(p0, p1, p2, p3, u1, v0);
+  const corner01 = bilinearInterpolation(p0, p1, p2, p3, u0, v1);
+  
+  const srcW = rectangle.width;
+  const srcH = rectangle.height;
+  const srcX0 = u0 * srcW;
+  const srcY0 = v0 * srcH;
+  const srcW_sub = (u1 - u0) * srcW;
+  const srcH_sub = (v1 - v0) * srcH;
+  
+  const t0 = [srcX0, srcY0];
+  const t1 = [srcX0 + srcW_sub, srcY0];
+  const t2 = [srcX0, srcY0 + srcH_sub];
+  
+  console.log(`🔺 Premier triangle screen:`);
+  console.log(`   Corner00: (${corner00.x.toFixed(1)}, ${corner00.y.toFixed(1)})`);
+  console.log(`   Corner10: (${corner10.x.toFixed(1)}, ${corner10.y.toFixed(1)})`);
+  console.log(`   Corner01: (${corner01.x.toFixed(1)}, ${corner01.y.toFixed(1)})`);
+  
+  console.log(`🎨 Coordonnées texture triangle:`);
+  console.log(`   T0: (${t0[0].toFixed(1)}, ${t0[1].toFixed(1)})`);
+  console.log(`   T1: (${t1[0].toFixed(1)}, ${t1[1].toFixed(1)})`);
+  console.log(`   T2: (${t2[0].toFixed(1)}, ${t2[1].toFixed(1)})`);
+  
+  // 7. Vérifier les pixels texture correspondants
+  console.log(`🔍 Pixels texture aux coordonnées triangle:`);
+  [t0, t1, t2].forEach((coord, i) => {
+    const x = Math.floor(coord[0]);
+    const y = Math.floor(coord[1]);
+    
+    if (x >= 0 && x < rectCanvas.width && y >= 0 && y < rectCanvas.height) {
+      try {
+        const imageData = rectCtx.getImageData(x, y, 1, 1);
+        const [r, g, b, a] = imageData.data;
+        const isWhite = r > 240 && g > 240 && b > 240;
+        console.log(`   T${i} (${x},${y}): rgba(${r},${g},${b},${a}) ${isWhite ? '⚠️ BLANC!' : '✅'}`);
+      } catch (e) {
+        console.log(`   T${i}: ERREUR lecture`);
+      }
+    } else {
+      console.log(`   T${i}: HORS LIMITES (${x},${y}) dans ${rectCanvas.width}x${rectCanvas.height}`);
+    }
+  });
+  
+  // 8. Simuler le rendu et voir ce qui est appelé
+  console.log(`🎭 Modes de rendu actifs:`);
+  console.log(`   showTexture: ${showTexture}`);
+  console.log(`   showUVPalette: ${showUVPalette}`);
+  console.log(`   showGrid: ${showGrid}`);
+  
+  // 9. Tester directement drawTransformedRectangle
+  console.log(`🧪 Test direct drawTransformedRectangle...`);
+  
+  // Créer un canvas de test
+  const testCanvas = document.createElement('canvas');
+  testCanvas.width = 100;
+  testCanvas.height = 100;
+  const testCtx = testCanvas.getContext('2d');
+  
+  // Fond blanc pour voir si quelque chose est dessiné
+  testCtx.fillStyle = 'white';
+  testCtx.fillRect(0, 0, 100, 100);
+  
+  // Ajuster le quad pour le canvas de test
+  const testQuad = quadProjected.map(p => ({
+    x: (p.x - 20) * 0.5,
+    y: (p.y - 170) * 0.5
+  }));
+  
+  try {
+    const success = drawTransformedRectangle(testCtx, rectangle, testQuad, originalIndex);
+    console.log(`   Résultat drawTransformedRectangle: ${success ? 'SUCCESS' : 'FAILED'}`);
+    
+    // Vérifier ce qui a été dessiné
+    const testData = testCtx.getImageData(0, 0, 100, 100);
+    let nonWhitePixels = 0;
+    for (let i = 0; i < testData.data.length; i += 4) {
+      const r = testData.data[i];
+      const g = testData.data[i + 1];
+      const b = testData.data[i + 2];
+      if (r < 240 || g < 240 || b < 240) {
+        nonWhitePixels++;
+      }
+    }
+    console.log(`   Pixels non-blancs dans test: ${nonWhitePixels} / ${testData.data.length / 4}`);
+    
+  } catch (e) {
+    console.log(`   ERREUR drawTransformedRectangle: ${e.message}`);
+  }
+  
+  console.log(`=== FIN DEBUG PIPELINE RENDU ===`);
+}
 
-console.log('🔧 Debug module loaded - Functions available: \
-  analyzeTextureTransparency, debugOceanTile, forceRecalculateRectangles,\
-  debugTileRenderingPipeline, debugTileMatrixTransforms, debugTileContent, debugTileRendering,\
-  debugSegmentColors, debugTileBorderColors, debugTileClick'); 
+// === DEBUG: Analyser l'ordre des vertices et coordonnées UV ===
+function debugVertexOrder(gridX, gridY) {
+  const currentMesh = window.currentMesh;
+  const textureRectangles = window.textureRectangles;
+  const canvas = window.canvas;
+  const rotX = window.rotX;
+  const rotY = window.rotY;
+  const rotZ = window.rotZ;
+  const rotShape = window.rotShape;
+  const scale = window.scale;
+  const currentSurface = window.currentSurface;
+  const projectIso = window.projectIso;
+  const rotate3D = window.rotate3D;
+  const rotate3DProjective = window.rotate3DProjective;
+  const cameraOffsetX = window.cameraOffsetX;
+  const cameraOffsetY = window.cameraOffsetY;
+  const MESH_U = window.MESH_U;
+  const MESH_V = window.MESH_V;
+  
+  if (!currentMesh || !textureRectangles) {
+    console.log('❌ Mesh ou rectangles non initialisés');
+    return;
+  }
+  
+  const originalIndex = gridX + gridY * MESH_U;
+  const face = currentMesh.faces.find(f => f.originalIndex === originalIndex);
+  
+  if (!face) {
+    console.log(`❌ Face non trouvée pour (${gridX},${gridY}) index=${originalIndex}`);
+    return;
+  }
+  
+  console.log(`🔍 === DEBUG ORDRE VERTICES TUILE (${gridX},${gridY}) ===`);
+  console.log(`📍 Face originalIndex: ${originalIndex}`);
+  
+  // Analyser chaque vertex de la face
+  face.vertices.forEach((vertexIndex, i) => {
+    const vertex = currentMesh.vertices[vertexIndex];
+    console.log(`📍 Vertex ${i} (index ${vertexIndex}):`);
+    console.log(`   gridU: ${vertex.gridU.toFixed(3)} (u normalisé)`);
+    console.log(`   gridV: ${vertex.gridV.toFixed(3)} (v normalisé)`);
+    console.log(`   Position: (${vertex.x.toFixed(2)}, ${vertex.y.toFixed(2)}, ${vertex.z.toFixed(2)})`);
+  });
+  
+  // Calculer les projections à l'écran
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  
+  const projectedVertices = currentMesh.vertices.map(vertex => {
+    const rotated = currentSurface === 'projective' 
+      ? rotate3DProjective(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ, rotShape)
+      : rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
+    const projected = projectIso(rotated.x, rotated.y, rotated.z, scale);
+    
+    return {
+      x: centerX + projected.x + cameraOffsetX,
+      y: centerY - projected.y + cameraOffsetY,
+      z: rotated.z,
+      originalIndex: vertex.index
+    };
+  });
+  
+  // Construire le quad projeté
+  const quadProjected = face.vertices.map(vertexIndex => projectedVertices[vertexIndex]);
+  
+  console.log(`🎯 Quad projeté (ordre actuel des vertices):`);
+  quadProjected.forEach((point, i) => {
+    const vertex = currentMesh.vertices[face.vertices[i]];
+    console.log(`   P${i}: (${point.x.toFixed(1)}, ${point.y.toFixed(1)}) - UV(${vertex.gridU.toFixed(3)}, ${vertex.gridV.toFixed(3)})`);
+  });
+  
+  // Identifier quel vertex correspond à quel coin selon les UV
+  const corners = {
+    bottomLeft: null,   // UV proche de (gridX/30, gridY/20)
+    bottomRight: null,  // UV proche de ((gridX+1)/30, gridY/20)
+    topRight: null,     // UV proche de ((gridX+1)/30, (gridY+1)/20)
+    topLeft: null       // UV proche de (gridX/30, (gridY+1)/20)
+  };
+  
+  const targetU_min = gridX / MESH_U;
+  const targetU_max = (gridX + 1) / MESH_U;
+  const targetV_min = gridY / MESH_V;
+  const targetV_max = (gridY + 1) / MESH_V;
+  
+  face.vertices.forEach((vertexIndex, i) => {
+    const vertex = currentMesh.vertices[vertexIndex];
+    const u = vertex.gridU;
+    const v = vertex.gridV;
+    
+    // Déterminer quel coin c'est selon les UV
+    if (Math.abs(u - targetU_min) < 0.001 && Math.abs(v - targetV_min) < 0.001) {
+      corners.bottomLeft = { index: i, vertex, projected: quadProjected[i] };
+    } else if (Math.abs(u - targetU_max) < 0.001 && Math.abs(v - targetV_min) < 0.001) {
+      corners.bottomRight = { index: i, vertex, projected: quadProjected[i] };
+    } else if (Math.abs(u - targetU_max) < 0.001 && Math.abs(v - targetV_max) < 0.001) {
+      corners.topRight = { index: i, vertex, projected: quadProjected[i] };
+    } else if (Math.abs(u - targetU_min) < 0.001 && Math.abs(v - targetV_max) < 0.001) {
+      corners.topLeft = { index: i, vertex, projected: quadProjected[i] };
+    }
+  });
+  
+  console.log(`🧭 Mapping des coins selon UV:`);
+  Object.entries(corners).forEach(([cornerName, corner]) => {
+    if (corner) {
+      console.log(`   ${cornerName}: P${corner.index} - UV(${corner.vertex.gridU.toFixed(3)}, ${corner.vertex.gridV.toFixed(3)}) - Screen(${corner.projected.x.toFixed(1)}, ${corner.projected.y.toFixed(1)})`);
+    } else {
+      console.log(`   ${cornerName}: ❌ NON TROUVÉ`);
+    }
+  });
+  
+  // Vérifier l'ordre attendu vs réel
+  console.log(`🔄 Ordre actuel dans face.vertices:`);
+  console.log(`   [0] = ${corners.bottomLeft ? 'Bottom-Left' : '?'}`);
+  console.log(`   [1] = ${corners.bottomRight ? 'Bottom-Right' : '?'}`);
+  console.log(`   [2] = ${corners.topRight ? 'Top-Right' : '?'}`);
+  console.log(`   [3] = ${corners.topLeft ? 'Top-Left' : '?'}`);
+  
+  console.log(`=== FIN DEBUG ORDRE VERTICES ===`);
+}
+
+// Exposer toutes les fonctions pour test dans console
+window.debugOverlaps = debugOverlaps;
+window.debugVertexOrder = debugVertexOrder;
+window.debugTileMatrixTransforms = debugTileMatrixTransforms;
+window.debugTileRenderingPipeline = debugTileRenderingPipeline;
+
+// Export pour import ES6
+export { debugOverlaps, debugVertexOrder, debugTileMatrixTransforms, debugTileRenderingPipeline }; 

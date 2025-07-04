@@ -1,9 +1,10 @@
 // File: disk.js - Disk surface with boundary
 // Desc: En français, dans l'architecture, je suis un disque avec projection stéréographique
-// Version 1.2.0 (projection stéréographique inverse)
+// Version 1.3.0 (mapping UV corrigé pour projection stéréographique)
 // Author: DNAvatar.org - Arnaud Maignan
-// Date: December 16, 2024 01:00 UTC+1
+// Date: [June 08, 2025] [16:30 UTC+1]
 // Logs:
+//   - v1.3.0: Correction mapping UV - textureU=rayon, textureV=angle pour projection stéréographique correcte
 //   - v1.2.0: Projection stéréographique inverse - centre=pôle nord, bord=pôle sud
 //   - v1.1.0: Ajout createSurface() et config pour homogénéité avec autres surfaces
 
@@ -29,22 +30,30 @@ export function createSurface(u, v) {
   const r = u; // Rayon dans le plan du disque
   const theta = v * 2 * Math.PI; // Angle autour du centre
 
+  // Calcul stéréographique pour la latitude
+  const R = 1;
+  const r_sphere = u * R;
+  const phi = Math.PI / 2 - 2 * Math.atan(r_sphere / 2); // latitude sphérique
+  const lat = phi / Math.PI; // normalisé [0,1] du pôle nord (1) au sud (0)
+
   // Disque plat : Y=0, XZ dans le plan
-  // Mapping UV platistes :
-  //   - textureU = v (angle)
-  //   - textureV = u (rayon)
+  // Mapping UV stéréographique corrigé :
+  //   - textureU = u (rayon) → centre=pôle nord, bord=pôle sud
+  //   - textureV = v (angle) → rotation autour du centre
   return {
     x: r * Math.cos(theta) * 2.5,
     y: 0,
     z: r * Math.sin(theta) * 2.5,
-    textureU: v, // angle
-    textureV: u  // rayon (0=centre, 1=bord)
+    textureU: v,      // longitude
+    textureV: 1 - lat, // latitude stéréographique
+    gridU: v,
+    gridV: 1 - lat
   };
 }
 
 // Configuration spécifique disk
 export const config = {
-  scale: 162,
+  scale: 100,
   rotX: 5,
   rotY: 0,
   rotZ: 0

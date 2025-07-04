@@ -74,13 +74,19 @@ function drawTransformedRectangle(ctx, rectangle, projectedQuad, faceOriginalInd
     const X = gridX;  // ⚠️ CRITIQUE: X = gridX (horizontal, 0-29)
     const Y = gridY;  // ⚠️ CRITIQUE: Y = gridY (vertical, 0-19)
     
-    // VÉRIFICATION VISUELLE (couleurs debug) :
-    // X (horizontal) → ROUGE : plus à droite = plus rouge
-    // Y (vertical) → BLEU : plus en bas = plus bleu
+    const indices = faceOriginalIndex !== null && window.currentMesh ? window.currentMesh.faces[faceOriginalIndex].vertices : null;
+    let v = 0;
+    let u = 0;
+    if (indices && window.currentMesh) {
+      const vertex = window.currentMesh.vertices[indices[0]];
+      u = vertex.u;
+      v = vertex.v;
+    }
     
-    const redAmount = Math.round((X / 29) * 255);   // X → Rouge (horizontal, 0-29)
-    const blueAmount = Math.round((Y / 19) * 255);  // Y → Bleu (vertical, 0-19)   
-    const greenAmount = 50; // Faible pour voir texture dessous
+    
+    const redAmount = Math.round(v * 255);   // X → Rouge (horizontal, 0-29)
+    const blueAmount = Math.round(u * 255);  // Y → Bleu (vertical, 0-19)   
+    const greenAmount = Math.round((1-v) * 255);
     
     ctx.save();
     ctx.fillStyle = `rgba(${redAmount}, ${greenAmount}, ${blueAmount}, 0.6)`;
@@ -235,34 +241,40 @@ function drawTriangleTexture(ctx, image, triangle, textureCoords) {
   ctx.restore();
 }
 
-// === FONCTION MODE COULEUR PUR (SANS TEXTE) ===
-
+// === FONCTION PALETTE UV TOPOLOGIQUE ===
 /**
- * Affiche une case avec couleurs coordonnées SANS texte
+ * Affiche une case avec couleurs coordonnées UV (palette topologique)
  * @param {CanvasRenderingContext2D} ctx - Contexte de rendu
  * @param {Array} projectedQuad - 4 points projetés [p0,p1,p2,p3]
  * @param {number} faceOriginalIndex - Index de la face pour calcul coordonnées
  * @returns {boolean} - True si rendu effectué
  */
-function drawColorGrid(ctx, projectedQuad, faceOriginalIndex) {
-  // ⚠️ ORDRE CORRIGÉ selon debugVertexOrder(1,8) ⚠️
-  const p0 = projectedQuad[0]; // Bottom-left  (UV min,min)
-  const p1 = projectedQuad[1]; // Bottom-right (UV max,min)
-  const p2 = projectedQuad[2]; // Top-right    (UV max,max)
-  const p3 = projectedQuad[3]; // Top-left     (UV min,max)
-  
-  // ⚠️ CORRIGÉ: Utiliser MÊME formule que drawTransformedRectangle() ⚠️
-  const gridX = faceOriginalIndex % MESH_U;             // X (horizontal, 0-29) 
-  const gridY = Math.floor(faceOriginalIndex / MESH_U); // Y (vertical, 0-19)
-  
-  const X = gridX;  // X = gridX (horizontal, 0-29)
-  const Y = gridY;  // Y = gridY (vertical, 0-19)
-  
-  // Couleurs par coordonnées (même logique que debug)
-  const redAmount = Math.round((X / 29) * 255);   // X → Rouge (horizontal, 0-29)
-  const blueAmount = Math.round((Y / 19) * 255);  // Y → Bleu (vertical, 0-19)   
-  const greenAmount = 50; // Faible pour voir différences
-  
+function drawUVPalette(ctx, projectedQuad, faceOriginalIndex) {
+  const p0 = projectedQuad[0];
+  const p1 = projectedQuad[1];
+  const p2 = projectedQuad[2];
+  const p3 = projectedQuad[3];
+
+  // Utiliser les indices de grille pour la palette UV topologique
+  const gridX = faceOriginalIndex % window.MESH_U;
+  const gridY = Math.floor(faceOriginalIndex / window.MESH_U);
+
+  const u = gridX / (window.MESH_U - 1); // 0 → 1 sur toute la largeur
+  const v = gridY / (window.MESH_V - 1); // 0 → 1 sur toute la hauteur
+
+  const redAmount = Math.round(v * 255);
+  const blueAmount = Math.round(u * 255);
+  const greenAmount = Math.round((1 - v) * 255);
+
+  // Debug : log quelques cases pour vérification
+  if ((gridY === 0 && (gridX % 5 === 0 || gridX === window.MESH_U - 1)) || (gridX === 0 && (gridY % 5 === 0 || gridY === window.MESH_V - 1))) {
+    if (typeof pd === 'function') {
+      pd('drawUVPalette', '3Diso.js', `Face (${gridX},${gridY}) : u=${u.toFixed(3)}, v=${v.toFixed(3)} | RGB=(${redAmount},${greenAmount},${blueAmount})`);
+    } else {
+      console.log(`[drawUVPalette] Face (${gridX},${gridY}) : u=${u.toFixed(3)}, v=${v.toFixed(3)} | RGB=(${redAmount},${greenAmount},${blueAmount})`);
+    }
+  }
+
   ctx.save();
   ctx.fillStyle = `rgba(${redAmount}, ${greenAmount}, ${blueAmount}, 0.8)`;
   ctx.beginPath();
@@ -272,12 +284,9 @@ function drawColorGrid(ctx, projectedQuad, faceOriginalIndex) {
   ctx.lineTo(p3.x, p3.y);
   ctx.closePath();
   ctx.fill();
-  
-  // Contour fin pour délimiter les cases
   ctx.strokeStyle = `rgba(${redAmount}, ${greenAmount}, ${blueAmount}, 1.0)`;
   ctx.lineWidth = 0.5;
   ctx.stroke();
-  
   ctx.restore();
   return true;
 }
@@ -306,7 +315,7 @@ export {
   MESH_U, 
   MESH_V, 
   drawTransformedRectangle,
-  drawColorGrid,
+  drawUVPalette,
   setColorDebug,
   getColorDebug
 }; 

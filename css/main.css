@@ -1084,3 +1084,22 @@ canvas:active {
 .left-controls-header .map-option:has(input[type="checkbox"]:checked) .map-name {
   color: #3498db;
 }
+
+/* === Homogénéisation des polices interface (titre, carte, boutons textures) === */
+.title-center h1, .selected-projection, .selected-projection-inline, .map-options, .map-option, .map-option .map-name, .pdf-site-url, .pdf-button {
+  font-family: 'Soopafresh', cursive !important;
+  letter-spacing: 0.5px;
+}
+
+.map-option .map-name {
+  font-size: 0.8em;
+  color: #d9230f;
+  font-weight: bold;
+}
+
+.selected-projection, .selected-projection-inline {
+  font-size: 1.1em;
+  color: #fbc02d;
+  text-shadow: 1px 1px 0px #a31a0b, 2px 2px 4px rgba(0,0,0,0.2);
+  margin: 8px 0 0 0;
+}

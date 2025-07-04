@@ -58,7 +58,7 @@
           <span class="map-name">🌐</span>
         </label>
         <label class="map-option">
-          <input type="checkbox" id="showColorDebug">
+          <input type="checkbox" id="showUVPalette">
           <span class="map-name">🎨</span>
         </label>
         <label class="map-option">
@@ -165,13 +165,13 @@
     import { pdfLinks } from './trads/pdf.js';
     function attachShapeListeners() {
       const radios = document.querySelectorAll('input[name="topology"]');
-      console.log('[DEBUG] attachShapeListeners: boutons trouvés =', radios.length);
+      //console.log('[DEBUG] attachShapeListeners: boutons trouvés =', radios.length);
       radios.forEach(radio => {
-        console.log('[DEBUG] Bouton radio trouvé:', radio.value);
+        //console.log('[DEBUG] Bouton radio trouvé:', radio.value);
         radio.addEventListener('change', (e) => {
           if (e.target.checked) {
             const newValue = e.target.value;
-            console.log('[DEBUG] Changement de shape détecté:', newValue);
+            //console.log('[DEBUG] Changement de shape détecté:', newValue);
             window.currentTopology = newValue;
             if (typeof window.morphToSurface === 'function') {
               window.morphToSurface(newValue);
@@ -184,7 +184,7 @@
       });
     }
     function setLang(lang) {
-      console.log('[DEBUG][setLang] Appel avec', lang);
+      //console.log('[DEBUG][setLang] Appel avec', lang);
       window.currentLang = lang;
       
       // Met à jour le style des drapeaux
@@ -201,24 +201,24 @@
       
       // Rafraîchit les traductions si la fonction existe
       if (typeof window.refreshAllTranslations === 'function') {
-        console.log('[DEBUG][setLang] Appel de refreshAllTranslations');
+        //console.log('[DEBUG][setLang] Appel de refreshAllTranslations');
         window.refreshAllTranslations();
       }
       // Met à jour le titre principal si la fonction existe
       if (typeof window.updateProjectionName === 'function') {
-        console.log('[DEBUG][setLang] Appel de updateProjectionName');
+        //console.log('[DEBUG][setLang] Appel de updateProjectionName');
         window.updateProjectionName(window.currentMapName || '');
       }
       console.log('[DEBUG][setLang] window.currentLang =', window.currentLang);
     }
     document.addEventListener('DOMContentLoaded', () => {
-      console.log('[DEBUG] buildTopologyButtons start');
+      //console.log('[DEBUG] buildTopologyButtons start');
       buildTopologyButtons().then(() => {
         attachShapeListeners();
         // Gestion du changement de langue
         document.querySelectorAll('.lang-flag').forEach(flag => {
           flag.addEventListener('click', () => {
-            console.log('[DEBUG][lang-flag] Clic sur', flag.dataset.lang);
+            //console.log('[DEBUG][lang-flag] Clic sur', flag.dataset.lang);
             setLang(flag.dataset.lang);
           });
         });
@@ -284,7 +284,7 @@
     import("./main.js").then(mod => {
       if (typeof mod.refreshAllTranslations === 'function') {
         window.refreshAllTranslations = function() {
-          console.log('[DEBUG][refreshAllTranslations] appelée');
+          //console.log('[DEBUG][refreshAllTranslations] appelée');
           mod.refreshAllTranslations();
         };
       }
@@ -299,7 +299,7 @@
     (async () => {
       try {
         await document.fonts.load('1em "Soopafresh"');
-        console.log('✅ [DEBUG][FONT] La police "Soopafresh" a été chargée avec succès !');
+        console.log('[DEBUG][FONT] La police "Soopafresh" a été chargée avec succès !');
       } catch (e) {
         console.error('❌ [DEBUG][FONT] Le chargement de la police "Soopafresh" a échoué.', e);
       }
