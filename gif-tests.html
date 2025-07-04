@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirection vers les tests GIF</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .redirect-container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .redirect-container h1 {
+            margin: 0 0 20px 0;
+            font-size: 2em;
+        }
+        
+        .redirect-container p {
+            margin: 0 0 30px 0;
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 15px 30px;
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .auto-redirect {
+            margin-top: 20px;
+            font-size: 0.9em;
+            opacity: 0.7;
+        }
+    </style>
+    <script>
+        // Redirection automatique après 3 secondes
+        setTimeout(() => {
+            window.location.href = 'gif/index.html';
+        }, 3000);
+    </script>
+</head>
+<body>
+    <div class="redirect-container">
+        <h1>🎬 Module GIF</h1>
+        <p>Les tests GIF ont été déplacés dans le dossier <code>gif/</code></p>
+        <a href="gif/index.html" class="btn">Accéder aux tests GIF</a>
+        <div class="auto-redirect">
+            Redirection automatique dans 3 secondes...
+        </div>
+    </div>
+</body>
+</html> 

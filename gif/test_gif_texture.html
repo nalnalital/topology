@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Test GIF animé sur canvas via gif.js (décodage GIF simple)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f8f8;
+      color: #222;
+      padding: 2em;
+    }
+    h2 {
+      color: #3498db;
+    }
+    #canvas-container {
+      margin-top: 2em;
+      padding: 1em;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      min-height: 100px;
+      min-width: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas {
+      border: 2px solid #3498db;
+      border-radius: 4px;
+      background: #eee;
+    }
+  </style>
+</head>
+<body>
+  <h2>Test GIF animé sur canvas via gif.js (décodage GIF simple)</h2>
+  <p>Ce test charge <code>../cartes/rotate.gif</code> et l'affiche animé dans un canvas.<br>
+  Ouvre la console pour voir les logs de test.<br>
+  L'animation s'arrête automatiquement après 10 secondes.</p>
+  <div id="canvas-container"></div>
+  <!-- Wrapper simple pour décodeur GIF maison -->
+  <script src="gif-simple-wrapper.js"></script>
+  <script type="module">
+    // Importer les fonctions gif.js
+    import { loadGifTextureDecoded, startDecodedGifAnimation, stopDecodedGifAnimation, getDecodedGifTextureCanvas } from './gif.js';
+    
+    // Test principal
+    async function runTest() {
+      console.log('[TEST] Chargement et décodage du GIF animé...');
+      
+      // Attendre que le décodeur GIF soit chargé
+      await new Promise((resolve) => {
+        window.waitForGifDecoder(resolve);
+      });
+      
+              await loadGifTextureDecoded('../cartes/rotate.gif', (canvas) => {
+        console.log('[TEST] Canvas GIF décodé prêt, ajout au DOM');
+        document.getElementById('canvas-container').appendChild(canvas);
+        startDecodedGifAnimation();
+        console.log('[TEST] Animation GIF décodée démarrée');
+        setTimeout(() => {
+          stopDecodedGifAnimation();
+          console.log('[TEST] Animation GIF décodée stoppée après 10s');
+        }, 10000);
+      });
+    }
+    
+    runTest().catch(console.error);
+  </script>
+</body>
+</html> 

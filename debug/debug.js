@@ -920,7 +920,7 @@ function debugTileRenderingPipeline(gridX, gridY) {
     if (x >= 0 && x < rectCanvas.width && y >= 0 && y < rectCanvas.height) {
       try {
         const imageData = rectCtx.getImageData(x, y, 1, 1);
-        const [r, g, b, a] = imageData.data;
+      const [r, g, b, a] = imageData.data;
         const isWhite = r > 240 && g > 240 && b > 240;
         console.log(`   T${i} (${x},${y}): rgba(${r},${g},${b},${a}) ${isWhite ? '⚠️ BLANC!' : '✅'}`);
       } catch (e) {

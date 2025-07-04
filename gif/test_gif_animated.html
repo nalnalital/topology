@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Test animation GIF native avec contrôles</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f8f8;
+      color: #222;
+      padding: 2em;
+    }
+    h2 {
+      color: #3498db;
+    }
+    #canvas-container {
+      margin-top: 2em;
+      padding: 1em;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      min-height: 100px;
+      min-width: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas {
+      border: 2px solid #3498db;
+      border-radius: 4px;
+      background: #eee;
+    }
+    .controls {
+      margin-top: 1em;
+      text-align: center;
+    }
+    button {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 0.5em 1em;
+      margin: 0 0.5em;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1.1em;
+    }
+    button:hover {
+      background: #2980b9;
+    }
+    button:disabled {
+      background: #bdc3c7;
+      cursor: not-allowed;
+    }
+    .play-btn {
+      background: #27ae60;
+    }
+    .play-btn:hover {
+      background: #229954;
+    }
+    .pause-btn {
+      background: #e74c3c;
+    }
+    .pause-btn:hover {
+      background: #c0392b;
+    }
+    .info {
+      margin-top: 1em;
+      padding: 1em;
+      background: #e8f4fd;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.9em;
+    }
+    .status {
+      margin-top: 1em;
+      padding: 0.5em;
+      background: #f1f2f6;
+      border-radius: 4px;
+      text-align: center;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h2>Test animation GIF native avec contrôles</h2>
+  <p>Ce test utilise l'animation GIF native du navigateur avec des contrôles play/pause.<br>
+  L'élément img natif gère l'animation, puis on copie sur un canvas pour le contrôle.<br>
+  Ouvre la console pour voir les logs de test.</p>
+  <div id="canvas-container">
+    <p>Chargement en cours...</p>
+  </div>
+  <div class="controls">
+    <button id="playBtn" class="play-btn" onclick="playAnimation()" disabled>▶️ Play</button>
+    <button id="pauseBtn" class="pause-btn" onclick="pauseAnimation()" disabled>⏸️ Pause</button>
+    <button id="stopBtn" onclick="stopAnimation()" disabled>⏹️ Stop</button>
+  </div>
+  <div class="status" id="status">En attente...</div>
+  <div class="info">
+    <strong>Approche :</strong> Image GIF native → Canvas avec copie en temps réel<br>
+    <strong>Avantage :</strong> Animation GIF native du navigateur<br>
+    <strong>Contrôle :</strong> Play/Pause/Stop avec boutons
+  </div>
+  
+  <!-- Wrapper pour animation GIF native -->
+  <script src="gif-animated-wrapper.js"></script>
+  <script>
+    // Variables globales
+    let canvas = null;
+    let isPlaying = false;
+    
+    // Fonction pour jouer l'animation
+    function playAnimation() {
+      if (canvas && !isPlaying) {
+        window.startAnimatedGif();
+        isPlaying = true;
+        updateControls();
+        updateStatus('Animation en cours...');
+        console.log('[TEST] Animation démarrée');
+      }
+    }
+    
+    // Fonction pour mettre en pause
+    function pauseAnimation() {
+      if (canvas && isPlaying) {
+        window.stopAnimatedGif();
+        isPlaying = false;
+        updateControls();
+        updateStatus('Animation en pause');
+        console.log('[TEST] Animation en pause');
+      }
+    }
+    
+    // Fonction pour arrêter
+    function stopAnimation() {
+      if (canvas) {
+        window.stopAnimatedGif();
+        isPlaying = false;
+        updateControls();
+        updateStatus('Animation arrêtée');
+        console.log('[TEST] Animation arrêtée');
+      }
+    }
+    
+    // Fonction pour mettre à jour les contrôles
+    function updateControls() {
+      document.getElementById('playBtn').disabled = !canvas || isPlaying;
+      document.getElementById('pauseBtn').disabled = !canvas || !isPlaying;
+      document.getElementById('stopBtn').disabled = !canvas;
+    }
+    
+    // Fonction pour mettre à jour le statut
+    function updateStatus(message) {
+      document.getElementById('status').textContent = message;
+    }
+    
+    // Test principal
+    async function runTest() {
+      console.log('[TEST] Test animation GIF native...');
+      updateStatus('Chargement en cours...');
+      
+      try {
+        // Attendre que le wrapper soit chargé
+        await new Promise((resolve) => {
+          window.waitForGifDecoder(resolve);
+        });
+        
+        // Charger le GIF animé
+        window.loadAnimatedGif('../cartes/rotate.gif', (loadedCanvas) => {
+          if (loadedCanvas) {
+            canvas = loadedCanvas;
+            document.getElementById('canvas-container').innerHTML = '';
+            document.getElementById('canvas-container').appendChild(canvas);
+            console.log('[TEST] Canvas GIF animé prêt, ajout au DOM');
+            
+            // Activer les contrôles
+            updateControls();
+            updateStatus('Prêt - Cliquez Play pour démarrer');
+            
+            console.log('[TEST] Test réussi ! GIF animé chargé');
+          } else {
+            console.error('[TEST] Erreur chargement GIF animé');
+            updateStatus('Erreur de chargement');
+            document.getElementById('canvas-container').innerHTML = 
+              '<p style="color: red;">Erreur chargement GIF animé</p>';
+          }
+        });
+        
+      } catch (error) {
+        console.error('[TEST] Erreur:', error);
+        updateStatus('Erreur: ' + error.message);
+        document.getElementById('canvas-container').innerHTML = 
+          `<p style="color: red;">Erreur: ${error.message}</p>`;
+      }
+    }
+    
+    // Nettoyer à la fermeture
+    window.addEventListener('beforeunload', function() {
+      window.cleanupAnimatedGif();
+    });
+    
+    // Démarrer le test
+    runTest();
+  </script>
+</body>
+</html> 

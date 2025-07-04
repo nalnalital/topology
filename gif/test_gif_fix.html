@@ -1,0 +1,204 @@
+# File: test_gif_fix.html - Test correction arrêt GIF
+# Desc: Test simple pour vérifier que l'arrêt fonctionne
+# Version 1.0.0
+# Author: DNAvatar.org - Arnaud Maignan
+# Date: [June 08, 2025] [16:00 UTC+1]
+# Logs:
+#   - v1.0.0: Test correction arrêt GIF
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Fix GIF</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .gif-display {
+            text-align: center;
+            margin: 20px 0;
+            min-height: 150px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.3s;
+        }
+        .btn-start { background: #27ae60; color: white; }
+        .btn-pause { background: #f39c12; color: white; }
+        .btn-stop { background: #e74c3c; color: white; }
+        .btn-cleanup { background: #9b59b6; color: white; }
+        .status {
+            text-align: center;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.playing { background: #d5f4e6; color: #27ae60; }
+        .status.paused { background: #fef9e7; color: #f39c12; }
+        .status.stopped { background: #fadbd8; color: #e74c3c; }
+        .log {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 11px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test Fix GIF</h1>
+        <p>Test de la correction de l'arrêt de l'animation GIF</p>
+        
+        <div class="gif-display" id="gifContainer">
+            <p>Chargement du GIF...</p>
+        </div>
+        
+        <div class="controls">
+            <button class="btn-start" onclick="startAnimation()">▶️ Démarrer</button>
+            <button class="btn-pause" onclick="pauseAnimation()">⏸️ Pause</button>
+            <button class="btn-stop" onclick="stopAnimation()">🛑 Arrêter</button>
+            <button class="btn-cleanup" onclick="cleanupAnimation()">🧹 Nettoyer</button>
+        </div>
+        
+        <div class="status" id="status">État: Chargement...</div>
+        
+        <div class="log" id="log">
+            <strong>Logs:</strong><br>
+            <span id="logContent">Attente...</span>
+        </div>
+    </div>
+
+    <script src="gif-simple-native.js"></script>
+    <script>
+        // Variables globales
+        let gifElement = null;
+        let statusElement = null;
+        let logElement = null;
+        let logContent = '';
+        
+        // Fonction pour ajouter un log
+        function addLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logContent += `[${timestamp}] ${message}\n`;
+            if (logElement) {
+                logElement.textContent = logContent;
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+        }
+        
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            statusElement = document.getElementById('status');
+            logElement = document.getElementById('logContent');
+            
+            addLog('Démarrage test GIF...');
+            
+            // Charger le GIF
+            loadSimpleGif('../cartes/rotate.gif', 'gifContainer', function(element) {
+                if (element) {
+                    gifElement = element;
+                    updateStatus();
+                    addLog('GIF chargé avec succès');
+                } else {
+                    addLog('Erreur lors du chargement du GIF');
+                    statusElement.textContent = 'État: Erreur de chargement';
+                    statusElement.className = 'status stopped';
+                }
+            });
+        });
+        
+        // Fonction pour démarrer l'animation
+        function startAnimation() {
+            if (gifElement) {
+                startSimpleGif();
+                updateStatus();
+                addLog('Animation démarrée');
+            }
+        }
+        
+        // Fonction pour mettre en pause
+        function pauseAnimation() {
+            if (gifElement) {
+                pauseSimpleGif();
+                updateStatus();
+                addLog('Animation en pause');
+            }
+        }
+        
+        // Fonction pour arrêter complètement
+        function stopAnimation() {
+            if (typeof window.stopSimpleGif === 'function') {
+                window.stopSimpleGif();
+                updateStatus();
+                addLog('Animation arrêtée');
+            }
+        }
+        
+        // Fonction pour nettoyer toutes les ressources
+        function cleanupAnimation() {
+            if (typeof window.cleanupSimpleGif === 'function') {
+                window.cleanupSimpleGif();
+                gifElement = null;
+                updateStatus();
+                addLog('Toutes les ressources nettoyées');
+            }
+        }
+        
+        // Fonction pour mettre à jour l'état
+        function updateStatus() {
+            if (!statusElement) return;
+            
+            const isPlaying = isSimpleGifPlaying();
+            const currentFrame = getCurrentFrameIndex();
+            const totalFrames = getTotalFrames();
+            
+            if (isPlaying) {
+                statusElement.textContent = `État: En cours (Frame ${currentFrame + 1}/${totalFrames})`;
+                statusElement.className = 'status playing';
+            } else {
+                statusElement.textContent = `État: En pause (Frame ${currentFrame + 1}/${totalFrames})`;
+                statusElement.className = 'status paused';
+            }
+        }
+        
+        // Mise à jour périodique
+        setInterval(function() {
+            updateStatus();
+        }, 1000);
+    </script>
+</body>
+</html> 

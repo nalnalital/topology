@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test GIF Stop/Pause</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: #333;
+            border-radius: 8px;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            background: #444;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .gif-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        #gifDisplay {
+            border: 2px solid #666;
+            border-radius: 8px;
+            max-width: 100%;
+        }
+        .logs {
+            margin: 20px 0;
+            padding: 15px;
+            background: #222;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test GIF Stop/Pause</h1>
+        
+        <div class="controls">
+            <h3>Contrôles</h3>
+            <button onclick="startGif()">▶️ Démarrer</button>
+            <button onclick="pauseGif()">⏸️ Pause</button>
+            <button onclick="resumeGif()">▶️ Reprendre</button>
+            <button onclick="stopGif()">⏹️ Stop</button>
+            <button onclick="cleanupGif()">🧹 Nettoyer</button>
+        </div>
+        
+        <div class="status">
+            <strong>État:</strong> <span id="status">En attente...</span><br>
+            <strong>Frames:</strong> <span id="frameCount">-</span><br>
+            <strong>Frame courante:</strong> <span id="currentFrame">-</span><br>
+            <strong>Animation active:</strong> <span id="isPlaying">-</span>
+        </div>
+        
+        <div class="gif-container">
+            <h3>Affichage GIF</h3>
+            <div id="gifDisplay"></div>
+        </div>
+        
+        <div class="logs">
+            <h3>Logs</h3>
+            <div id="logs"></div>
+        </div>
+    </div>
+
+    <script src="gif-simple-native.js"></script>
+    <script>
+        let logElement;
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            console.log(logEntry);
+            if (logElement) {
+                logElement.innerHTML += logEntry + '<br>';
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+        }
+        
+        function updateStatus() {
+            const statusElement = document.getElementById('status');
+            const frameCountElement = document.getElementById('frameCount');
+            const currentFrameElement = document.getElementById('currentFrame');
+            const isPlayingElement = document.getElementById('isPlaying');
+            
+            if (window.gifFrames) {
+                frameCountElement.textContent = window.gifFrames.length;
+                currentFrameElement.textContent = (window.currentFrameIndex || 0) + 1;
+            } else {
+                frameCountElement.textContent = '-';
+                currentFrameElement.textContent = '-';
+            }
+            
+            if (window.isPlaying !== undefined) {
+                isPlayingElement.textContent = window.isPlaying ? 'Oui' : 'Non';
+                statusElement.textContent = window.isPlaying ? 'En cours' : 'Arrêté';
+            } else {
+                isPlayingElement.textContent = '-';
+                statusElement.textContent = 'Non initialisé';
+            }
+        }
+        
+        function startGif() {
+            log('🎬 Démarrage de l\'animation...');
+            if (window.startSimpleGif) {
+                window.startSimpleGif();
+                log('✅ Animation démarrée');
+            } else {
+                log('❌ Fonction startSimpleGif non disponible');
+            }
+            updateStatus();
+        }
+        
+        function pauseGif() {
+            log('⏸️ Mise en pause...');
+            if (window.pauseSimpleGif) {
+                window.pauseSimpleGif();
+                log('✅ Animation en pause');
+            } else {
+                log('❌ Fonction pauseSimpleGif non disponible');
+            }
+            updateStatus();
+        }
+        
+        function resumeGif() {
+            log('▶️ Reprise de l\'animation...');
+            if (window.resumeSimpleGif) {
+                window.resumeSimpleGif();
+                log('✅ Animation reprise');
+            } else {
+                log('❌ Fonction resumeSimpleGif non disponible');
+            }
+            updateStatus();
+        }
+        
+        function stopGif() {
+            log('⏹️ Arrêt de l\'animation...');
+            if (window.stopSimpleGif) {
+                window.stopSimpleGif();
+                log('✅ Animation arrêtée');
+            } else {
+                log('❌ Fonction stopSimpleGif non disponible');
+            }
+            updateStatus();
+        }
+        
+        function cleanupGif() {
+            log('🧹 Nettoyage...');
+            if (window.cleanupSimpleGif) {
+                window.cleanupSimpleGif();
+                log('✅ Ressources nettoyées');
+            } else {
+                log('❌ Fonction cleanupSimpleGif non disponible');
+            }
+            updateStatus();
+        }
+        
+        // Initialisation
+        window.addEventListener('load', function() {
+            logElement = document.getElementById('logs');
+            log('🚀 Test initialisé');
+            
+            // Charger le GIF
+            if (window.loadSimpleGif) {
+                log('📁 Chargement du GIF rotate.gif...');
+                window.loadSimpleGif('../cartes/rotate.gif', 'gifDisplay', function(gifElement) {
+                    log('✅ GIF chargé avec succès');
+                    updateStatus();
+                });
+            } else {
+                log('❌ Fonction loadSimpleGif non disponible');
+            }
+            
+            // Mettre à jour le statut toutes les secondes
+            setInterval(updateStatus, 1000);
+        });
+    </script>
+</body>
+</html> 

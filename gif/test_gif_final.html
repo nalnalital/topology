@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Test final GIF avec gif.js v1.1.0 (approche données brutes)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f8f8;
+      color: #222;
+      padding: 2em;
+    }
+    h2 {
+      color: #3498db;
+    }
+    #canvas-container {
+      margin-top: 2em;
+      padding: 1em;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      min-height: 100px;
+      min-width: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas {
+      border: 2px solid #3498db;
+      border-radius: 4px;
+      background: #eee;
+    }
+    .controls {
+      margin-top: 1em;
+      text-align: center;
+    }
+    button {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 0.5em 1em;
+      margin: 0 0.5em;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #2980b9;
+    }
+    button:disabled {
+      background: #bdc3c7;
+      cursor: not-allowed;
+    }
+    .info {
+      margin-top: 1em;
+      padding: 1em;
+      background: #e8f4fd;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <h2>Test final GIF avec gif.js v1.1.0 (approche données brutes)</h2>
+  <p>Ce test utilise la nouvelle version de <code>gif.js</code> avec l'approche données brutes.<br>
+  Plus de décodage LZW complexe, le navigateur gère nativement le GIF.<br>
+  Ouvre la console pour voir les logs de test.</p>
+  <div id="canvas-container">
+    <p>Chargement en cours...</p>
+  </div>
+  <div class="controls">
+    <button id="startBtn" onclick="startAnimation()" disabled>Démarrer Animation</button>
+    <button id="stopBtn" onclick="stopAnimation()" disabled>Arrêter Animation</button>
+  </div>
+  <div class="info">
+    <strong>Nouvelle approche :</strong> Données GIF brutes → Blob → URL → Image → Canvas<br>
+    <strong>Avantages :</strong> Simple, fiable, performant, pas de décodage complexe<br>
+    <strong>Fonctions :</strong> loadGifTexture(), startGifTextureAnimation(), stopGifTextureAnimation()
+  </div>
+  
+  <script type="module">
+    // Importer les nouvelles fonctions de gif.js
+    import { loadGifTexture, startGifTextureAnimation, stopGifTextureAnimation, getGifTextureCanvas } from './gif.js';
+    
+    // Variables globales
+    let canvas = null;
+    
+    // Fonction pour démarrer l'animation
+    window.startAnimation = function() {
+      if (canvas) {
+        startGifTextureAnimation();
+        document.getElementById('startBtn').disabled = true;
+        document.getElementById('stopBtn').disabled = false;
+        console.log('[TEST] Animation démarrée');
+      }
+    };
+    
+    // Fonction pour arrêter l'animation
+    window.stopAnimation = function() {
+      stopGifTextureAnimation();
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('stopBtn').disabled = true;
+      console.log('[TEST] Animation arrêtée');
+    };
+    
+    // Test principal
+    async function runTest() {
+      console.log('[TEST] Test final avec gif.js v1.1.0...');
+      
+      try {
+        // Charger le GIF avec la nouvelle fonction
+        await loadGifTexture('../cartes/rotate.gif', (loadedCanvas) => {
+          if (loadedCanvas) {
+            canvas = loadedCanvas;
+            document.getElementById('canvas-container').innerHTML = '';
+            document.getElementById('canvas-container').appendChild(canvas);
+            console.log('[TEST] Canvas GIF prêt, ajout au DOM');
+            
+            // Activer les boutons
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = false;
+            
+            console.log('[TEST] Test réussi ! GIF chargé et affiché');
+          } else {
+            console.error('[TEST] Erreur chargement GIF');
+            document.getElementById('canvas-container').innerHTML = 
+              '<p style="color: red;">Erreur chargement GIF</p>';
+          }
+        });
+        
+      } catch (error) {
+        console.error('[TEST] Erreur:', error);
+        document.getElementById('canvas-container').innerHTML = 
+          `<p style="color: red;">Erreur: ${error.message}</p>`;
+      }
+    }
+    
+    // Démarrer le test
+    runTest();
+  </script>
+</body>
+</html> 

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Test GIF avec données brutes (sans décodage LZW)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f8f8;
+      color: #222;
+      padding: 2em;
+    }
+    h2 {
+      color: #3498db;
+    }
+    #canvas-container {
+      margin-top: 2em;
+      padding: 1em;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      min-height: 100px;
+      min-width: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas {
+      border: 2px solid #3498db;
+      border-radius: 4px;
+      background: #eee;
+    }
+    .info {
+      margin-top: 1em;
+      padding: 1em;
+      background: #e8f4fd;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <h2>Test GIF avec données brutes (sans décodage LZW)</h2>
+  <p>Ce test charge <code>../cartes/rotate.gif</code> et l'affiche dans un canvas.<br>
+  Utilise les données GIF brutes via Blob/URL, sans décodage LZW complexe.<br>
+  Ouvre la console pour voir les logs de test.</p>
+  <div id="canvas-container">
+    <p>Chargement en cours...</p>
+  </div>
+  <div class="info">
+    <strong>Approche :</strong> Données GIF brutes → Blob → URL → Image → Canvas<br>
+    <strong>Avantage :</strong> Le navigateur gère nativement le décodage GIF<br>
+    <strong>Limitation :</strong> Pas d'accès aux frames individuelles pour animation
+  </div>
+  
+  <!-- Wrapper pour données GIF brutes -->
+  <script src="gif-raw-wrapper.js"></script>
+  <script>
+    // Test principal
+    async function runTest() {
+      console.log('[TEST] Chargement GIF avec données brutes...');
+      
+      try {
+        // Charger le fichier GIF
+        const response = await fetch('../cartes/rotate.gif');
+        const arrayBuffer = await response.arrayBuffer();
+        
+        console.log('[TEST] Fichier GIF chargé:', arrayBuffer.byteLength, 'bytes');
+        
+        // Créer le canvas
+        const canvas = await window.createGifCanvas(arrayBuffer);
+        
+        // Afficher le canvas
+        document.getElementById('canvas-container').innerHTML = '';
+        document.getElementById('canvas-container').appendChild(canvas);
+        
+        console.log('[TEST] Canvas GIF affiché avec succès');
+        
+      } catch (error) {
+        console.error('[TEST] Erreur:', error);
+        document.getElementById('canvas-container').innerHTML = 
+          `<p style="color: red;">Erreur: ${error.message}</p>`;
+      }
+    }
+    
+    // Démarrer le test
+    runTest();
+  </script>
+</body>
+</html> 
