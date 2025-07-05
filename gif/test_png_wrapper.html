@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test - Wrapper PNG Frames</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { display: flex; gap: 20px; }
+        .display { border: 1px solid #ccc; padding: 10px; }
+        canvas { border: 1px solid #ddd; }
+        .controls { margin: 10px 0; }
+        button { margin: 5px; padding: 8px 16px; }
+    </style>
+</head>
+<body>
+    <h1>Test - Wrapper PNG Frames</h1>
+    
+    <div class="container">
+        <div class="display">
+            <h3>Animation PNG</h3>
+            <canvas id="animationCanvas" width="445" height="250"></canvas>
+            <div class="controls">
+                <button onclick="startAnimation()">▶️ Démarrer</button>
+                <button onclick="pauseAnimation()">⏸️ Pause</button>
+                <button onclick="resumeAnimation()">▶️ Reprendre</button>
+                <button onclick="stopAnimation()">⏹️ Stop</button>
+            </div>
+            <div id="status">En attente...</div>
+        </div>
+    </div>
+    
+    <script src="gif-png-wrapper.js"></script>
+    <script>
+        const canvas = document.getElementById('animationCanvas');
+        const ctx = canvas.getContext('2d');
+        const status = document.getElementById('status');
+        
+        // Charger les frames PNG
+        window.loadPngFrames('rotate_anim', 248, function(frames) {
+            status.innerHTML = `✅ ${frames.length} frames chargées !`;
+            console.log('Frames chargées:', frames.length);
+            
+            // Afficher la première frame
+            if (frames.length > 0) {
+                ctx.drawImage(frames[0], 0, 0);
+            }
+        });
+        
+        function startAnimation() {
+            window.startPngAnimation();
+            status.innerHTML = '🎬 Animation démarrée';
+        }
+        
+        function pauseAnimation() {
+            window.pausePngAnimation();
+            status.innerHTML = '⏸️ Animation en pause';
+        }
+        
+        function resumeAnimation() {
+            window.resumePngAnimation();
+            status.innerHTML = '▶️ Animation reprise';
+        }
+        
+        function stopAnimation() {
+            window.stopPngAnimation();
+            status.innerHTML = '⏹️ Animation arrêtée';
+            
+            // Afficher la première frame
+            const frames = window.getTotalPngFrames();
+            if (frames > 0) {
+                const firstFrame = window.getCurrentPngFrame();
+                if (firstFrame) {
+                    ctx.drawImage(firstFrame, 0, 0);
+                }
+            }
+        }
+        
+        // Mettre à jour le canvas à chaque frame
+        setInterval(function() {
+            const currentFrame = window.getCurrentPngFrame();
+            if (currentFrame && window.isPngAnimationPlaying()) {
+                ctx.drawImage(currentFrame, 0, 0);
+            }
+        }, 50); // Mise à jour plus fréquente que l'animation
+    </script>
+</body>
+</html> 

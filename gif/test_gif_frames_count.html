@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test - Compter les frames du GIF</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { display: flex; gap: 20px; }
+        .gif-display { border: 1px solid #ccc; padding: 10px; }
+        canvas { border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <h1>Test - Compter les frames du GIF rotate.gif</h1>
+    
+    <div class="container">
+        <div class="gif-display">
+            <h3>GIF Original</h3>
+            <img id="originalGif" src="../cartes/rotate.gif" alt="GIF original">
+        </div>
+        
+        <div class="gif-display">
+            <h3>Frames Extraites</h3>
+            <div id="framesContainer"></div>
+        </div>
+    </div>
+    
+    <div id="info"></div>
+    
+    <script>
+        const gifImg = document.getElementById('originalGif');
+        const framesContainer = document.getElementById('framesContainer');
+        const info = document.getElementById('info');
+        
+        gifImg.onload = function() {
+            info.innerHTML = `
+                <h3>Informations du GIF</h3>
+                <p>Dimensions: ${gifImg.naturalWidth} x ${gifImg.naturalHeight}</p>
+                <p>Frames détectées: <span id="frameCount">En cours...</span></p>
+            `;
+            
+            // Essayer d'extraire les frames
+            extractFrames();
+        };
+        
+        function extractFrames() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = gifImg.naturalWidth;
+            canvas.height = gifImg.naturalHeight;
+            
+            let frameCount = 0;
+            const frames = [];
+            
+            // Fonction pour capturer une frame
+            function captureFrame() {
+                ctx.drawImage(gifImg, 0, 0);
+                
+                // Créer un canvas pour cette frame
+                const frameCanvas = document.createElement('canvas');
+                frameCanvas.width = canvas.width;
+                frameCanvas.height = canvas.height;
+                const frameCtx = frameCanvas.getContext('2d');
+                frameCtx.drawImage(canvas, 0, 0);
+                
+                frames.push(frameCanvas);
+                frameCount++;
+                
+                // Afficher la frame
+                const frameDiv = document.createElement('div');
+                frameDiv.style.margin = '5px';
+                frameDiv.innerHTML = `<strong>Frame ${frameCount}</strong><br>`;
+                frameDiv.appendChild(frameCanvas);
+                framesContainer.appendChild(frameDiv);
+                
+                document.getElementById('frameCount').textContent = frameCount;
+                
+                // Continuer si on n'a pas trop de frames
+                if (frameCount < 20) {
+                    setTimeout(captureFrame, 100); // Capturer toutes les 100ms
+                }
+            }
+            
+            // Démarrer la capture
+            captureFrame();
+        }
+    </script>
+</body>
+</html> 

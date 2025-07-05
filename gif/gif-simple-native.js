@@ -160,6 +160,24 @@
         currentFrameIndex = (currentFrameIndex + 1) % gifFrames.length;
         console.log(`[SIMPLE] Frame ${currentFrameIndex + 1}/${gifFrames.length}`);
         
+        // METTRE À JOUR LA TEXTURE 3D avec la frame courante
+        if (window.mapCanvas && window.mapContext && gifFrames[currentFrameIndex]) {
+          const currentFrame = gifFrames[currentFrameIndex];
+          window.mapContext.drawImage(currentFrame, 0, 0);
+          
+          // Invalider le cache des rectangles pour forcer le recalcul
+          if (window.textureRectangles) {
+            window.textureRectangles = null;
+          }
+          
+          console.log(`[SIMPLE] Texture 3D mise à jour avec frame ${currentFrameIndex + 1}`);
+          
+          // FORCER LE RENDU 3D IMMÉDIATEMENT
+          if (window.render) {
+            window.render();
+          }
+        }
+        
         // Forcer un rafraîchissement du rendu 3D
         if (window.requestAnimationFrame) {
           window.requestAnimationFrame(function() {
