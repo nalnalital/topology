@@ -267,12 +267,12 @@ function loadTexture() {
     pd('loadTexture', 'main.js', `🟢 Texture "${mapConfig.title}" chargée`);
     
     // AUTO-RETOUR 3D avec petit timeout pour éviter mélange tuiles
-    if (previousSurfaceBeforeMapChange && previousSurfaceBeforeMapChange !== 'view2d') {
+    if (previousSurfaceBeforeMapChange && previousSurfaceBeforeMapChange !== 'plane') {
       pd('loadTexture', 'main.js', `⚡ Auto-retour 3D vers: ${previousSurfaceBeforeMapChange}`);
                     // Petit timeout pour laisser le recalcul se stabiliser
        setTimeout(() => {
         // Retourner à la surface précédente AVEC ANIMATION (barycentrique)
-         view2DMode = false;
+         planeMode = false;
         currentSurface = previousSurfaceBeforeMapChange; // FORCER la surface cible
         morphToSurface(previousSurfaceBeforeMapChange, false); // ANIMATION !
         // RESTAURER les angles mémorisés (au lieu des angles privilégiés)
@@ -847,7 +847,7 @@ function showMeshStructure() {
 
 // === MAILLAGE AVEC ANIMATION ===
 let currentMesh = null;
-let currentSurface = 'view2d';
+let currentSurface = 'plane';
 let isAnimating = false;
 
 // === AFFICHAGE SCALE ===
@@ -1174,10 +1174,10 @@ function resetToDefaultConfiguration() {
   cameraOffsetY = 0;
   
   // Réinitialiser angles et scale selon la config de la surface courante
-  if (window.currentSurface === 'view2d') {
-    // Mode 2D : utiliser config view2d
-    if (surfaces['view2d']?.config) {
-      const angles = surfaces['view2d']?.config;
+  if (window.currentSurface === 'plane') {
+    // Mode plane : utiliser config plane
+    if (surfaces['plane']?.config) {
+      const angles = surfaces['plane']?.config;
       rotX = (angles.rotX * Math.PI) / 180;
       rotY = (angles.rotY * Math.PI) / 180;
       rotZ = (angles.rotZ * Math.PI) / 180;
@@ -1203,7 +1203,7 @@ function resetToDefaultConfiguration() {
   updateAngleDisplay();
   requestAnimationFrame(render);
   
-  pd('resetConfig', 'main.js', `🎯 Configuration réinitialisée pour ${window.currentSurface === 'view2d' ? 'view2d' : 'currentSurface'}`);
+  pd('resetConfig', 'main.js', `🎯 Configuration réinitialisée pour ${window.currentSurface === 'plane' ? 'plane' : 'currentSurface'}`);
 }
 
 
@@ -1677,19 +1677,8 @@ async function initializeTextures() {
 window.initializeTextures = initializeTextures;
 
 // === CONTRÔLES ===
-// Noms des topologies pour affichage (EN par défaut)
-const topologyNames = {
-  'torus': 'Torus',
-  'klein': 'Klein Bottle',
-  'cylinder': 'Cylinder', 
-  'mobius': 'Möbius Strip',
-  'crosscap': 'Cross-cap',
-  'projective': 'Projective Plane',
-  'disk': 'Disk',
-  'plane': 'Plane',
-  'view2d': 'Texture'
-};
-window.topologyNames = topologyNames; // 🔗 Correction : exposer sur window
+// Les traductions sont maintenant directement dans le CSV avec les IDs des boutons
+// Plus besoin de dictionnaire redondant - utilisation directe de t(surfaceName)
 
 // Pictos des topologies (séparés pour réutilisation)
 const topologyIcons = {
@@ -1744,12 +1733,8 @@ function updateProjectionName() {
   if (textureName && typeof textureName === 'string') {
     textureName = textureName.charAt(0).toUpperCase() + textureName.slice(1);
   }
-  // Utiliser la traduction dynamique pour la topologie
+  // Utiliser la traduction dynamique pour la topologie (ID direct du CSV)
   let currentTopology = (typeof t === 'function') ? t(window.currentSurface) : window.currentSurface;
-  if (!currentTopology || currentTopology === window.currentSurface) {
-    // Fallback sur le nom anglais si pas de traduction
-    currentTopology = topologyNames[window.currentSurface] || window.currentSurface;
-  }
   //console.log('[DEBUG][updateProjectionName] textureKey =', textureKey, '| textureName =', textureName, '| currentTopology =', currentTopology);
   let projectionTitle = '';
   if (window.translationAPI && window.translationLoaded) {
@@ -1758,7 +1743,7 @@ function updateProjectionName() {
       } else {
     projectionTitle = `${textureName} ${currentTopology}`;
   }
-  const el = document.getElementById('selectedProjection');
+  const el = document.getElementById('titleCarte');
   if (el) {
     el.innerText = projectionTitle;
   }
@@ -1767,7 +1752,8 @@ function updateProjectionName() {
 }
 
 function refreshProjectionTitle() {
-  //console.log('[DEBUG][refreshProjectionTitle] window.currentMapName =', window.currentMapName, '| window.currentSurface =', window.currentSurface);
+  console.log('[DEBUG] refreshProjectionTitle appelée');
+  console.log('[DEBUG][refreshProjectionTitle] window.currentMapName =', window.currentMapName, '| window.currentSurface =', window.currentSurface);
   updateProjectionName();
   
   // Afficher les invariants algébriques pour la surface actuelle
@@ -1776,8 +1762,8 @@ function refreshProjectionTitle() {
     displayTopologyGroups(window.currentSurface);
   }
 
-  // Gérer l'état de l'interface en fonction du mode 2D/3D
-  const is2D = window.currentSurface === 'view2d';
+  // Gérer l'état de l'interface en fonction du mode plane/3D
+  const is2D = window.currentSurface === 'plane';
   const cameraTranslationFloating = document.getElementById('cameraTranslationFloating');
   if (cameraTranslationFloating) {
     cameraTranslationFloating.classList.toggle('disabled', is2D);
@@ -1910,8 +1896,8 @@ document.getElementById('rotZRight').addEventListener('click', () => {
 // === ÉVÉNEMENTS SOURIS ===
 canvas.addEventListener('mousedown', (e) => {
   // MODE 2D : Clic pour debug tuile
-  pd('mousedown', 'main.js', `Clic souris | view2DMode: ${window.currentSurface === 'view2d'}`);
-  if (window.currentSurface === 'view2d') {
+  pd('mousedown', 'main.js', `Clic souris | planeMode: ${window.currentSurface === 'plane'}`);
+  if (window.currentSurface === 'plane') {
     const rect = canvas.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
@@ -1920,7 +1906,7 @@ canvas.addEventListener('mousedown', (e) => {
   }
   
   // MODE 3D : Drag normal
-  if (window.currentSurface !== 'view2d') {
+  if (window.currentSurface !== 'plane') {
     isDragging = true;
     lastMouseX = e.clientX;
     lastMouseY = e.clientY;
@@ -1930,7 +1916,7 @@ canvas.addEventListener('mousedown', (e) => {
 });
 
 canvas.addEventListener('mousemove', (e) => {
-  if (!isDragging || window.currentSurface === 'view2d') return;
+  if (!isDragging || window.currentSurface === 'plane') return;
   
   const deltaX = e.clientX - lastMouseX;
   const deltaY = e.clientY - lastMouseY;
@@ -1984,18 +1970,18 @@ canvas.addEventListener('mousemove', (e) => {
 
 canvas.addEventListener('mouseup', () => {
   isDragging = false;
-  canvas.style.cursor = window.currentSurface !== 'view2d' ? 'grab' : 'default';
+  canvas.style.cursor = window.currentSurface !== 'plane' ? 'grab' : 'default';
 });
 
 canvas.addEventListener('mouseleave', () => {
   isDragging = false;
-  canvas.style.cursor = window.currentSurface !== 'view2d' ? 'grab' : 'default';
+  canvas.style.cursor = window.currentSurface !== 'plane' ? 'grab' : 'default';
 });
 
 // Update cursor style based on drag state
 setInterval(() => {
   if (!isDragging) {
-    canvas.style.cursor = (window.currentSurface !== 'view2d') ? 'grab' : 'default';
+    canvas.style.cursor = (window.currentSurface !== 'plane') ? 'grab' : 'default';
   }
 }, 100);
 
@@ -2047,7 +2033,7 @@ updateAngleDisplay();
  * @returns {Object|null} - {x, y} coordonnées de la tuile ou null si non trouvée
  */
 function findTileAtPosition(clickX, clickY) {
-  if (window.currentSurface === 'view2d') {
+  if (window.currentSurface === 'plane') {
     const tileWidth = canvas.width / MESH_U;   // Largeur d'une tuile = 800/30 ≈ 26.67
     const tileHeight = canvas.height / MESH_V; // Hauteur d'une tuile = 450/20 = 22.5
     
@@ -2987,7 +2973,7 @@ function cleanCsv(csvText) {
 // Puis copier/coller le résultat dans trads/translations.csv
 
 function updateCameraControlsState() {
-  const is2D = window.currentSurface === 'view2d';
+  const is2D = window.currentSurface === 'plane';
   const cameraTranslationFloating = document.getElementById('cameraTranslationFloating');
   if (cameraTranslationFloating) {
     cameraTranslationFloating.classList.toggle('disabled', is2D);
@@ -3011,9 +2997,12 @@ async function startApp() {
   await initializeShape();
   
   setTimeout(() => {
+    console.log('[DEBUG] setTimeout dans startApp exécuté');
     if (window.currentSurface) {
       console.log('[DEBUG] Affichage algèbre au démarrage pour', window.currentSurface);
       displayTopologyGroups(window.currentSurface);
+    } else {
+      console.log('[DEBUG] window.currentSurface non défini dans setTimeout');
     }
   }, 100);
 }
@@ -3133,8 +3122,8 @@ export function refreshAllTranslations() {
     } else {
           value = `${currentTopologyName} ${textureName}`;
         }
-        // Cas spécial : ne pas afficher "Texture" comme shape
-        if (currentTopologyName === t('view2d')) {
+        // Cas spécial : ne pas afficher "Plane" comme shape
+        if (currentTopologyName === t('plane')) {
           value = textureName;
         }
         // ... logs éventuels ...

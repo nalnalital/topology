@@ -11,18 +11,20 @@
 // Plan : surface simple sans flèches directionnelles
 export const topologyIcon = {
   shape: 'square',
-  center: '🔷'
+  center: '🔷',
+  top: '',
+  left: '',
+  right: '', 
+  bottom: ''
 };
-
-// Groupe de Poincaré (premier groupe d'homotopie)
-export const quotientGroup = '{∅}';
 
 // Invariants algébriques complets
 export const algebraicInvariants = {
+  name: 'ℝ²',      // Nom algébrique
   pi1: '{∅}',     // Groupe fondamental π₁
-  H1: '{0}',      // Premier groupe d'homologie H₁
+  H1: '{∅}',      // Premier groupe d'homologie H₁
   chi: 1,         // Caractéristique d'Euler χ
-  H2: '{0}',      // Deuxième groupe d'homologie H₂
+  H2: '{∅}',      // Deuxième groupe d'homologie H₂
   orientable: '○' // Orientabilité
 };
 
@@ -50,9 +52,9 @@ export function createSurface(u, v) {
 
 // Configuration spécifique plane
 export const config = {
-  scale: 150,
-  rotX: 35,
-  rotY: 120,
+  scale: 108,
+  rotX: 0,
+  rotY: 135,
   rotZ: 0
 };
 

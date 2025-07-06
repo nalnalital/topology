@@ -51,6 +51,7 @@ export const config = {
 
 // Invariants algébriques complets
 export const algebraicInvariants = {
+  name: 'S²',      // Nom algébrique (même que sphère)
   pi1: '{∅}',     // Groupe fondamental π₁
   H1: '{0}',      // Premier groupe d'homologie H₁
   chi: 2,         // Caractéristique d'Euler χ

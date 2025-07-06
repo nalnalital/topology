@@ -53,16 +53,9 @@ export function createSurface(u, v) {
   return { x, y, z };
 }
 
-// Structure d'identification pour le carré fondamental
-export const identification = [
-  { edge1: 'left', edge2: 'right', orientation: 'same' }
-];
-
-// Groupe de Poincaré (premier groupe d'homotopie)
-export const quotientGroup = 'ℤ';
-
 // Invariants algébriques complets
 export const algebraicInvariants = {
+  name: 'C',       // Nom algébrique
   pi1: 'ℤ',       // Groupe fondamental π₁
   H1: 'ℤ',        // Premier groupe d'homologie H₁
   chi: 0,         // Caractéristique d'Euler χ

@@ -12,7 +12,7 @@ export function setupCameraControls(canvas, config, updateAngleDisplay, render, 
   let lastMouseY = 0;
   
   canvas.addEventListener('mousedown', (e) => {
-    if (window.currentSurface !== 'view2d') {
+    if (window.currentSurface !== 'plane') {
       isDragging = true;
       lastMouseX = e.clientX;
       lastMouseY = e.clientY;
@@ -21,7 +21,7 @@ export function setupCameraControls(canvas, config, updateAngleDisplay, render, 
   });
 
   canvas.addEventListener('mousemove', (e) => {
-    if (!isDragging || window.currentSurface === 'view2d') return;
+    if (!isDragging || window.currentSurface === 'plane') return;
     const deltaX = e.clientX - lastMouseX;
     const deltaY = e.clientY - lastMouseY;
     // Sauvegarder anciennes valeurs pour détecter changements
@@ -47,15 +47,15 @@ export function setupCameraControls(canvas, config, updateAngleDisplay, render, 
 
   canvas.addEventListener('mouseup', () => {
     isDragging = false;
-    canvas.style.cursor = window.currentSurface !== 'view2d' ? 'grab' : 'default';
+    canvas.style.cursor = window.currentSurface !== 'plane' ? 'grab' : 'default';
   });
   canvas.addEventListener('mouseleave', () => {
     isDragging = false;
-    canvas.style.cursor = window.currentSurface !== 'view2d' ? 'grab' : 'default';
+    canvas.style.cursor = window.currentSurface !== 'plane' ? 'grab' : 'default';
   });
   setInterval(() => {
     if (!isDragging) {
-      canvas.style.cursor = window.currentSurface !== 'view2d' ? 'grab' : 'default';
+      canvas.style.cursor = window.currentSurface !== 'plane' ? 'grab' : 'default';
     }
   }, 100);
 } 

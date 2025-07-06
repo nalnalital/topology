@@ -317,8 +317,10 @@ canvas {
   margin: 0;
   display: block;
   cursor: grab;
-  width: 800px;
-  height: 450px;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 canvas:active {
@@ -376,26 +378,27 @@ canvas:active {
   font-style: italic;
 }
 
-.selected-projection-inline {
-  font-size: 20px;
-  font-weight: 600;
-  color: #2c3e50;
-  padding: 8px 16px;
-  /* background: #f8f9fa; */
-  /* border-radius: 6px; */
-  /* border: 1px solid #e9ecef; */
-  min-width: 120px;
+.title-carte {
+  font-family: 'Soopafresh', cursive;
+  font-size: 1.2em;
+  color: #fbc02d;
+  text-shadow: 1px 1px 0px #a31a0b, 2px 2px 4px rgba(0,0,0,0.2);
+  margin: 10px 0;
   text-align: center;
+  position: relative;
+  z-index: 1000;
 }
 
 .simulation-grid {
   display: grid;
-  grid-template-columns: 100px 1fr 100px; /* Colonnes pour boutons, canvas, boutons */
-  align-items: center; /* Centrage vertical */
+  grid-template-columns: 170px 1fr 170px; /* Colonnes élargies pour boutons, canvas, boutons */
+  grid-template-rows: 1fr; /* Prend toute la hauteur disponible */
+  align-items: stretch; /* Étire les colonnes sur toute la hauteur */
   gap: 10px;
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
+  min-height: 500px; /* Hauteur minimale pour les colonnes */
 }
 
 /* --- CONTROLES GAUCHE/DROITE (maintenant dans css/shapes_buttons.css) --- */
@@ -413,6 +416,9 @@ canvas:active {
   justify-content: center;
   background: transparent;
   position: relative; /* Pour positionnement absolu de l'overlay */
+  width: 100%;
+  height: 100%;
+  min-height: 450px; /* Hauteur minimale pour maintenir la qualité */
 }
 
 .bottom-controls {
@@ -773,7 +779,8 @@ canvas:active {
 .camera-translation-floating {
   position: absolute;
   bottom: 20px;
-  right: 20px;
+  left: 20px;
+  top: auto;
   /* Fond retiré du conteneur principal */
   background: transparent; 
   border-radius: 12px;
@@ -784,7 +791,7 @@ canvas:active {
   transition: all 0.3s ease;
   width: 80px;
   height: 30px;
-  overflow: visible;
+  overflow: hidden;
 }
 
 /* Appliquer le fond aux éléments internes pour éviter le "masque blanc" */
@@ -802,6 +809,8 @@ canvas:active {
   background: rgba(52, 152, 219, 0.1);
   border-color: #3498db;
   height: auto;
+  top: auto;
+  bottom: 20px;
 }
 
 .camera-translation-floating.dragging .drag-handle {
@@ -812,8 +821,10 @@ canvas:active {
 
 .camera-translation-floating:hover {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-  transform: translateY(-2px);
+  transform: translateY(0);
   height: auto;
+  top: auto;
+  bottom: 20px;
 }
 
 /* MODE ROLLOUT : Par défaut seule la zone de drag visible */
@@ -1104,19 +1115,10 @@ canvas:active {
 }
 
 /* Styles pour les boutons header gauche sélectionnés */
-.left-controls-header .map-option:has(input[type="checkbox"]:checked) {
-  background: linear-gradient(145deg, #e3f2fd, #bbdefb);
-  border: 2px solid #3498db;
-  transform: scale(1.05);
-  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
-}
 
-.left-controls-header .map-option:has(input[type="checkbox"]:checked) .map-name {
-  color: #3498db;
-}
 
 /* === Homogénéisation des polices interface (titre, carte, boutons textures) === */
-.title-center h1, .selected-projection, .selected-projection-inline, .map-options, .map-option, .map-option .map-name, .pdf-site-url, .pdf-button {
+.title-center h1, .selected-projection, .title-carte, .map-options, .map-option, .map-option .map-name, .pdf-site-url, .pdf-button {
   font-family: 'Soopafresh', cursive !important;
   letter-spacing: 0.5px;
 }
@@ -1127,7 +1129,7 @@ canvas:active {
   font-weight: bold;
 }
 
-.selected-projection, .selected-projection-inline {
+.selected-projection, .title-carte {
   font-size: 1.1em;
   color: #fbc02d;
   text-shadow: 1px 1px 0px #a31a0b, 2px 2px 4px rgba(0,0,0,0.2);

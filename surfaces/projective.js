@@ -13,6 +13,7 @@
 
 // Icône topologique avec flèches directionnelles
 // Plan projectif [+- -+] : bords opposés identifiés avec torsion
+// 2 côtés verts consécutifs, puis 2 côtés jaunes consécutifs
 export const topologyIcon = {
   shape: 'square',
   center: '🍎',
@@ -69,24 +70,13 @@ export function createSurface(u, v) {
   };
 }
 
-// Structure d'identification pour le carré fondamental
-export const identification = [
-    { edge1: 'top', edge2: 'bottom', orientation: 'opposite' },
-    { edge1: 'left', edge2: 'right', orientation: 'opposite' }
-];
-
-// Groupe de Poincaré (premier groupe d'homotopie)
-export const quotientGroup = 'ℤ/2ℤ';
-
-// Type de surface pour distinction
-export const surfaceType = 'Plan projectif (standard)';
-
 // Invariants algébriques complets
 export const algebraicInvariants = {
+  name: 'ℝℙ²',     // Nom algébrique
   pi1: 'ℤ/2ℤ',    // Groupe fondamental π₁
   H1: 'ℤ/2ℤ',     // Premier groupe d'homologie H₁
   chi: 1,         // Caractéristique d'Euler χ
-  H2: '{0}',      // Deuxième groupe d'homologie H₂
+  H2: '{∅}',      // Deuxième groupe d'homologie H₂
   orientable: '⊗' // Orientabilité
 };
 

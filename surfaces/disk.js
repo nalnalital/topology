@@ -11,18 +11,18 @@
 // Icône topologique simple
 // Disque : surface simple sans flèches directionnelles
 export const topologyIcon = {
-  center: '💿'
+  shape: 'circle',
+  center: '💿',
+  segments: [0] // 1 seul segment, pas de dégradé
 };
-
-// Groupe de Poincaré (premier groupe d'homotopie)
-export const quotientGroup = '{∅}';
 
 // Invariants algébriques complets
 export const algebraicInvariants = {
+  name: 'D²',      // Nom algébrique
   pi1: '{∅}',     // Groupe fondamental π₁
-  H1: '{0}',      // Premier groupe d'homologie H₁
+  H1: '{∅}',      // Premier groupe d'homologie H₁
   chi: 1,         // Caractéristique d'Euler χ
-  H2: '{0}',      // Deuxième groupe d'homologie H₂
+  H2: '{∅}',      // Deuxième groupe d'homologie H₂
   orientable: '○' // Orientabilité
 };
 

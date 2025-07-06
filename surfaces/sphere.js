@@ -10,16 +10,16 @@
 // Icône topologique simple
 // Sphère : surface fermée sans flèches directionnelles
 export const topologyIcon = {
-  center: '🌍'
+  shape: 'circle',
+  center: '🌍',
+  segments: [-2] // 1 seul segment, pas de dégradé
 };
-
-// Groupe de Poincaré (premier groupe d'homotopie)
-export const quotientGroup = '{∅}';
 
 // Invariants algébriques complets
 export const algebraicInvariants = {
+  name: 'S²',      // Nom algébrique
   pi1: '{∅}',     // Groupe fondamental π₁
-  H1: '{0}',      // Premier groupe d'homologie H₁
+  H1: '{∅}',      // Premier groupe d'homologie H₁
   chi: 2,         // Caractéristique d'Euler χ
   H2: 'ℤ',        // Deuxième groupe d'homologie H₂
   orientable: '○' // Orientabilité

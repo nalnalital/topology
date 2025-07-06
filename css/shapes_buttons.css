@@ -7,56 +7,30 @@
 .left-controls, .right-controls {
     display: flex;
     flex-direction: column;
-    justify-content: space-around; /* Distribue l'espace verticalement */
+    justify-content: flex-start; /* Aligne en haut */
     gap: 10px; /* Espace entre les boutons */
+    height: 100%; /* Prend toute la hauteur disponible */
+    padding: 10px 0; /* Padding vertical */
 }
 
 .left-controls {
   gap: 12px;
-  height: auto;
+  height: 100%;
   width: 170px;
-  overflow: hidden;
+  overflow-y: auto; /* Scroll si nécessaire */
   z-index: 2;
 }
 
-.left-controls-header {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 8px;
-  width: 80px;
-  height: 80px;
-  justify-items: center;
-  align-items: center;
-  margin: 0 auto;
+.right-controls {
+  gap: 12px;
+  height: 100%;
+  width: 170px;
+  overflow-y: auto; /* Scroll si nécessaire */
+  z-index: 2;
+  padding: 5px; /* Marge pour éviter que les boutons sélectionnés soient coupés */
 }
 
-.left-controls-header .map-option input[type="radio"] {
-  display: none;
-}
 
-.left-controls-header .map-name {
-  font-size: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  margin: 0;
-}
-
-.left-controls-header .map-option {
-  min-width: 30px !important;
-  max-width: 30px !important;
-  width: 30px !important;
-  height: 30px !important;
-  padding: 0 !important;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
 .topology-option {
   position: relative;
@@ -141,19 +115,15 @@
 .cross-top, .cross-left, .cross-center, .cross-right, .cross-bottom {
     font-size: 12px;
     line-height: 1;
-    margin: 0;
+    margin: -3px;
     padding: 0;
 }
 
-.cross-top {
-    grid-column: 3;
-    grid-row: 1;
-    margin-top: 2px;
-}
+.cross-top {grid-column: 3;grid-row: 1;}
 .cross-left { grid-column: 1; grid-row: 3; }
 .cross-center { grid-column: 3; grid-row: 3; font-size: 18px; }
 .cross-right { grid-column: 5; grid-row: 3; }
-.cross-bottom { grid-column: 3; grid-row: 5; }
+.cross-bottom { grid-column: 3; grid-row: 5;margin-top: 2px; }
 
 /* === Quotient DIV Visualization === */
 .quotient-container {
@@ -197,16 +167,18 @@
 
 .left-shapes-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: repeat(3, 1fr);
+  grid-template-columns: 1fr 1fr; /* Deux colonnes */
+  grid-template-rows: repeat(4, 70px); /* 4 lignes de 70px chacune */
   gap: 10px;
   justify-items: center;
   align-items: center;
+  flex: 1; /* Prend l'espace disponible */
   width: 100%;
   box-sizing: border-box;
   overflow: hidden;
   position: relative;
   z-index: 2;
+  padding: 5px; /* Marge pour éviter que les boutons sélectionnés soient coupés */
 }
 
 .left-shapes-grid .topology-option {

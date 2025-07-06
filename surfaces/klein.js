@@ -43,25 +43,13 @@ export function createSurface(u, v) {
   return { x: x * 0.12, y: y * 0.12, z: z * 0.12 };
 }
 
-// Structure d'identification pour le carré fondamental
-// Bouteille de Klein : identification avec twist horizontal
-export const identification = [
-    { edge1: 'top', edge2: 'bottom', orientation: 'same' },
-    { edge1: 'left', edge2: 'right', orientation: 'twisted' }
-];
-
-// Groupe de Poincaré (premier groupe d'homotopie)
-export const quotientGroup = 'ℤ²';
-
-// Type de surface pour distinction
-export const surfaceType = 'Bouteille de Klein (twist)';
-
 // Invariants algébriques complets
 export const algebraicInvariants = {
+  name: 'K²',      // Nom algébrique
   pi1: 'ℤ²',      // Groupe fondamental π₁
   H1: 'ℤ²',       // Premier groupe d'homologie H₁
   chi: 0,         // Caractéristique d'Euler χ
-  H2: '{0}',      // Deuxième groupe d'homologie H₂
+  H2: '{∅}',      // Deuxième groupe d'homologie H₂
   orientable: '⊗' // Orientabilité
 };
 

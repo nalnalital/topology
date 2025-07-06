@@ -49,25 +49,14 @@
   <div class="simulation-grid">
     <!-- Boutons gauche -->
     <div class="left-controls">
-      <div class="left-controls-header">
-        <!-- Titre ou contenu personnalisé -->
-      </div>
       <div class="left-shapes-grid">
         <!-- Les boutons de topologie seront générés dynamiquement ici -->
-      </div>
-      <div style="display: flex; justify-content: center; margin-top: 10px;">
-        <label class="map-option">
-          <input type="radio" name="topology" value="view2d" checked>
-          <span class="map-name">🔄</span>
-        </label>
       </div>
     </div>
   
     <!-- Zone centrale avec simulation uniquement -->
     <div class="center-area">
       <canvas id="canvas" width="800" height="450"></canvas>
-      <!-- Titre de la carte déplacé sous la carte -->
-      <div id="selectedProjection" class="selected-projection-inline" trad="projectionTitle"></div>
       <!-- CACHE MISÈRE : Overlay UNIQUEMENT sur le canvas -->
       <div id="loading-overlay"></div>
       
@@ -130,6 +119,9 @@
       <!-- Les boutons de topologie seront générés dynamiquement ici -->
     </div>
   </div>
+  
+  <!-- Titre de la carte -->
+  <div id="titleCarte" class="title-carte" trad="projectionTitle"></div>
   <!-- Ligne unique : Reinit - Steam Texture - Grille -->
   <div class="map-selection">
     

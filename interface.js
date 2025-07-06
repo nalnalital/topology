@@ -1,17 +1,20 @@
 // File: interface.js - Génération dynamique des boutons de topologie
 // Desc: Génère les boutons de topologie à partir des exports topologyIcon des modules surfaces/*.js
-// Version 1.0.0
+// Version 1.0.1
 // Author: DNAvatar.org - Arnaud Maignan
 // Date: [June 08, 2025] [XX:XX UTC+1]
 // Logs:
+//   - v1.0.1: Ajout import renderTopologyIcon depuis shape-selector.js
 //   - v1.0.0: Génération dynamique des boutons de topologie (plus de pictos en dur)
 
-// Liste des surfaces à afficher à gauche (quotients) et à droite (classiques)
+import { renderTopologyIcon } from './shape-selector.js';
+
+// Liste des surfaces à afficher à gauche (deux colonnes) et à droite (classiques)
 const leftSurfaces = [
-  'cylinder', 'mobius', 'torus', 'projective', 'klein', 'crosscap'
+  'plane','mobius','cylinder','klein', 'torus', 'projective','', 'crosscap'
 ];
 const rightSurfaces = [
-  'sphere', 'disk', 'boy'
+  'disk', 'sphere', 'boy'
 ];
 
 function getQuotientColor(identification) {
@@ -33,68 +36,59 @@ function getSideColor(icon) {
 
 // Génère dynamiquement les boutons de topologie
 export async function buildTopologyButtons() {
-  // Import dynamique des modules
-  const allSurfaces = [...leftSurfaces, ...rightSurfaces];
+  // Import dynamique des modules (ignorer les entrées vides)
+  const allSurfaces = [...leftSurfaces, ...rightSurfaces].filter(name => name && name.trim() !== '');
   const modules = {};
   for (const name of allSurfaces) {
     modules[name] = await import(`./surfaces/${name}.js`);
   }
 
-  // Génération colonne gauche
+  // Génération colonne gauche avec organisation spécifique
   const leftGrid = document.querySelector('.left-shapes-grid');
   if (leftGrid) leftGrid.innerHTML = '';
-  for (const name of leftSurfaces) {
-    const icon = modules[name].topologyIcon;
-    const identification = modules[name].identification;
-    const label = document.createElement('label');
-    label.className = 'topology-option';
-    const input = document.createElement('input');
-    input.type = 'radio';
-    input.name = 'topology';
-    input.value = name;
-    label.appendChild(input);
-    // Ajout du carré de fond
-    const quotientDiv = document.createElement('div');
-    quotientDiv.className = 'quotient-container';
-    quotientDiv.style.background = 'none';
-    quotientDiv.style.borderTopColor = getSideColor(icon.top);
-    quotientDiv.style.borderRightColor = getSideColor(icon.right);
-    quotientDiv.style.borderBottomColor = getSideColor(icon.bottom);
-    quotientDiv.style.borderLeftColor = getSideColor(icon.left);
-    label.appendChild(quotientDiv);
-    // Structure quotient
-    const span = document.createElement('span');
-    span.className = 'topology-visual cross-pattern';
-    // Flèches et centre
-    const top = document.createElement('span');
-    top.className = 'cross-top';
-    top.textContent = icon.top || '';
-    const leftS = document.createElement('span');
-    leftS.className = 'cross-left';
-    leftS.textContent = icon.left || '';
-    const center = document.createElement('span');
-    center.className = 'cross-center';
-    center.setAttribute('data-center-icon', '');
-    center.textContent = icon.center || '';
-    const rightS = document.createElement('span');
-    rightS.className = 'cross-right';
-    rightS.textContent = icon.right || '';
-    const bottom = document.createElement('span');
-    bottom.className = 'cross-bottom';
-    bottom.textContent = icon.bottom || '';
-    span.appendChild(top);
-    span.appendChild(leftS);
-    span.appendChild(center);
-    span.appendChild(rightS);
-    span.appendChild(bottom);
-    label.appendChild(span);
-    leftGrid.appendChild(label);
+  
+  // Organisation spécifique : 2 colonnes, crosscap sous projective
+  const leftOrganized = [
+    ['plane', 'mobius'],
+    ['cylinder', 'klein'],
+    ['torus', 'projective'],
+    ['', 'crosscap']
+  ];
+  
+  for (const row of leftOrganized) {
+    for (const name of row) {
+      // Ignorer les entrées vides
+      if (!name || name.trim() === '') {
+        // Créer un div vide pour maintenir la grille
+        const emptyDiv = document.createElement('div');
+        emptyDiv.style.visibility = 'hidden';
+        leftGrid.appendChild(emptyDiv);
+        continue;
+      }
+      
+      const icon = modules[name].topologyIcon;
+      const label = document.createElement('label');
+      label.className = 'topology-option';
+      const input = document.createElement('input');
+      input.type = 'radio';
+      input.name = 'topology';
+      input.value = name;
+      label.appendChild(input);
+      // Nouveau : conteneur pour l'icône
+      const iconContainer = document.createElement('div');
+      iconContainer.className = 'topology-icon-container';
+      renderTopologyIcon(icon, iconContainer);
+      label.appendChild(iconContainer);
+      leftGrid.appendChild(label);
+    }
   }
 
   // Génération colonne droite
   const rightDiv = document.querySelector('.right-controls');
   if (rightDiv) rightDiv.innerHTML = '';
   for (const name of rightSurfaces) {
+    // Ignorer les entrées vides
+    if (!name || name.trim() === '') continue;
     const icon = modules[name].topologyIcon;
     const label = document.createElement('label');
     label.className = 'topology-option';
@@ -103,31 +97,35 @@ export async function buildTopologyButtons() {
     input.name = 'topology';
     input.value = name;
     label.appendChild(input);
-    // Icône centrale seule
-    const span = document.createElement('span');
-    span.className = 'topology-visual';
-    span.setAttribute('data-center-icon', '');
-    span.textContent = icon.center || '';
-    label.appendChild(span);
+    // Nouveau : conteneur pour l'icône
+    const iconContainer = document.createElement('div');
+    iconContainer.className = 'topology-icon-container';
+    renderTopologyIcon(icon, iconContainer);
+    label.appendChild(iconContainer);
     rightDiv.appendChild(label);
   }
 }
 
 // Fonction pour afficher les invariants algébriques à droite du titre
 export function displayTopologyGroups(surfaceName) {
-  const projectionTitle = document.getElementById('selectedProjection');
+  console.log('[DEBUG] displayTopologyGroups appelé avec surfaceName:', surfaceName);
+  const projectionTitle = document.getElementById('titleCarte');
+  console.log('[DEBUG] Élément titleCarte trouvé:', projectionTitle);
   if (!projectionTitle) {
-    console.log('[DEBUG] Élément selectedProjection non trouvé');
+    console.log('[DEBUG] Élément titleCarte non trouvé');
     return;
   }
 
   // Supprimer l'ancien groupe s'il existe
   const existingGroup = projectionTitle.querySelector('.topology-groups');
+  console.log('[DEBUG] Ancien groupe trouvé:', existingGroup);
   if (existingGroup) {
     existingGroup.remove();
+    console.log('[DEBUG] Ancien groupe supprimé');
   }
 
   // Importer dynamiquement la surface pour obtenir les invariants
+  console.log('[DEBUG] Tentative d\'import du module:', `./surfaces/${surfaceName}.js`);
   import(`./surfaces/${surfaceName}.js`).then(module => {
     console.log(`[DEBUG] Module chargé pour ${surfaceName}:`, module);
     
@@ -137,6 +135,7 @@ export function displayTopologyGroups(surfaceName) {
     }
 
     console.log(`[DEBUG] Affichage invariants pour ${surfaceName}:`, module.algebraicInvariants);
+    console.log(`[DEBUG] Nom de la surface: ${module.algebraicInvariants.name}`);
 
     // Créer un conteneur principal pour le titre et l'algèbre
     const mainContainer = document.createElement('div');
@@ -147,8 +146,13 @@ export function displayTopologyGroups(surfaceName) {
       width: 100%;
       position: relative;
       z-index: 1000;
+      min-height: 40px;
+      overflow: visible;
     `;
 
+    // Sauvegarder le titre original avant de le remplacer
+    const originalTitle = projectionTitle.textContent;
+    
     // Conteneur pour le titre centré
     const titleContainer = document.createElement('div');
     titleContainer.style.cssText = `
@@ -160,20 +164,16 @@ export function displayTopologyGroups(surfaceName) {
       text-shadow: 1px 1px 0px #a31a0b, 2px 2px 4px rgba(0,0,0,0.2);
     `;
     
-    // En mode 2D, garder le titre original sans modification
-    if (surfaceName === 'view2d') {
-      titleContainer.textContent = projectionTitle.textContent;
-    } else {
-      titleContainer.textContent = projectionTitle.textContent;
-    }
+    // Utiliser le titre original
+    titleContainer.textContent = originalTitle;
 
     // Conteneur pour l'algèbre à droite
     const algebraContainer = document.createElement('div');
     algebraContainer.className = 'topology-groups';
     algebraContainer.style.cssText = `
       position: absolute;
-      right: ${surfaceName === 'view2d' ? '200px' : '-190px'};
-      bottom: 0;
+      left: 60%;
+      top: -90px;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
@@ -186,10 +186,29 @@ export function displayTopologyGroups(surfaceName) {
       box-shadow: 0 3px 10px rgba(0,0,0,0.3);
       backdrop-filter: blur(5px);
       z-index: 1001;
+      min-width: 120px;
+      border: 1px solid #ddd;
     `;
 
-    // Afficher tous les invariants en colonne
+    // Afficher le nom de la surface et tous les invariants en colonne
     const invariants = module.algebraicInvariants;
+    
+    // Ajouter le nom de la surface en premier
+    if (invariants.name) {
+      const nameDiv = document.createElement('div');
+      nameDiv.style.cssText = `
+        font-weight: bold;
+        font-size: 1.2em;
+        color: #2c3e50;
+        margin-bottom: 8px;
+        text-align: center;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 4px;
+      `;
+      nameDiv.textContent = invariants.name;
+      algebraContainer.appendChild(nameDiv);
+    }
+    
     const labels = [
       { key: 'pi1', symbol: 'π₁' },
       { key: 'chi', symbol: 'χ' },
@@ -248,15 +267,13 @@ export function displayTopologyGroups(surfaceName) {
     mainContainer.appendChild(titleContainer);
     mainContainer.appendChild(algebraContainer);
 
-    // Remplacer le contenu du titre (sauf en mode 2D)
-    if (surfaceName === 'view2d') {
-      // En mode 2D, juste ajouter le panneau algèbre sans modifier le titre
-      projectionTitle.appendChild(algebraContainer);
-    } else {
-      // Pour les autres modes, remplacer complètement le contenu
-      projectionTitle.innerHTML = '';
-      projectionTitle.appendChild(mainContainer);
-    }
+    // Remplacer le contenu de projectionTitle par le nouveau conteneur
+    console.log('[DEBUG] Tentative de remplacement du contenu de titleCarte');
+    console.log('[DEBUG] Contenu du mainContainer:', mainContainer.outerHTML);
+    projectionTitle.innerHTML = '';
+    projectionTitle.appendChild(mainContainer);
+    console.log('[DEBUG] Contenu de titleCarte remplacé avec succès');
+    console.log('[DEBUG] Contenu final de titleCarte:', projectionTitle.innerHTML);
   }).catch(error => {
     console.log(`[DEBUG] Erreur import surface ${surfaceName}:`, error);
   });
