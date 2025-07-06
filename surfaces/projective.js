@@ -12,8 +12,9 @@
 //   - v1.1.0: Ajout createSurface() et config pour homogénéité avec autres surfaces
 
 // Icône topologique avec flèches directionnelles
-// Plan projectif : géométrie complexe avec croisements
+// Plan projectif [+- -+] : bords opposés identifiés avec torsion
 export const topologyIcon = {
+  shape: 'square',
   center: '🍎',
   top: '▶️',
   left: '⏬',

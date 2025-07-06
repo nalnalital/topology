@@ -8,9 +8,9 @@
 //   - v1.1.0: Structure 2D universelle appliquée
 //   - v1.0.0: Icône topologique initiale
 
-// Icône topologique avec flèches directionnelles
-// Möbius [+ -] : bord horizontal avec torsion
+// Icône topologique pour la bande de Möbius
 export const topologyIcon = {
+  shape: 'square',
   center: '♾️',
   top: '',
   left: '🔽',

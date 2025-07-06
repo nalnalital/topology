@@ -7,8 +7,9 @@
 //   - Initial Klein bottle implementation with self-intersection
 
 // Icône topologique avec flèches directionnelles
-// Bouteille de Klein [+ -] : bords verticaux opposés
+// Bouteille de Klein [+- ++] : bords verticaux avec torsion, bords horizontaux sans
 export const topologyIcon = {
+  shape: 'square',
   center: '🖇️',
   top: '▶️',
   left: '⏫',

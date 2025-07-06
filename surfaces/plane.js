@@ -10,6 +10,7 @@
 // Icône topologique simple
 // Plan : surface simple sans flèches directionnelles
 export const topologyIcon = {
+  shape: 'square',
   center: '🔷'
 };
 

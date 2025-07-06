@@ -1,14 +1,13 @@
-/* Removed external font import */
-/* @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap'); */
-
-# File: main.css - Styles principaux pour l'interface topologique
-# Desc: En français, dans l'architecture, je suis les styles principaux pour l'interface de visualisation topologique avec layout responsive
-# Version 2.56.5 (correction chemin police locale)
-# Author: DNAvatar.org - Arnaud Maignan
-# Date: [June 08, 2025] [19:45 UTC+1]
-# Logs:
-#   - Fixed local font path in @font-face declaration
-#   - Declared other available local fonts
+/* 
+  File: main.css - Styles principaux pour l'interface topologique
+  Desc: En français, dans l'architecture, je suis les styles principaux pour l'interface de visualisation topologique avec layout responsive
+  Version 2.56.5 (correction chemin police locale)
+  Author: DNAvatar.org - Arnaud Maignan
+  Date: [June 08, 2025] [19:45 UTC+1]
+  Logs:
+    - Fixed local font path in @font-face declaration
+    - Declared other available local fonts
+*/
 
 /* Déclaration des polices locales */
 @font-face {
@@ -31,25 +30,27 @@
   src: url('/fonts/YujiHentaiganaAkari.ttf') format('truetype');
 }
 
-/* File: css.css - Styles for isometric topology viewer */
-/* Desc: En français, dans l'architecture, je suis les styles pour l'interface de projection isométrique avec système multi-cartes */
-/* Version 2.53.0 (CSS refactoring) */
-/* Author: DNAvatar.org - Arnaud Maignan */
-/* Date: [June 08, 2025] [16:05 UTC+1] */
-/* Logs: */
-/*   - Extracted shape button styles into shapes_buttons.css */
-/*   - MOVE ENTRE BOUTONS: Interface move entre 2D/Grille avec align-items: flex-end */
-/*   - RÉORGANISATION INTERFACE: 2D/Grille encadrent move, textures en dessous + cache misère 2D */
-/*   - INTERFACE TEXTURES DYNAMIQUE: Support multi-lignes avec flex-wrap et min-height adaptative */
-/*   - INTERFACE CAMÉRA DESCENDUE: Position bottom -60px + spacer 80x80px dans section textures */
-/*   - INTERFACE CAMÉRA À CHEVAL: Position bottom -15px pour être à cheval sur le bord du canvas */
-/*   - INTERFACE CAMÉRA SUR MAP: Position bottom center sur la map avec transparence et bordures renforcées */
-/*   - INTERFACE TRANSLATION CAMÉRA: Grille 3x3 avec boutons flèches directionnelles et bouton reset centre */
-/*   - OVERLAY CANVAS: Position absolute uniquement sur canvas avec capture taille exacte */
-/*   - SÉLECTION COHÉRENTE: :has() pour bouton entier bleu + texte transparent, comme les shapes */
-/*   - v2.3.0: Ajout cadres boutons topologiques + centrage vertical amélioré */
-/*   - Updated styles for canvas-based rendering */
-/*   - Added controls styling */
+/* 
+  File: css.css - Styles for isometric topology viewer
+  Desc: En français, dans l'architecture, je suis les styles pour l'interface de projection isométrique avec système multi-cartes
+  Version 2.53.0 (CSS refactoring)
+  Author: DNAvatar.org - Arnaud Maignan
+  Date: [June 08, 2025] [16:05 UTC+1]
+  Logs:
+    - Extracted shape button styles into shapes_buttons.css
+    - MOVE ENTRE BOUTONS: Interface move entre 2D/Grille avec align-items: flex-end
+    - RÉORGANISATION INTERFACE: 2D/Grille encadrent move, textures en dessous + cache misère 2D
+    - INTERFACE TEXTURES DYNAMIQUE: Support multi-lignes avec flex-wrap et min-height adaptative
+    - INTERFACE CAMÉRA DESCENDUE: Position bottom -60px + spacer 80x80px dans section textures
+    - INTERFACE CAMÉRA À CHEVAL: Position bottom -15px pour être à cheval sur le bord du canvas
+    - INTERFACE CAMÉRA SUR MAP: Position bottom center sur la map avec transparence et bordures renforcées
+    - INTERFACE TRANSLATION CAMÉRA: Grille 3x3 avec boutons flèches directionnelles et bouton reset centre
+    - OVERLAY CANVAS: Position absolute uniquement sur canvas avec capture taille exacte
+    - SÉLECTION COHÉRENTE: :has() pour bouton entier bleu + texte transparent, comme les shapes
+    - v2.3.0: Ajout cadres boutons topologiques + centrage vertical amélioré
+    - Updated styles for canvas-based rendering
+    - Added controls styling
+*/
 
 body {
   margin: 0;
@@ -156,6 +157,12 @@ h1 {
 
 .pdf-site-url a:hover {
   text-decoration: underline;
+}
+
+#siteUrlLink {
+  font-family: Arial, sans-serif;
+  font-weight: 300; /* "Thin" */
+  font-size: 0.8em; /* Un peu plus petit pour compenser la police */
 }
 
 /* Bouton PDF agrandi */
@@ -767,8 +774,8 @@ canvas:active {
   position: absolute;
   bottom: 20px;
   right: 20px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
+  /* Fond retiré du conteneur principal */
+  background: transparent; 
   border-radius: 12px;
   border: 2px solid rgba(52, 152, 219, 0.6);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -778,6 +785,14 @@ canvas:active {
   width: 80px;
   height: 30px;
   overflow: visible;
+}
+
+/* Appliquer le fond aux éléments internes pour éviter le "masque blanc" */
+.camera-translation-floating .drag-handle,
+.camera-translation-floating .translation-grid,
+.camera-translation-floating .rotation-controls {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
 }
 
 .camera-translation-floating.dragging {
@@ -852,6 +867,14 @@ canvas:active {
 .camera-translation-floating.disabled {
   opacity: 0.3;
   filter: grayscale(100%);
+}
+
+/* En mode disabled, s'assurer que les enfants n'ont pas de fond redondant */
+.camera-translation-floating.disabled .drag-handle,
+.camera-translation-floating.disabled .translation-grid,
+.camera-translation-floating.disabled .rotation-controls {
+  background: transparent;
+  backdrop-filter: none;
 }
 
 /* En mode disabled, seule la zone de drag reste interactive */
@@ -1013,8 +1036,7 @@ canvas:active {
   cursor: pointer;
   border-radius: 0 0 12px 12px;
   pointer-events: all;
-  opacity: 1;
-  transition: opacity 0.2s;
+  opacity: 0.8;
 }
 
 .move-overlay:not(.active) {
@@ -1062,8 +1084,13 @@ canvas:active {
 }
 
 .move-overlay.active {
-  opacity: 0.8;
-  pointer-events: all; /* Capture clicks when active */
+  visibility: hidden;
+  pointer-events: none; /* Capture clicks when active */
+}
+
+/* En 3D, au survol, l'overlay passe derrière les boutons */
+.camera-translation-floating:not(.disabled):hover .move-overlay {
+  z-index: -1;
 }
 
 /* --- STYLES QUOTIENT (maintenant dans css/shapes_buttons.css) --- */

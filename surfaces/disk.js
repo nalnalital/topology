@@ -60,10 +60,10 @@ export function createSurface(u, v) {
 
 // Configuration spécifique disk
 export const config = {
-  scale: 100,
-  rotX: 5,
-  rotY: 0,
-  rotZ: 0
+  scale: 70,
+  rotX: 30,
+  rotY: 15,
+  rotZ: 120
 };
 
 // Gestion du drag spécifique disque

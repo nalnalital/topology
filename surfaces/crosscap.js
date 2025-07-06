@@ -7,8 +7,9 @@
 //   - v1.1.0: Ajout createSurface() et config pour homogénéité avec autres surfaces
 
 // Icône topologique avec flèches directionnelles
-// Cross-cap [- -] : surface non-orientable avec singularité et twist
+// Cross-cap (Bonnet croisé) : une autre immersion du plan projectif
 export const topologyIcon = {
+  shape: 'square',
   center: '🪢',
   top: '▶️',
   left: '⏬',
@@ -17,8 +18,8 @@ export const topologyIcon = {
 };
 
 // Décalage texture spécifique crosscap (offset paramétrique)
-export function getTextureOffsetU() { return 0; }
-export function getTextureOffsetV() { return 0; }
+export function getTextureOffsetU() { return 0.5; }
+export function getTextureOffsetV() { return 0.5; }
 
 export function createSurface(u, v) {
   u = u + getTextureOffsetU();
@@ -61,9 +62,9 @@ export const algebraicInvariants = {
 
 // Configuration spécifique crosscap
 export const config = {
-  scale: 70,
-  rotX: -100,
-  rotY: -60,
+  scale: 45,
+  rotX: -180,
+  rotY: -225,
   rotZ: 0
 };
 

@@ -37,16 +37,17 @@ export function createSurface(u, v) {
 }
 
 export const topologyIcon = {
+  shape: 'circle',
   center: '🥨',
-  top: '',
-  left: '',
-  right: '',
-  bottom: ''
+  segments: [1, 1] // Deux segments, chacun avec un dégradé dans le même sens
 };
 
-// Groupe de Poincaré (premier groupe d'homotopie)
-// Surface de Boy = immersion de la sphère → groupe trivial
-export const quotientGroup = '{∅}';
+export const config = {
+  scale: 145,
+  rotX: -70,
+  rotY: 0,
+  rotZ: 120
+};
 
 // Invariants algébriques complets
 export const algebraicInvariants = {

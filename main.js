@@ -139,8 +139,10 @@ async function detectAvailableTextures() {
         continue;
       }
       
-      const name = filename.replace(/\.(jpg|jpeg|png)$/i, '').toLowerCase();
-      const title = fileToTitle[filename] || filename.replace(/\.(jpg|jpeg|png)$/i, '');
+      // Retirer le préfixe de numérotation "xx." pour obtenir le vrai nom
+      const cleanFilename = filename.replace(/^\d+\.\s*/, '');
+      const name = cleanFilename.replace(/\.(jpg|jpeg|png)$/i, '').toLowerCase();
+      const title = fileToTitle[cleanFilename] || cleanFilename.replace(/\.(jpg|jpeg|png)$/i, '');
       
       availableMaps.push({
         name: name,
@@ -1651,9 +1653,18 @@ document.addEventListener('mouseup', () => {
 // Remplacer l'IIFE par une fonction globale
 async function initializeTextures() {
   pd('initializeTextures', 'main.js', 'Entrée dans initializeTextures');
+  
+  // Activer le panneau de drag par défaut
+  /* LIGNE SUPPRIMÉE : Géré par updateCameraControlsState()
+  const moveOverlay = document.getElementById('moveOverlay');
+  if (moveOverlay) {
+    moveOverlay.classList.add('active');
+  }
+  */
+
   await detectAvailableTextures();
   generateTextureInterface();
-loadTexture();
+  loadTexture();
   // Initialiser l'affichage de la projection
   const moveOverlay = document.getElementById('moveOverlay');
   if (moveOverlay) {
@@ -1763,6 +1774,13 @@ function refreshProjectionTitle() {
   if (window.currentSurface) {
     console.log('[DEBUG] Appel displayTopologyGroups pour', window.currentSurface);
     displayTopologyGroups(window.currentSurface);
+  }
+
+  // Gérer l'état de l'interface en fonction du mode 2D/3D
+  const is2D = window.currentSurface === 'view2d';
+  const cameraTranslationFloating = document.getElementById('cameraTranslationFloating');
+  if (cameraTranslationFloating) {
+    cameraTranslationFloating.classList.toggle('disabled', is2D);
   }
 }
 
@@ -2869,7 +2887,7 @@ window.debugTileContent = debugTileContent;
 // Import des fonctions debug depuis debug.js (commenté tant que pas utilisées)
 // import { debugVertexOrder, debugTileMatrixTransforms, debugTileRenderingPipeline } from './debug/debug.js';
 
-// === DEBUG SIMPLE TUILE (1,8) - SANS BOUCLE INFINIE ===
+// === DEBUG SIMPLE TUILE (1,8) (SANS BOUCLE INFINIE) ===
 // (SUPPRIMÉ: debugTile18, testRenderTile18, analyzeSourceTexture18, debugPrecalcTile18, debugAllTile18, debugWhyWhite18 et logs associés)
 // ... existing code ...
 
@@ -2968,15 +2986,30 @@ function cleanCsv(csvText) {
 // console.log(cleaned);
 // Puis copier/coller le résultat dans trads/translations.csv
 
+function updateCameraControlsState() {
+  const is2D = window.currentSurface === 'view2d';
+  const cameraTranslationFloating = document.getElementById('cameraTranslationFloating');
+  if (cameraTranslationFloating) {
+    cameraTranslationFloating.classList.toggle('disabled', is2D);
+  }
+
+  // Activer/Désactiver l'overlay en même temps
+  const moveOverlay = document.getElementById('moveOverlay');
+  if (moveOverlay) {
+    moveOverlay.classList.toggle('active', is2D);
+  }
+}
+
 async function startApp() {
   pd('startApp', 'main.js', 'Entrée dans startApp');
   await loadAllTranslations();
-  window.currentSurface = 'plane';
-  await loadSurfaceModule(); // Correction : nom du module dynamique
+  const initialSurface = document.querySelector('input[name="topology"]:checked')?.value || 'plane';
+  window.currentSurface = initialSurface;
+  updateCameraControlsState();
+  await loadSurfaceModule();
   await initializeTextures();
   await initializeShape();
   
-  // Afficher les invariants algébriques au démarrage
   setTimeout(() => {
     if (window.currentSurface) {
       console.log('[DEBUG] Affichage algèbre au démarrage pour', window.currentSurface);
@@ -3031,6 +3064,7 @@ async function initializeShape() {
 async function morphToSurface(newSurfaceName, skipAnimation = false) {
   pd('morphToSurface', 'main.js', `Morphing vers ${newSurfaceName}`);
   window.currentSurface = newSurfaceName;
+
   await loadSurfaceModule();
   await initializeShape();
   // Forcer la mise à jour de toute l'UI traduite (titre inclus)
@@ -3122,17 +3156,15 @@ export function refreshAllTranslations() {
 
 function attachShapeListeners() {
   const radios = document.querySelectorAll('input[name="topology"]');
-  //console.log('[DEBUG] attachShapeListeners: boutons trouvés =', radios.length);
   radios.forEach(radio => {
-    //console.log('[DEBUG] Bouton radio trouvé:', radio.value);
     radio.addEventListener('change', (e) => {
       if (e.target.checked) {
         const newValue = e.target.value;
-        //console.log('[DEBUG] Changement de shape détecté:', newValue);
         currentTopology = newValue;
         window.currentTopology = newValue;
         morphToSurface(newValue);
         refreshProjectionTitle();
+        updateCameraControlsState();
       }
     });
   });

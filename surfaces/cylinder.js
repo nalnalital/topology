@@ -11,6 +11,7 @@
 // Icône topologique avec flèches directionnelles  
 // Cylindre [+ +] : bords horizontaux dans même sens
 export const topologyIcon = {
+  shape: 'square',
   center: '🫙',
   top: '',
   left: '🔼',

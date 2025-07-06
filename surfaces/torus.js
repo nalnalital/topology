@@ -9,8 +9,9 @@
 //   - v1.0.0: Icône topologique initiale
 
 // Icône topologique avec flèches directionnelles
-// Tore [+ +] : bords verticaux et horizontaux dans même sens
+// Tore [+- +-] : bords opposés identifiés avec même orientation
 export const topologyIcon = {
+  shape: 'square',
   center: '🍩',
   top: '▶️',
   left: '⏫', 
