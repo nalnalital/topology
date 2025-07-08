@@ -1,9 +1,10 @@
 // File: main.js - 3D Isometric Topology Engine with texture mapping
 // Desc: En français, dans l'architecture, je suis le moteur principal qui gère la projection 3D isométrique, les transformations topologiques, et le texture mapping avec système multi-cartes
-// Version 3.90.0 (Fix comportement rollover en mode plane)
+// Version 3.90.1 (Ajout initialisation panneau isométrique)
 // Author: DNAvatar.org - Arnaud Maignan  
 // Date: [December 16, 2024] [02:15 UTC+1]
 // Logs:
+//   - Added panel-iso.js initialization in startApp function
 //   - Fixed rollover behavior in plane mode: disabled trihedron, transparency, and temporary grid
 //   - Added plane mode detection for isometric panel hover effects
 //   - Improved debug logging for rollover state detection
@@ -1778,8 +1779,9 @@ window.translationLoaded = false;
  * Utilise l'API de traduction si disponible et chargée
  */
 function updateProjectionName() {
-  //console.log('[DEBUG][updateProjectionName] window.currentMapName =', window.currentMapName);
-  //console.log('[DEBUG][updateProjectionName] window.currentSurface =', window.currentSurface);
+  console.log('[DEBUG][updateProjectionName] === DÉBUT ===');
+  console.log('[DEBUG][updateProjectionName] window.currentMapName =', window.currentMapName);
+  console.log('[DEBUG][updateProjectionName] window.currentSurface =', window.currentSurface);
   //console.log('[DEBUG][updateProjectionName] availableMaps =', availableMaps.map(m => m.name));
   // Utiliser la traduction dynamique pour la texture
   let textureKey = 'map' + (window.currentMapName ? window.currentMapName.charAt(0).toUpperCase() + window.currentMapName.slice(1) : '');
@@ -1794,7 +1796,7 @@ function updateProjectionName() {
   }
   // Utiliser la traduction dynamique pour la topologie (ID direct du CSV)
   let currentTopology = (typeof t === 'function') ? t(window.currentSurface) : window.currentSurface;
-  //console.log('[DEBUG][updateProjectionName] textureKey =', textureKey, '| textureName =', textureName, '| currentTopology =', currentTopology);
+  console.log('[DEBUG][updateProjectionName] textureKey =', textureKey, '| textureName =', textureName, '| currentTopology =', currentTopology);
   let projectionTitle = '';
   if (window.translationAPI && window.translationLoaded) {
     let template = window.translationAPI.manager.get('projectionTitle');
@@ -1803,22 +1805,53 @@ function updateProjectionName() {
     projectionTitle = `${textureName} ${currentTopology}`;
   }
   const el = document.getElementById('titleCarte');
+  console.log('[DEBUG][updateProjectionName] Élément titleCarte trouvé:', el);
   if (el) {
-    el.innerText = projectionTitle;
+    console.log('[DEBUG][updateProjectionName] Contenu HTML avant modification:', el.innerHTML);
+    
+    // Vérifier si le panneau topology-groups existe déjà
+    const existingGroup = el.querySelector('.topology-groups');
+    const existingMainContainer = el.querySelector('div[style*="display: flex"]');
+    
+    console.log('[DEBUG][updateProjectionName] existingGroup trouvé:', existingGroup);
+    console.log('[DEBUG][updateProjectionName] existingMainContainer trouvé:', existingMainContainer);
+    
+    if (existingMainContainer && existingGroup) {
+      console.log('[DEBUG][updateProjectionName] ✅ Panneau algèbre existe, mise à jour du titre seulement');
+      // Le panneau algèbre existe déjà, mettre à jour seulement le titre
+      const titleContainer = existingMainContainer.querySelector('.title-carte');
+      console.log('[DEBUG][updateProjectionName] titleContainer trouvé:', titleContainer);
+      if (titleContainer) {
+        console.log('[DEBUG][updateProjectionName] Mise à jour du titre de:', titleContainer.textContent, 'vers:', projectionTitle);
+        titleContainer.textContent = projectionTitle;
+      }
+    } else {
+      console.log('[DEBUG][updateProjectionName] ❌ Pas de panneau algèbre, remplacement complet du contenu');
+      // Pas de panneau algèbre, remplacer tout le contenu
+      el.innerText = projectionTitle;
+    }
+    
+    console.log('[DEBUG][updateProjectionName] Contenu HTML après modification:', el.innerHTML);
   }
-  //console.log('[DEBUG][updateProjectionName] projectionTitle =', projectionTitle);
+  console.log('[DEBUG][updateProjectionName] projectionTitle final =', projectionTitle);
+  console.log('[DEBUG][updateProjectionName] === FIN ===');
   pd('updateProjection', 'main.js', `[DEBUG] updateProjectionName: '${projectionTitle}' (texture: ${window.currentMapName}, shape: ${window.currentSurface})`);
 }
 
-function refreshProjectionTitle() {
+export function refreshProjectionTitle() {
+  console.log('[DEBUG] refreshProjectionTitle === DÉBUT ===');
   console.log('[DEBUG] refreshProjectionTitle appelée');
   console.log('[DEBUG][refreshProjectionTitle] window.currentMapName =', window.currentMapName, '| window.currentSurface =', window.currentSurface);
+  
+  console.log('[DEBUG] refreshProjectionTitle - Appel de updateProjectionName()');
   updateProjectionName();
   
   // Afficher les invariants algébriques pour la surface actuelle
   if (window.currentSurface) {
-    console.log('[DEBUG] Appel displayTopologyGroups pour', window.currentSurface);
+    console.log('[DEBUG] refreshProjectionTitle - Appel displayTopologyGroups pour', window.currentSurface);
     displayTopologyGroups(window.currentSurface);
+  } else {
+    console.log('[DEBUG] refreshProjectionTitle - Pas de surface actuelle, pas d\'appel à displayTopologyGroups');
   }
 
   // Gérer l'état de l'interface en fonction du mode plane/3D
@@ -1827,6 +1860,8 @@ function refreshProjectionTitle() {
   if (cameraTranslationFloating) {
     cameraTranslationFloating.classList.toggle('disabled', is2D);
   }
+  
+  console.log('[DEBUG] refreshProjectionTitle === FIN ===');
 }
 
 // Boutons radio pour sélection de topologie
@@ -3063,6 +3098,18 @@ async function startApp() {
   await loadSurfaceModule();
   await initializeTextures();
   await initializeShape();
+  
+  // Initialiser le panneau isométrique
+  try {
+    const { initPanelIso } = await import('./panel-iso.js');
+    initPanelIso({
+      is2D: () => window.currentSurface === 'plane',
+      onReset: resetToDefaultConfiguration
+    });
+    pd('startApp', 'main.js', '✅ Panneau isométrique initialisé');
+  } catch (error) {
+    pd('startApp', 'main.js', `❌ Erreur initialisation panneau isométrique: ${error.message}`);
+  }
   
   setTimeout(() => {
     console.log('[DEBUG] setTimeout dans startApp exécuté');

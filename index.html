@@ -6,7 +6,7 @@
   <title>Topologicon</title>
   <link rel="stylesheet" href="css/main.css?v=2.56.8">
   <link rel="stylesheet" href="css/shapes_buttons.css">
-  <link rel="stylesheet" href="panel-iso.css">
+  <link rel="stylesheet" href="css/panel-iso.css">
   <link rel="icon" href="cartes/favicon.ico" type="image/x-icon">
       <!-- Version 2.53.0 - Refactoring CSS -->
 </head>
@@ -60,6 +60,7 @@
       <!-- Interface move positionnée relativement au canvas -->
       <div class="camera-translation-floating" id="cameraTranslationFloating">
         <div class="drag-handle">⋮⋮⋮</div>
+        <div class="panel-iso-title" trad="isoPanelTitle">Isométries</div>
         <!-- Overlay pour désactiver contenu en mode 2D -->
         <div class="move-overlay" id="moveOverlay"></div>
         
@@ -209,9 +210,9 @@
         window.refreshAllTranslations();
       }
       // Met à jour le titre principal si la fonction existe
-      if (typeof window.updateProjectionName === 'function') {
-        //console.log('[DEBUG][setLang] Appel de updateProjectionName');
-        window.updateProjectionName(window.currentMapName || '');
+      if (typeof window.refreshProjectionTitle === 'function') {
+        //console.log('[DEBUG][setLang] Appel de refreshProjectionTitle');
+        window.refreshProjectionTitle();
       }
       console.log('[DEBUG][setLang] window.currentLang =', window.currentLang);
     }
@@ -294,6 +295,9 @@
       }
       if (typeof mod.updateProjectionName === 'function') {
         window.updateProjectionName = mod.updateProjectionName;
+      }
+      if (typeof mod.refreshProjectionTitle === 'function') {
+        window.refreshProjectionTitle = mod.refreshProjectionTitle;
       }
     });
   </script>
