@@ -52,12 +52,18 @@
     - Added controls styling
 */
 
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   font-family: sans-serif;
   background: #f0f0f0;
   text-align: center;
-  padding: 10px;
+  padding: 0;
 }
 
 h1 {
@@ -66,12 +72,13 @@ h1 {
   margin-bottom: 20px;
 }
 
+
 /* Élargir la zone titre pour éviter retours à la ligne en 1280px */
 .title-container {
   display: grid;
   grid-template-columns: 1fr 60% 1fr; /* Zone titre élargie à 60% */
   align-items: end; /* Aligner les items en bas */
-  padding: 10px 20px;
+  padding: 0px 10px 10px 10px;
   background: #d9230f; /* Rouge style "Anselme Lanturlu" */
   border-bottom: 5px solid #a31a0b; /* Rouge plus foncé */
   box-shadow: 0 4px 15px rgba(0,0,0,0.2);
@@ -236,10 +243,12 @@ h1 {
 /* Sélecteur de langues en bas */
 .language-selector-bottom {
   display: flex;
-  justify-content: center;
-  padding: 10px 0;
+  justify-content: flex-start;
+  padding: 10px 20px;
   background: rgba(255, 255, 255, 0.05);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-left: calc((100vw - 1200px) / 2 + 10px);
+  margin-bottom: 0;
 }
 
 #langSelector {
@@ -249,11 +258,11 @@ h1 {
 }
 
 .lang-flag {
-  font-size: 1.5em; /* Taille réduite */
+  font-size: 1.3em; /* Taille réduite */
   cursor: pointer;
   border: 2px solid transparent;
   border-radius: 6px;
-  padding: 2px 8px;
+  padding: 0px 3px;
   transition: all 0.3s ease;
 }
 
@@ -317,10 +326,8 @@ canvas {
   margin: 0;
   display: block;
   cursor: grab;
-  width: 100%;
-  height: 100%;
-  max-width: 100%;
-  max-height: 100%;
+  width: 800px;
+  height: 450px;
 }
 
 canvas:active {
@@ -339,6 +346,8 @@ canvas:active {
   display: none;
   pointer-events: none;
 }
+
+
 
 #loading-overlay.active {
   display: block;
@@ -379,26 +388,27 @@ canvas:active {
 }
 
 .title-carte {
-  font-family: 'Soopafresh', cursive;
-  font-size: 1.2em;
-  color: #fbc02d;
-  text-shadow: 1px 1px 0px #a31a0b, 2px 2px 4px rgba(0,0,0,0.2);
-  margin: 10px 0;
+  flex: 1 1 0%;
   text-align: center;
+  font-family: 'Soopafresh', cursive;
+  font-size: 1.5em;
+  color: rgb(251, 192, 45);
+  text-shadow: rgb(163, 26, 11) 1px 1px 0px, rgba(0, 0, 0, 0.2) 2px 2px 4px;
+  margin: 10px 0;
   position: relative;
   z-index: 1000;
 }
 
 .simulation-grid {
   display: grid;
-  grid-template-columns: 170px 1fr 170px; /* Colonnes élargies pour boutons, canvas, boutons */
+  grid-template-columns: 200px 1fr 200px; /* Colonne droite alignée avec le panneau PDF */
   grid-template-rows: 1fr; /* Prend toute la hauteur disponible */
   align-items: stretch; /* Étire les colonnes sur toute la hauteur */
   gap: 10px;
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  min-height: 500px; /* Hauteur minimale pour les colonnes */
+  height: 450px; /* Hauteur minimale pour les colonnes */
 }
 
 /* --- CONTROLES GAUCHE/DROITE (maintenant dans css/shapes_buttons.css) --- */
@@ -417,8 +427,8 @@ canvas:active {
   background: transparent;
   position: relative; /* Pour positionnement absolu de l'overlay */
   width: 100%;
-  height: 100%;
-  min-height: 450px; /* Hauteur minimale pour maintenir la qualité */
+  height: 450px;
+  min-height: 450px; /* Hauteur minimale pour le canvas 16:9 */
 }
 
 .bottom-controls {
@@ -717,7 +727,6 @@ canvas:active {
 
 /* Griser interface move en mode 2D */
 .camera-translation-center.disabled {
-  opacity: 0.3;
   pointer-events: none;
   filter: grayscale(100%);
 }
@@ -827,6 +836,19 @@ canvas:active {
   bottom: 20px;
 }
 
+/* En mode disabled, le rollover fonctionne visuellement mais avec restrictions */
+
+/* En mode disabled, forcer la hauteur fixe et pas d'animation */
+.camera-translation-floating.disabled {
+  /* CORRECTION: Panneau 2D en noir et blanc comme demandé */
+  background: rgba(255, 255, 255, 0.95); /* Fond opaque pour le panneau en mode 2D */
+  backdrop-filter: blur(10px);
+  /* Curseur défini par les enfants, pas sur le conteneur pour ne pas casser le :hover */
+  height: 30px !important; /* Même hauteur qu'en mode 3D pour uniformiser .move-overlay */
+  transition: none !important;
+  animation: none !important;
+}
+
 /* MODE ROLLOUT : Par défaut seule la zone de drag visible */
 .camera-translation-floating .translation-grid,
 .camera-translation-floating .separator,
@@ -839,14 +861,20 @@ canvas:active {
   overflow: hidden;
 }
 
-/* Au survol du panneau : dépliage des actions */
+/* Au survol du panneau : dépliage des actions (identique 2D/3D) */
 .camera-translation-floating:hover .translation-grid,
 .camera-translation-floating:hover .separator,
 .camera-translation-floating:hover .rotation-controls {
   opacity: 1;
   transform: scale(1);
-  pointer-events: auto;
   max-height: 200px;
+}
+
+/* Interactions activées seulement en mode 3D */
+.camera-translation-floating:hover:not(.disabled) .translation-grid,
+.camera-translation-floating:hover:not(.disabled) .separator,
+.camera-translation-floating:hover:not(.disabled) .rotation-controls {
+  pointer-events: auto;
 }
 
 /* Zone de drag ultra-compacte par défaut */
@@ -865,7 +893,7 @@ canvas:active {
   box-sizing: border-box;
 }
 
-/* Au survol, drag handle redevient normal */
+/* Au survol, drag handle redevient normal (identique 2D/3D) */
 .camera-translation-floating:hover .drag-handle {
   background: rgba(52, 152, 219, 0.15);
   border-bottom: 1px solid rgba(52, 152, 219, 0.3);
@@ -875,24 +903,37 @@ canvas:active {
   font-size: 12px;
 }
 
-.camera-translation-floating.disabled {
-  opacity: 0.3;
-  filter: grayscale(100%);
-}
-
-/* En mode disabled, s'assurer que les enfants n'ont pas de fond redondant */
-.camera-translation-floating.disabled .drag-handle,
+/* En mode disabled, appliquer grayscale SEULEMENT aux zones inactives */
 .camera-translation-floating.disabled .translation-grid,
-.camera-translation-floating.disabled .rotation-controls {
+.camera-translation-floating.disabled .rotation-controls,
+.camera-translation-floating.disabled .separator {
+  filter: grayscale(100%); /* Grayscale seulement sur les zones inactives */
   background: transparent;
   backdrop-filter: none;
+  pointer-events: none !important; /* Désactiver les interactions */
 }
 
-/* En mode disabled, seule la zone de drag reste interactive */
+/* Curseur interdit sur les zones inactives en mode disabled */
+.camera-translation-floating.disabled .translation-grid *,
+.camera-translation-floating.disabled .rotation-controls *,
+.camera-translation-floating.disabled .separator {
+  cursor: not-allowed !important; /* Curseur interdit sur les zones inactives */
+}
+
+/* En mode disabled, seule la zone de drag reste interactive et bleue */
 .camera-translation-floating.disabled .drag-handle {
-  pointer-events: auto;
+  pointer-events: auto !important; /* Drag toujours actif */
   opacity: 1;
-  filter: none;
+  filter: none; /* Pas de grayscale sur le drag handle */
+  background: rgba(52, 152, 219, 0.15); /* Fond bleu maintenu en mode 2D */
+  cursor: grab; /* Curseur normal pour le drag */
+  position: relative;
+  z-index: 10;
+}
+
+/* Curseur grabbing pendant le drag en mode disabled */
+.camera-translation-floating.disabled .drag-handle:active {
+  cursor: grabbing;
 }
 
 .drag-handle {
@@ -1035,30 +1076,36 @@ canvas:active {
 
 /* === OVERLAYS POUR MODE 2D === */
 
+/* DNAvatar: Uniformisation taille moveOverlay - Version 1.1.0 */
 .move-overlay {
   position: absolute;
-  top: 22px;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  width: 100% !important;
+  height: 100% !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
   background: rgba(255, 255, 255, 1);
-  z-index: 5;
+  z-index: 1;
   display: block;
   cursor: pointer;
   border-radius: 0 0 12px 12px;
   pointer-events: all;
   opacity: 0.8;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
 }
 
 .move-overlay:not(.active) {
-  opacity: 0.7;
+  z-index: 1;
   pointer-events: none;
   cursor: not-allowed;
 }
 
 .move-overlay.active ~ .drag-handle {
   pointer-events: auto;
-  z-index: 10;
+  z-index: 15; /* Plus haut que le cache-misère pour permettre le drag */
   position: relative;
 }
 
@@ -1095,8 +1142,10 @@ canvas:active {
 }
 
 .move-overlay.active {
-  visibility: hidden;
-  pointer-events: none; /* Capture clicks when active */
+  visibility: visible;
+  pointer-events: all; /* Bloque les clics quand actif (mode plane) */
+  background: rgba(255, 255, 255, 0.01); /* Cache-misère à 1% (invisible) */
+  z-index: 10; /* Devant le panneau */
 }
 
 /* En 3D, au survol, l'overlay passe derrière les boutons */

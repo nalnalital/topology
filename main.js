@@ -1,9 +1,12 @@
 // File: main.js - 3D Isometric Topology Engine with texture mapping
 // Desc: En français, dans l'architecture, je suis le moteur principal qui gère la projection 3D isométrique, les transformations topologiques, et le texture mapping avec système multi-cartes
-// Version 3.89.0 (Fix fonctions géométriques pour clic debug)
+// Version 3.90.0 (Fix comportement rollover en mode plane)
 // Author: DNAvatar.org - Arnaud Maignan  
-// Date: [December 16, 2024] [01:40 UTC+1]
+// Date: [December 16, 2024] [02:15 UTC+1]
 // Logs:
+//   - Fixed rollover behavior in plane mode: disabled trihedron, transparency, and temporary grid
+//   - Added plane mode detection for isometric panel hover effects
+//   - Improved debug logging for rollover state detection
 //   - Fixed ReferenceError: moved geometric functions back to main.js
 //   - findTileAtPosition, isPointInQuad, isPointInTriangle needed for click events
 //   - Debug analysis functions remain in debug.js module
@@ -276,27 +279,30 @@ function loadTexture() {
         currentSurface = previousSurfaceBeforeMapChange; // FORCER la surface cible
         morphToSurface(previousSurfaceBeforeMapChange, false); // ANIMATION !
         // RESTAURER les angles mémorisés (au lieu des angles privilégiés)
-        if (previousAnglesBeforeMapChange) {
-          rotX = previousAnglesBeforeMapChange.rotX;
-          rotY = previousAnglesBeforeMapChange.rotY;
-          rotZ = previousAnglesBeforeMapChange.rotZ;
+        // 🎯 CORRECTION: Ne pas restaurer les angles si on est en train de faire du drag
+        if (!window.isDragging && previousAnglesBeforeMapChange) {
+          window.globalRotX = previousAnglesBeforeMapChange.rotX;
+          window.globalRotY = previousAnglesBeforeMapChange.rotY;
+          window.globalRotZ = previousAnglesBeforeMapChange.rotZ;
           scale = previousAnglesBeforeMapChange.scale;
-          pd('loadTexture', 'main.js', `📐 Angles restaurés: X=${Math.round(rotX * 180 / Math.PI)}° Y=${Math.round(rotY * 180 / Math.PI)}° Z=${Math.round(rotZ * 180 / Math.PI)}° Scale=${scale.toFixed(1)}`);
-        } else if (surfaces[newSurfaceName]?.config) {
+          pd('loadTexture', 'main.js', `📐 Angles restaurés: X=${Math.round(window.globalRotX * 180 / Math.PI)}° Y=${Math.round(window.globalRotY * 180 / Math.PI)}° Z=${Math.round(window.globalRotZ * 180 / Math.PI)}° Scale=${scale.toFixed(1)}`);
+        } else if (!window.isDragging && surfaces[newSurfaceName]?.config) {
           // Fallback : angles privilégiés si pas de mémorisation
           const angles = surfaces[newSurfaceName]?.config;
-           rotX = (angles.rotX * Math.PI) / 180;
-           rotY = (angles.rotY * Math.PI) / 180;
-           rotZ = (angles.rotZ * Math.PI) / 180;
+           window.globalRotX = (angles.rotX * Math.PI) / 180;
+           window.globalRotY = (angles.rotY * Math.PI) / 180;
+           window.globalRotZ = (angles.rotZ * Math.PI) / 180;
            scale = angles.scale;
           pd('loadTexture', 'main.js', `📐 Angles privilégiés appliqués (fallback)`);
-         } else {
+         } else if (!window.isDragging) {
            // Angles par défaut si pas de config spécifique
-           rotX = (config.defaultRotationX * Math.PI) / 180;
-           rotY = (config.defaultRotationY * Math.PI) / 180;
-           rotZ = 0;
+           window.globalRotX = (config.defaultRotationX * Math.PI) / 180;
+           window.globalRotY = (config.defaultRotationY * Math.PI) / 180;
+           window.globalRotZ = 0;
            scale = getOptimalScale(previousSurfaceBeforeMapChange);
           pd('loadTexture', 'main.js', `📐 Angles par défaut appliqués (fallback)`);
+         } else {
+          pd('loadTexture', 'main.js', `🎯 Drag en cours, angles préservés`);
          }
          updateAngleDisplay();
          // Mettre à jour l'interface
@@ -618,7 +624,7 @@ function precalculateTextureRectangles() {
 
 // RENDU rectangle transformé avec VRAIE TRANSFORMATION PERSPECTIVE (trapèze)
 // Basé sur perspective.js - subdivision intelligente pour vrais trapèzes
-function drawTransformedRectangle(ctx, rectangle, projectedQuad, faceOriginalIndex = null) {
+function drawTransformedRectangle(ctx, rectangle, projectedQuad, faceOriginalIndex = null, transparency = 1.0) {
   if (!rectangle) return false;
   
   // ⚠️ ORDRE CORRIGÉ selon debugVertexOrder(1,8) ⚠️
@@ -643,6 +649,15 @@ function drawTransformedRectangle(ctx, rectangle, projectedQuad, faceOriginalInd
   
   // Sauvegarder l'état du contexte
   ctx.save();
+  
+  // Appliquer la transparence si demandée
+  if (transparency < 1.0) {
+    ctx.globalAlpha = transparency;
+    // DEBUG: Log seulement pour la première tuile
+    if (faceOriginalIndex === 0) {
+      pd('drawTransformedRectangle', 'main.js', `🎨 APPLIQUÉ globalAlpha=${transparency}`);
+    }
+  }
   
   // Clipping avec quad ÉTENDU
   ctx.beginPath();
@@ -1067,43 +1082,12 @@ async function loadSurfaceModule() {
   createSurface = module.createSurface;
   currentConfig = module.config;
   window.currentHandleDrag = module.handleDrag; // Correction ici
+  
   pd('CONFIG', 'main.js', `CONFIG chargée pour ${surfaceName}: ${JSON.stringify(currentConfig)}`);
 }
 
-// === ROTATION 3D ===
-function rotate3D(x, y, z, rotX, rotY, rotZ) {
-  const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
-  const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
-  const cosZ = Math.cos(rotZ), sinZ = Math.sin(rotZ);
-  
-  // Rotation Y puis X puis Z (ordre important pour effet Diablo)
-  const x1 = x * cosY - z * sinY;
-  const y1 = y;
-  const z1 = x * sinY + z * cosY;
-  
-  const x2 = x1;
-  const y2 = y1 * cosX - z1 * sinX;
-  const z2 = y1 * sinX + z1 * cosX;
-  
-  // Rotation Z finale pour inclinaison
-  return {
-    x: x2 * cosZ - y2 * sinZ,
-    y: x2 * sinZ + y2 * cosZ,
-    z: z2
-  };
-}
-
-// === ROTATION 3D PROJECTIF ===
-function rotate3DProjective(x, y, z, rotX, rotY, rotZ, rotShape) {
-  // D'abord rotation de forme autour de l'axe principal (axe Z local de la forme)
-  const cosShape = Math.cos(rotShape), sinShape = Math.sin(rotShape);
-  const xShape = x * cosShape - y * sinShape;
-  const yShape = x * sinShape + y * cosShape;
-  const zShape = z;
-  
-  // Puis rotation normale (vue caméra)
-  return rotate3D(xShape, yShape, zShape, rotX, rotY, rotZ);
-}
+// === IMPORT DES FONCTIONS DE ROTATION ===
+import { rotate3D, rotate3DProjective, rotate3DForDisk, rotate3DUniversal } from './3D/rotate.js';
 
 // === PROJECTION ISOMÉTRIQUE ===
 function projectIso(x, y, z, scale) {
@@ -1124,24 +1108,24 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 // Surface courante déjà déclarée en haut
 // Initialisation avec config 2D par défaut
-let rotX = (currentConfig?.rotX ?? 0) * Math.PI / 180;
-let rotY = (currentConfig?.rotY ?? 0) * Math.PI / 180;
-let rotZ = (currentConfig?.rotZ ?? 0) * Math.PI / 180;
+window.globalRotX = (currentConfig?.rotX ?? 0) * Math.PI / 180;
+window.globalRotY = (currentConfig?.rotY ?? 0) * Math.PI / 180;
+window.globalRotZ = (currentConfig?.rotZ ?? 0) * Math.PI / 180;
 let scale = currentConfig?.scale ?? 150; // Scale initial 2D
 let cameraOffsetX = 0; // Translation caméra X
 let cameraOffsetY = 0; // Translation caméra Y
-let rotShape = 0; // Rotation spécifique pour la surface projective (Steiner)
+window.globalRotShape = 0; // Rotation spécifique pour la surface projective (Steiner)
 
 // === GESTION SOURIS ===
-let isDragging = false;
+// isDragging est maintenant global (window.isDragging) dans camera.js
 let lastMouseX = 0;
 let lastMouseY = 0;
 
 // Mettre à jour l'affichage des angles
 function updateAngleDisplay() {
-  const angleXDeg = Math.round((rotX * 180) / Math.PI);
-  const angleYDeg = Math.round((rotY * 180) / Math.PI);
-  const angleZDeg = Math.round((rotZ * 180) / Math.PI);
+  const angleXDeg = Math.round((window.globalRotX * 180) / Math.PI);
+  const angleYDeg = Math.round((window.globalRotY * 180) / Math.PI);
+  const angleZDeg = Math.round((window.globalRotZ * 180) / Math.PI);
   
   document.getElementById('angleXDisplay').textContent = angleXDeg + '°';
   document.getElementById('angleYDisplay').textContent = angleYDeg + '°';
@@ -1174,36 +1158,25 @@ function resetToDefaultConfiguration() {
   cameraOffsetY = 0;
   
   // Réinitialiser angles et scale selon la config de la surface courante
-  if (window.currentSurface === 'plane') {
-    // Mode plane : utiliser config plane
-    if (surfaces['plane']?.config) {
-      const angles = surfaces['plane']?.config;
-      rotX = (angles.rotX * Math.PI) / 180;
-      rotY = (angles.rotY * Math.PI) / 180;
-      rotZ = (angles.rotZ * Math.PI) / 180;
-      scale = angles.scale;
-     }
-     } else {
-    // Mode 3D : utiliser config de la surface courante
-    if (surfaces[window.currentSurface]?.config) {
-      const angles = surfaces[window.currentSurface]?.config;
-      rotX = (angles.rotX * Math.PI) / 180;
-      rotY = (angles.rotY * Math.PI) / 180;
-      rotZ = (angles.rotZ * Math.PI) / 180;
-      scale = angles.scale;
-    } else {
-      // Fallback angles par défaut
-      rotX = (config.defaultRotationX * Math.PI) / 180;
-      rotY = (config.defaultRotationY * Math.PI) / 180;
-      rotZ = 0;
-      scale = getOptimalScale(window.currentSurface);
-    }
+  if (currentConfig) {
+    // Utiliser la configuration de la surface courante chargée
+    const angles = currentConfig;
+    window.globalRotX = (angles.rotX * Math.PI) / 180;
+    window.globalRotY = (angles.rotY * Math.PI) / 180;
+    window.globalRotZ = (angles.rotZ * Math.PI) / 180;
+    scale = angles.scale;
+  } else {
+    // Fallback angles par défaut
+    window.globalRotX = (config.defaultRotationX * Math.PI) / 180;
+    window.globalRotY = (config.defaultRotationY * Math.PI) / 180;
+    window.globalRotZ = 0;
+    scale = 150; // Scale par défaut
   }
   
   updateAngleDisplay();
   requestAnimationFrame(render);
   
-  pd('resetConfig', 'main.js', `🎯 Configuration réinitialisée pour ${window.currentSurface === 'plane' ? 'plane' : 'currentSurface'}`);
+  pd('resetConfig', 'main.js', `🎯 Configuration réinitialisée pour ${window.currentSurface}`);
 }
 
 
@@ -1321,12 +1294,39 @@ function render2DGrid() {
 }
 
 function render() {
-  pd('render', 'main.js', `Entrée dans render | surface: ${currentSurface} | rotX: ${(rotX*180/Math.PI).toFixed(1)}° | rotY: ${(rotY*180/Math.PI).toFixed(1)}° | rotZ: ${(rotZ*180/Math.PI).toFixed(1)}° | scale: ${scale}`);
+  pd('render', 'main.js', `Entrée dans render | surface: ${window.currentSurface} | rotX: ${(window.globalRotX*180/Math.PI).toFixed(1)}° | rotY: ${(window.globalRotY*180/Math.PI).toFixed(1)}° | rotZ: ${(window.globalRotZ*180/Math.PI).toFixed(1)}° | scale: ${scale}`);
   // Clear
   ctx.fillStyle = '#f0f0f0';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
   if (!currentMesh) return;
+
+  // 🎯 Dessiner le trièdre en premier (derrière les tuiles) si le panneau isométrique est survolé
+  // CORRECTION: Désactiver tous les effets de rollover en mode plane
+  const isPlaneMode = window.currentSurface === 'plane';
+  const cameraTranslationFloating = document.getElementById('cameraTranslationFloating');
+  const isIsometricPanelHovered = !isPlaneMode && cameraTranslationFloating && cameraTranslationFloating.matches(':hover');
+  
+  // DEBUG: État du panneau isométrique
+  pd('render', 'main.js', `🔍 DEBUG ISOMETRIC PANEL: isHovered=${isIsometricPanelHovered}, planeMode=${isPlaneMode}`);
+  
+  if (isIsometricPanelHovered) {
+    drawTrihedron();
+  }
+  
+  // 🎯 Gestion de la grille temporaire au survol du panneau isométrique
+  // CORRECTION: Désactiver la grille temporaire en mode plane
+  const showGridButton = document.getElementById('showGrille');
+  const isGridButtonSelected = showGridButton && showGridButton.checked;
+  const shouldShowTemporaryGrid = !isPlaneMode && isIsometricPanelHovered; // Seulement en mode 3D
+  
+  // Sauvegarder l'état original de showGrid
+  const originalShowGrid = showGrid;
+  
+  // Forcer l'affichage de la grille en alpha si nécessaire
+  if (shouldShowTemporaryGrid) {
+    showGrid = true;
+  }
 
   // Calculer visibilités des faces si activé
   calculateFaceVisibility();
@@ -1336,9 +1336,11 @@ function render() {
   
   // Rotation et projection des sommets (avec positions animées)
   const projectedVertices = currentMesh.vertices.map(vertex => {
-    const rotated = currentSurface === 'projective' 
-      ? rotate3DProjective(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ, rotShape)
-      : rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
+    const rotated = rotate3DUniversal(
+      vertex.x, vertex.y, vertex.z, 
+      window.globalRotX, window.globalRotY, window.globalRotZ, 
+      window.currentSurface, window.globalRotShape
+    );
     const projected = projectIso(rotated.x, rotated.y, rotated.z, scale);
     return {
       x: centerX + projected.x + cameraOffsetX,
@@ -1357,9 +1359,11 @@ function render() {
       centerX += projected.x;
       centerY += projected.y; 
       const vertex = currentMesh.vertices[vertexIndex];
-      const rotated = currentSurface === 'projective' 
-        ? rotate3DProjective(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ, rotShape)
-        : rotate3D(vertex.x, vertex.y, vertex.z, rotX, rotY, rotZ);
+      const rotated = rotate3DUniversal(
+        vertex.x, vertex.y, vertex.z, 
+        window.globalRotX, window.globalRotY, window.globalRotZ, 
+        window.currentSurface, window.globalRotShape
+      );
       centerZ += rotated.z;
     });
     face.center = {
@@ -1392,7 +1396,18 @@ function render() {
       if (showUVPalette) {
         success = drawUVPalette(ctx, quadProjected, face.originalIndex);
       } else {
-        success = drawTransformedRectangle(ctx, rectangle, quadProjected, face.originalIndex);
+        // Vérifier si le panneau isométrique est survolé (rollover)
+        // CORRECTION: Désactiver la transparence des tuiles en mode plane
+        const cameraTranslationFloating = document.getElementById('cameraTranslationFloating');
+        const isIsometricPanelHovered = !isPlaneMode && cameraTranslationFloating && cameraTranslationFloating.matches(':hover');
+        const transparency = isIsometricPanelHovered ? 0.5 : 1.0; // Alpha 0.5 pour les tuiles au rollover (seulement en 3D)
+        
+        // DEBUG: Log seulement pour la première tuile pour éviter le spam
+        if (face.originalIndex === 0) {
+          pd('render', 'main.js', `🔍 DEBUG TRANSPARENCE: isometricPanelHovered=${isIsometricPanelHovered}, transparency=${transparency}, planeMode=${isPlaneMode}`);
+        }
+        
+        success = drawTransformedRectangle(ctx, rectangle, quadProjected, face.originalIndex, transparency);
       }
       if (showCoordinates) {
         const centerX = (quadProjected[0].x + quadProjected[1].x + quadProjected[2].x + quadProjected[3].x) / 4;
@@ -1432,7 +1447,16 @@ function render() {
           lineWidth = isAnimating ? 0.3 : 0.1;
         }
         if (showGrid) {
-          ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+          // Appliquer l'alpha selon le contexte
+          let gridAlpha;
+          if (shouldShowTemporaryGrid) {
+            gridAlpha = 0.3; // Grille rollover (temporaire)
+          } else if (isGridButtonSelected) {
+            gridAlpha = 0.6; // Grille normale (bouton sélectionné)
+          } else {
+            gridAlpha = 0.6; // Grille normale (par défaut)
+          }
+          ctx.strokeStyle = `rgba(0,0,0,${gridAlpha})`;
           ctx.lineWidth = 1;
           
         ctx.beginPath();
@@ -1485,6 +1509,14 @@ function render() {
     // SUPPRIMÉ : Cette boucle dessinait une grille rouge par-dessus tout, causant des problèmes de z-index
     // La grille est maintenant gérée dans la boucle principale avec le bon tri de profondeur
   }
+  
+  // 🎯 Restaurer l'état original de showGrid si on l'avait modifié temporairement
+  if (shouldShowTemporaryGrid && !isGridButtonSelected) {
+    showGrid = originalShowGrid; // Remettre grille 0.6 si selected au rollout
+  }
+  
+
+  
   // Juste après le tri des faces et la projection :
   if (window.currentSurface === 'cylinder') {
     sortedFaces.forEach((face, sortedIndex) => {
@@ -1512,7 +1544,7 @@ function animate() {
   render();
   
   // Compter les frames d'inactivité
-  if (isAnimating || isDragging || isInterfaceDragging) {
+  if (isAnimating || window.isDragging || isInterfaceDragging) {
     framesSinceLastActivity = 0;
   } else {
     framesSinceLastActivity++;
@@ -1545,6 +1577,31 @@ let dragOffset = { x: 0, y: 0 };
 
 const floatingInterface = document.getElementById('cameraTranslationFloating');
 const dragHandle = floatingInterface.querySelector('.drag-handle');
+
+// Gestionnaire pour le drag uniquement (plus de clic pour ouvrir/fermer)
+// Le panneau s'ouvre/ferme automatiquement au survol
+
+// Gestionnaire de survol pour forcer le rendu
+// CORRECTION: Désactiver les effets de rollover en mode plane
+floatingInterface.addEventListener('mouseenter', () => {
+  const isPlaneMode = window.currentSurface === 'plane';
+  if (!isPlaneMode) {
+    pd('isometricPanel', 'main.js', '🔓 Panneau isométrique survolé - trièdre visible');
+  } else {
+    pd('isometricPanel', 'main.js', '🔒 Mode plane: pas d\'effets de rollover');
+  }
+  requestAnimationFrame(render);
+});
+
+floatingInterface.addEventListener('mouseleave', () => {
+  const isPlaneMode = window.currentSurface === 'plane';
+  if (!isPlaneMode) {
+    pd('isometricPanel', 'main.js', '🔒 Panneau isométrique quitté - trièdre caché');
+  } else {
+    pd('isometricPanel', 'main.js', '🔒 Mode plane: pas d\'effets de rollover');
+  }
+  requestAnimationFrame(render);
+});
 
 dragHandle.addEventListener('mousedown', (e) => {
   isInterfaceDragging = true;
@@ -1648,6 +1705,8 @@ document.addEventListener('mouseup', () => {
     floatingInterface.classList.remove('dragging');
   }
 });
+
+// Plus besoin de fermer le panneau au clic - géré automatiquement par le survol
 
 // === INITIALISATION DYNAMIQUE DES TEXTURES ===
 // Remplacer l'IIFE par une fonction globale
@@ -1854,39 +1913,39 @@ document.getElementById('showCoordinates').addEventListener('change', (e) => {
 
 // Boutons fine-tuning rotation X
 document.getElementById('rotXLeft').addEventListener('click', () => {
-  rotX -= (5 * Math.PI) / 180; // -5°
+  window.globalRotX -= (5 * Math.PI) / 180; // -5°
   updateAngleDisplay();
   requestAnimationFrame(render);
 });
 
 document.getElementById('rotXRight').addEventListener('click', () => {
-  rotX += (5 * Math.PI) / 180; // +5°
+  window.globalRotX += (5 * Math.PI) / 180; // +5°
   updateAngleDisplay();
   requestAnimationFrame(render);
 });
 
 // Boutons fine-tuning rotation Y
 document.getElementById('rotYLeft').addEventListener('click', () => {
-  rotY -= (5 * Math.PI) / 180; // -5°
+  window.globalRotY -= (5 * Math.PI) / 180; // -5°
   updateAngleDisplay();
   requestAnimationFrame(render);
 });
 
 document.getElementById('rotYRight').addEventListener('click', () => {
-  rotY += (5 * Math.PI) / 180; // +5°
+  window.globalRotY += (5 * Math.PI) / 180; // +5°
   updateAngleDisplay();
   requestAnimationFrame(render);
 });
 
 // Boutons fine-tuning rotation Z
 document.getElementById('rotZLeft').addEventListener('click', () => {
-  rotZ -= (5 * Math.PI) / 180; // -5°
+  window.globalRotZ -= (5 * Math.PI) / 180; // -5°
   updateAngleDisplay();
   requestAnimationFrame(render);
 });
 
 document.getElementById('rotZRight').addEventListener('click', () => {
-  rotZ += (5 * Math.PI) / 180; // +5°
+  window.globalRotZ += (5 * Math.PI) / 180; // +5°
   updateAngleDisplay();
   requestAnimationFrame(render);
 });
@@ -1907,7 +1966,7 @@ canvas.addEventListener('mousedown', (e) => {
   
   // MODE 3D : Drag normal
   if (window.currentSurface !== 'plane') {
-    isDragging = true;
+    window.isDragging = true;
     lastMouseX = e.clientX;
     lastMouseY = e.clientY;
     canvas.style.cursor = 'grabbing';
@@ -1915,75 +1974,8 @@ canvas.addEventListener('mousedown', (e) => {
   }
 });
 
-canvas.addEventListener('mousemove', (e) => {
-  if (!isDragging || window.currentSurface === 'plane') return;
-  
-  const deltaX = e.clientX - lastMouseX;
-  const deltaY = e.clientY - lastMouseY;
-  
-  // Sauvegarder anciennes valeurs pour détecter changements
-  const oldRotX = rotX;
-  const oldRotY = rotY;
-  const oldRotZ = rotZ;
-  
-  if (e.shiftKey) {
-    // SHIFT + Drag = Rotation Z (inclinaison Diablo/Civilization)
-    rotZ += deltaX * config.mouseSensitivity * 0.01;
-  } else {
-    // DRAG ADAPTATIF PAR SURFACE
-    if (window.currentSurface === 'projective') {
-      // PROJECTIF : Drag X = rotation autour axe principal de la forme
-      rotShape += deltaX * config.mouseSensitivity * 0.01;
-      // Drag Y = rotation X INVERSÉE (vertical opposé)
-      rotX -= deltaY * config.mouseSensitivity * 0.01;
-      rotX = Math.max(-Math.PI, Math.min(Math.PI, rotX));
-    } else {
-      // Rotation Y (horizontal) - normale pour autres surfaces
-      let rotYMultiplier = 1;
-      if (window.currentSurface === 'cylinder') {
-        rotYMultiplier = -1; // Inverser le sens pour cylindre
-      }
-      rotY += deltaX * config.mouseSensitivity * 0.01 * rotYMultiplier;
-      
-      // Rotation X (vertical) - adaptée par surface
-      if (window.currentSurface === 'cylinder') {
-        // Cylindre : pas de rotation verticale
-      } else if (window.currentSurface === 'torus') {
-        // Tore : dragY = rotZ (inclinaison autour de l'axe Z)
-        rotZ += deltaY * config.mouseSensitivity * 0.01;
-      } else {
-        // Autres surfaces : rotation X normale
-        rotX += deltaY * config.mouseSensitivity * 0.01;
-  // Garder les angles dans une plage raisonnable
-  rotX = Math.max(-Math.PI, Math.min(Math.PI, rotX));
-      }
-    }
-  }
-  
-  lastMouseX = e.clientX;
-  lastMouseY = e.clientY;
-  
-  updateAngleDisplay();
-  
-
-});
-
-canvas.addEventListener('mouseup', () => {
-  isDragging = false;
-  canvas.style.cursor = window.currentSurface !== 'plane' ? 'grab' : 'default';
-});
-
-canvas.addEventListener('mouseleave', () => {
-  isDragging = false;
-  canvas.style.cursor = window.currentSurface !== 'plane' ? 'grab' : 'default';
-});
-
-// Update cursor style based on drag state
-setInterval(() => {
-  if (!isDragging) {
-    canvas.style.cursor = (window.currentSurface !== 'plane') ? 'grab' : 'default';
-  }
-}, 100);
+// 🎯 SUPPRIMÉ: Ancien système de drag obsolète - remplacé par camera.js
+// Les événements de drag sont maintenant gérés dans setupCameraControls()
 
 // Zoom avec molette + rendu différé
 let wheelTimeout = null;
@@ -2023,6 +2015,80 @@ document.getElementById('camCenter').addEventListener('click', () => resetToDefa
 updateAngleDisplay();
 
 // Plus besoin d'appeler render() manuellement - animation automatique !
+
+// === FONCTION POUR DESSINER LE TRIÈDRE ===
+function drawTrihedron() {
+  const axisLength = 50; // Longueur des axes
+  
+  // Définir les vecteurs de base du trièdre (origine à 0,0,0)
+  const axes = [
+    { x: axisLength, y: 0, z: 0, color: '#ff0000', label: 'X' }, // Axe X (rouge)
+    { x: 0, y: axisLength, z: 0, color: '#00ff00', label: 'Y' }, // Axe Y (vert)
+    { x: 0, y: 0, z: axisLength, color: '#0000ff', label: 'Z' }  // Axe Z (bleu)
+  ];
+  
+  // Sauvegarder le contexte
+  ctx.save();
+  
+  // Appliquer les mêmes rotations que la surface courante
+  const rotatedAxes = axes.map(axis => {
+    const rotated = rotate3DUniversal(
+      axis.x, axis.y, axis.z, 
+      window.globalRotX, window.globalRotY, window.globalRotZ, 
+      window.currentSurface, window.globalRotShape
+    );
+    return { ...axis, ...rotated };
+  });
+  
+  // Projection de l'origine (0,0,0) - centre du trièdre
+  const originProjected = projectIso(0, 0, 0, 1);
+  const centerX = canvas.width / 2 + originProjected.x;
+  const centerY = canvas.height / 2 - originProjected.y;
+  
+  // Dessiner chaque axe
+  rotatedAxes.forEach(axis => {
+    // Projection isométrique de l'extrémité de l'axe
+    const projected = projectIso(axis.x, axis.y, axis.z, 1);
+    const endX = canvas.width / 2 + projected.x;
+    const endY = canvas.height / 2 - projected.y;
+    
+    // Dessiner l'axe
+    ctx.strokeStyle = axis.color;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+    
+    // Ajouter le label
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Position du label (légèrement décalé de l'extrémité)
+    const labelOffset = 15;
+    const labelX = endX + (endX - centerX) * labelOffset / axisLength;
+    const labelY = endY + (endY - centerY) * labelOffset / axisLength;
+    
+    ctx.strokeText(axis.label, labelX, labelY);
+    ctx.fillText(axis.label, labelX, labelY);
+  });
+  
+  // Point central
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, 4, 0, 2 * Math.PI);
+  ctx.fill();
+  ctx.stroke();
+  
+  // Restaurer le contexte
+  ctx.restore();
+}
 
 // === FONCTION UTILITAIRE POUR DEBUG CLIC ===
 
@@ -2984,6 +3050,8 @@ function updateCameraControlsState() {
   if (moveOverlay) {
     moveOverlay.classList.toggle('active', is2D);
   }
+
+
 }
 
 async function startApp() {
@@ -3018,21 +3086,21 @@ if (document.readyState === 'loading') {
   startApp();
 }
 
-async function initializeShape() {
+async function initializeShape(resetAngles = true) {
   const surfaceName = window.currentSurface;
-  pd('initializeShape', 'main.js', `Entrée dans initializeShape pour ${surfaceName}`);
+  pd('initializeShape', 'main.js', `Entrée dans initializeShape pour ${surfaceName} (resetAngles: ${resetAngles})`);
   if (typeof createSurface !== 'function') {
     throw new Error('createSurface is not initialized or not a function');
   }
-  if (currentConfig) {
+  if (currentConfig && resetAngles) {
     const angles = currentConfig;
-    rotX = (angles.rotX * Math.PI) / 180;
-    rotY = (angles.rotY * Math.PI) / 180;
-    rotZ = (angles.rotZ * Math.PI) / 180;
+    window.globalRotX = (angles.rotX * Math.PI) / 180;
+    window.globalRotY = (angles.rotY * Math.PI) / 180;
+    window.globalRotZ = (angles.rotZ * Math.PI) / 180;
     scale = angles.scale;
     pd('CONFIG', 'main.js', `CONFIG | SHAPE | surface: ${surfaceName} | valeurs: ${JSON.stringify(angles)}`);
         } else {
-    pd('CONFIG', 'main.js', `Aucune config trouvée pour ${surfaceName}`);
+    pd('CONFIG', 'main.js', `Aucune config trouvée pour ${surfaceName} ou resetAngles=false`);
   }
   currentMesh = initializeMesh(createSurface);
   window.currentMesh = currentMesh;
@@ -3052,10 +3120,13 @@ async function initializeShape() {
 
 async function morphToSurface(newSurfaceName, skipAnimation = false) {
   pd('morphToSurface', 'main.js', `Morphing vers ${newSurfaceName}`);
+  const previousSurface = window.currentSurface;
   window.currentSurface = newSurfaceName;
 
   await loadSurfaceModule();
-  await initializeShape();
+  // Ne réinitialiser les angles que si on change de surface
+  const resetAngles = previousSurface !== newSurfaceName;
+  await initializeShape(resetAngles);
   // Forcer la mise à jour de toute l'UI traduite (titre inclus)
   if (typeof window.refreshAllTranslations === 'function') {
     window.refreshAllTranslations();
@@ -3076,14 +3147,14 @@ window.morphToSurface = morphToSurface;
 
 // Après l'initialisation du canvas et des variables globales :
 setupCameraControls(canvas, config, updateAngleDisplay, render, typeof debugUVCorners !== 'undefined' ? debugUVCorners : undefined, {
-  get rotX() { return rotX; },
-  set rotX(val) { rotX = val; },
-  get rotY() { return rotY; },
-  set rotY(val) { rotY = val; },
-  get rotZ() { return rotZ; },
-  set rotZ(val) { rotZ = val; },
-  get rotShape() { return rotShape; },
-  set rotShape(val) { rotShape = val; }
+  get rotX() { return window.globalRotX; },
+  set rotX(val) { window.globalRotX = val; },
+  get rotY() { return window.globalRotY; },
+  set rotY(val) { window.globalRotY = val; },
+  get rotZ() { return window.globalRotZ; },
+  set rotZ(val) { window.globalRotZ = val; },
+  get rotShape() { return window.globalRotShape; },
+  set rotShape(val) { window.globalRotShape = val; }
 });
 
 export function refreshAllTranslations() {
@@ -3137,6 +3208,25 @@ export function refreshAllTranslations() {
       console.log(`[DEBUG][refreshAllTranslations] t n'est pas une fonction pour key=${key}`);
     }
       });
+    
+    // Gestion des attributs trad-alt pour les alt et title traduits
+    document.querySelectorAll('[trad-alt]').forEach(el => {
+      const key = el.getAttribute('trad-alt');
+      if (typeof t === 'function') {
+        const value = t(key);
+        // Mettre à jour alt, title ou aria-label selon l'élément
+        if (el.hasAttribute('alt')) {
+          el.setAttribute('alt', value);
+        }
+        if (el.hasAttribute('title')) {
+          el.setAttribute('title', value);
+        }
+        if (el.hasAttribute('aria-label')) {
+          el.setAttribute('aria-label', value);
+        }
+      }
+    });
+    
     // Appeler renderMainTitle pour gérer les retours à la ligne dans le titre
     renderMainTitle();
     //console.log('[DEBUG][refreshAllTranslations] === FIN ===');
@@ -3174,7 +3264,13 @@ function renderMainTitle() {
     
     // Sépare le titre en lignes et les enveloppe dans des spans
     const lines = translatedText.split('\\n');
-    const html = lines.map((line, index) => `<span class="title-line-${index + 1}">${line}</span>`).join('<br>');
+    const html = lines.map((line, index) => {
+      // Ajouter un <br> après "J.P. Petit" dans la dernière ligne
+      if (index === lines.length - 1 && line.includes('J.P. Petit')) {
+        return `<span class="title-line-${index + 1}">${line}<br></span>`;
+      }
+      return `<span class="title-line-${index + 1}">${line}</span>`;
+    }).join('<br>');
     
     titleElement.innerHTML = html;
   }

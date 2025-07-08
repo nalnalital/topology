@@ -6,49 +6,46 @@
   <title>Topologicon</title>
   <link rel="stylesheet" href="css/main.css?v=2.56.8">
   <link rel="stylesheet" href="css/shapes_buttons.css">
+  <link rel="stylesheet" href="panel-iso.css">
   <link rel="icon" href="cartes/favicon.ico" type="image/x-icon">
       <!-- Version 2.53.0 - Refactoring CSS -->
 </head>
 <body>
 
-  <!-- Structure à 3 colonnes pour titre centré + bouton PDF à droite -->
-  <div class="title-container">
-    <div class="title-left">
-      <div id="langSelector">
-        <span class="lang-flag" data-lang="fr">🇫🇷</span>
-        <span class="lang-flag" data-lang="en">🇬🇧</span>
-        <span class="lang-flag" data-lang="es">🇪🇸</span>
-        <span class="lang-flag" data-lang="it">🇮🇹</span>
-        <span class="lang-flag" data-lang="de">🇩🇪</span>
+    <!-- Structure à 3 colonnes pour titre centré + bouton PDF à droite -->
+    <div class="title-container">
+      <div class="title-left">
+        &nbsp;
       </div>
-      <!-- BOUTON PALETTE UV SUPPRIMÉ D'ICI -->
-    </div>
-    <div class="title-center">
-      <h1 trad="mainTitle">Square Topologicon</h1>
-    </div>
-    <div class="title-right">
-      <!-- Conteneur PDF avec cadre -->
-      <div class="pdf-container">
-        <!-- URL du site au-dessus -->
-        <div id="pdfSiteUrl" class="pdf-site-url">
-          <a href="#" id="siteUrlLink" target="_blank">topologicon.net</a>
-        </div>
-        
-        <!-- Ligne avec bouton PDF et drapeau courant -->
-        <div class="pdf-button-row">
-          <button id="pdfBtn" class="pdf-button" title="Ouvrir le Topologicon PDF">
-            <img src="trads/topologicon.jpg" alt="Topologicon PDF" class="pdf-icon">
-          </button>
-          <span id="pdfCurrentLangFlag" class="pdf-lang-flag"></span>
+      <div class="title-center">
+        <h1 trad="mainTitle">Topologicon</h1>
+      </div>
+      <div class="title-right">
+        <!-- Conteneur PDF avec cadre -->
+        <div class="pdf-container">
+          <!-- URL du site au-dessus -->
+          <div id="pdfSiteUrl" class="pdf-site-url">
+            <a href="#" id="siteUrlLink" target="_blank" trad-alt="siteLink">PDF</a>
+          </div>
+          
+          <!-- Ligne avec bouton PDF et drapeau courant -->
+          <div class="pdf-button-row">
+            <button id="pdfBtn" class="pdf-button" title="Ouvrir le Topologicon PDF">
+              <img src="trads/topologicon.jpg" trad-alt="pdfIcon" alt="Topologicon PDF" class="pdf-icon">
+            </button>
+            <span id="pdfCurrentLangFlag" class="pdf-lang-flag"></span>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-  
+
   <!-- Nouvelle structure avec grille CSS pour alignement parfait -->
   <div class="simulation-grid">
     <!-- Boutons gauche -->
     <div class="left-controls">
+      <div class="language-selector-bottom">
+        
+      </div>
       <div class="left-shapes-grid">
         <!-- Les boutons de topologie seront générés dynamiquement ici -->
       </div>
@@ -85,7 +82,7 @@
         <!-- Section Rotations -->
         <div class="rotation-controls">
           <div class="rotation-axis">
-            <img src="axis_x.svg" class="axis-icon" alt="X">
+                          <img src="axis_x.svg" class="axis-icon" trad-alt="axisX" alt="X">
             <span class="angle-display" id="angleXDisplay">0°</span>
             <div class="rotation-buttons-vertical">
               <button id="rotXRight">↪️</button>
@@ -94,7 +91,7 @@
           </div>
           
           <div class="rotation-axis">
-            <img src="axis_y.svg" class="axis-icon" alt="Y">
+                          <img src="axis_y.svg" class="axis-icon" trad-alt="axisY" alt="Y">
             <span class="angle-display" id="angleYDisplay">135°</span>
             <div class="rotation-buttons-vertical">
               <button id="rotYRight">↪️</button>
@@ -103,7 +100,7 @@
           </div>
           
           <div class="rotation-axis">
-            <img src="axis_z.svg" class="axis-icon" alt="Z">
+                          <img src="axis_z.svg" class="axis-icon" trad-alt="axisZ" alt="Z">
             <span class="angle-display" id="angleZDisplay">0°</span>
             <div class="rotation-buttons-vertical">
               <button id="rotZRight">↪️</button>
@@ -116,6 +113,13 @@
     
     <!-- Boutons droite -->
     <div class="right-controls">
+      <div id="langSelectorBottom">
+        <span class="lang-flag" data-lang="fr">🇫🇷</span>
+        <span class="lang-flag" data-lang="en">🇬🇧</span>
+        <span class="lang-flag" data-lang="es">🇪🇸</span>
+        <span class="lang-flag" data-lang="it">🇮🇹</span>
+        <span class="lang-flag" data-lang="de">🇩🇪</span>
+      </div>
       <!-- Les boutons de topologie seront générés dynamiquement ici -->
     </div>
   </div>
@@ -154,11 +158,12 @@
     </div>
   </div>
   <div id="pdfModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
-    <img src="trads/topologicon.jpg" alt="Topologicon BD" style="max-width:90vw; max-height:90vh; border-radius:12px; box-shadow:0 4px 32px #000; cursor:pointer;" id="pdfModalImg">
+    <img src="trads/topologicon.jpg" trad-alt="pdfModal" alt="Topologicon BD" style="max-width:90vw; max-height:90vh; border-radius:12px; box-shadow:0 4px 32px #000; cursor:pointer;" id="pdfModalImg">
   </div>
   <script src="trads/translations.js"></script>
   <script type="module" src="shape-selector.js"></script>
   <script type="module" src="debug/debug.js"></script>
+  <script type="module" src="panel-iso.js"></script>
   <script type="module">
     import { buildTopologyButtons } from './interface.js';
     import { pdfLinks } from './trads/pdf.js';
@@ -186,7 +191,7 @@
       //console.log('[DEBUG][setLang] Appel avec', lang);
       window.currentLang = lang;
       
-      // Met à jour le style des drapeaux
+      // Met à jour le style des drapeaux (pour les deux sélecteurs)
       document.querySelectorAll('.lang-flag').forEach(flag => {
         flag.style.borderColor = (flag.dataset.lang === lang) ? '#2196f3' : 'transparent';
       });
@@ -214,7 +219,7 @@
       //console.log('[DEBUG] buildTopologyButtons start');
       buildTopologyButtons().then(() => {
         attachShapeListeners();
-        // Gestion du changement de langue
+        // Gestion du changement de langue (pour les deux sélecteurs)
         document.querySelectorAll('.lang-flag').forEach(flag => {
           flag.addEventListener('click', () => {
             //console.log('[DEBUG][lang-flag] Clic sur', flag.dataset.lang);

@@ -10,13 +10,13 @@
     justify-content: flex-start; /* Aligne en haut */
     gap: 10px; /* Espace entre les boutons */
     height: 100%; /* Prend toute la hauteur disponible */
-    padding: 10px 0; /* Padding vertical */
+    padding: 10px; /* Padding vertical */
 }
 
 .left-controls {
   gap: 12px;
   height: 100%;
-  width: 170px;
+  width: 200px;
   overflow-y: auto; /* Scroll si nécessaire */
   z-index: 2;
 }
@@ -24,13 +24,10 @@
 .right-controls {
   gap: 12px;
   height: 100%;
-  width: 170px;
+  width: 100%; /* Prend toute la largeur restante */
   overflow-y: auto; /* Scroll si nécessaire */
   z-index: 2;
-  padding: 5px; /* Marge pour éviter que les boutons sélectionnés soient coupés */
 }
-
-
 
 .topology-option {
   position: relative;

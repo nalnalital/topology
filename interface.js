@@ -85,7 +85,15 @@ export async function buildTopologyButtons() {
 
   // Génération colonne droite
   const rightDiv = document.querySelector('.right-controls');
-  if (rightDiv) rightDiv.innerHTML = '';
+  if (rightDiv) {
+    // Sauvegarder les drapeaux de langues existants
+    const langSelector = rightDiv.querySelector('#langSelectorBottom');
+    rightDiv.innerHTML = '';
+    // Remettre les drapeaux de langues
+    if (langSelector) {
+      rightDiv.appendChild(langSelector);
+    }
+  }
   for (const name of rightSurfaces) {
     // Ignorer les entrées vides
     if (!name || name.trim() === '') continue;
@@ -155,14 +163,7 @@ export function displayTopologyGroups(surfaceName) {
     
     // Conteneur pour le titre centré
     const titleContainer = document.createElement('div');
-    titleContainer.style.cssText = `
-      flex: 1;
-      text-align: center;
-      font-family: 'Soopafresh', cursive;
-      font-size: 1.2em;
-      color: #fbc02d;
-      text-shadow: 1px 1px 0px #a31a0b, 2px 2px 4px rgba(0,0,0,0.2);
-    `;
+    titleContainer.className = 'title-carte';
     
     // Utiliser le titre original
     titleContainer.textContent = originalTitle;
@@ -172,7 +173,7 @@ export function displayTopologyGroups(surfaceName) {
     algebraContainer.className = 'topology-groups';
     algebraContainer.style.cssText = `
       position: absolute;
-      left: 60%;
+      left: 70%;
       top: -90px;
       display: flex;
       flex-direction: column;

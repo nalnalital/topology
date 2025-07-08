@@ -7,13 +7,14 @@
 //   - Initial version, extraction depuis main.js
 
 export function setupCameraControls(canvas, config, updateAngleDisplay, render, debugUVCorners, anglesRef) {
-  let isDragging = false;
+  // 🎯 CORRECTION: Rendre isDragging global pour éviter la restauration d'angles pendant le drag
+  window.isDragging = false;
   let lastMouseX = 0;
   let lastMouseY = 0;
   
   canvas.addEventListener('mousedown', (e) => {
     if (window.currentSurface !== 'plane') {
-      isDragging = true;
+      window.isDragging = true;
       lastMouseX = e.clientX;
       lastMouseY = e.clientY;
       canvas.style.cursor = 'grabbing';
@@ -21,7 +22,7 @@ export function setupCameraControls(canvas, config, updateAngleDisplay, render, 
   });
 
   canvas.addEventListener('mousemove', (e) => {
-    if (!isDragging || window.currentSurface === 'plane') return;
+    if (!window.isDragging || window.currentSurface === 'plane') return;
     const deltaX = e.clientX - lastMouseX;
     const deltaY = e.clientY - lastMouseY;
     // Sauvegarder anciennes valeurs pour détecter changements
@@ -46,15 +47,15 @@ export function setupCameraControls(canvas, config, updateAngleDisplay, render, 
   });
 
   canvas.addEventListener('mouseup', () => {
-    isDragging = false;
+    window.isDragging = false;
     canvas.style.cursor = window.currentSurface !== 'plane' ? 'grab' : 'default';
   });
   canvas.addEventListener('mouseleave', () => {
-    isDragging = false;
+    window.isDragging = false;
     canvas.style.cursor = window.currentSurface !== 'plane' ? 'grab' : 'default';
   });
   setInterval(() => {
-    if (!isDragging) {
+    if (!window.isDragging) {
       canvas.style.cursor = window.currentSurface !== 'plane' ? 'grab' : 'default';
     }
   }, 100);

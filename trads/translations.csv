@@ -45,3 +45,11 @@ rotationX,Rotation X,Rotation X,Rotación X,Rotazione X,Rotation X
 rotationY,Rotation Y,Rotation Y,Rotación Y,Rotazione Y,Rotation Y
 rotationZ,Rotation Z,Rotation Z,Rotación Z,Rotazione Z,Rotation Z
 scale,Échelle,Scale,Escala,Scala,Skalierung
+
+# --- ATTRIBUTS ALT (ACCESSIBILITÉ) ---
+pdfIcon,Icône PDF Topologicon,Topologicon PDF Icon,Icono PDF Topologicon,Icona PDF Topologicon,Topologicon PDF Symbol
+pdfModal,Bande dessinée Topologicon,Topologicon Comic,Cómic Topologicon,Fumetto Topologicon,Topologicon Comic
+axisX,Axe X,X Axis,Eje X,Asse X,X-Achse
+axisY,Axe Y,Y Axis,Eje Y,Asse Y,Y-Achse
+axisZ,Axe Z,Z Axis,Eje Z,Asse Z,Z-Achse
+siteLink,Site Savoir Sans Frontières,Savoir Sans Frontières Website,Sitio Savoir Sans Frontières,Sito Savoir Sans Frontières,Savoir Sans Frontières Website

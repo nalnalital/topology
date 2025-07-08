@@ -65,7 +65,7 @@ export const algebraicInvariants = {
 
 // Gestion du drag spécifique cylindre
 export function handleDrag(deltaX, deltaY, angles, config) {
-  // dragX = rotY (inversé), dragY = rien
   angles.rotY += deltaX * config.mouseSensitivity * -1 * 0.01;
-  // dragY ignoré
+  angles.rotX += deltaY * config.mouseSensitivity * 0.01;
+  angles.rotX = Math.max(-Math.PI, Math.min(Math.PI, angles.rotX));
 }
