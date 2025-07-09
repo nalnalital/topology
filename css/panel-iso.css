@@ -9,23 +9,18 @@
  *   - v1.3.4: overflow: hidden sur le panneau pour garantir la hauteur stricte 30px plié
  */
 
+/* Bordure bleue par défaut sur le panneau */
 .camera-translation-floating {
+  border: 2px solid #2196f3;
+  border-radius: 12px;
   position: absolute;
   bottom: 20px;
   left: 20px;
   top: auto;
-  background: transparent; 
-  border-radius: 12px;
-  border: 2px solid rgba(52, 152, 219, 0.6);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  cursor: move;
-  transition: all 0.3s ease;
   width: 85px;
   height: 30px;
   overflow: hidden;
 }
-
 /* Panneau verrouillé : hauteur automatique pour contenir tout */
 .camera-translation-floating.locked {
   height: auto;
@@ -38,18 +33,19 @@
 }
 
 /* Zone de drag verrouillée : bleu vif, aucune bordure ni effet */
-/*
+
 .camera-translation-floating.locked .drag-handle {
-  background: #42a5f5 !important;
-  color: #1565c0 !important;
-  border: none !important;
+  background: #ffcdcd !important;
+  color: #990000 !important;
+  border-bottom: 1px solid rgba(243, 33, 33, 0.4) !important;
   box-shadow: none !important;
   outline: none !important;
 }
-*/
-/* Bordure bleue par défaut sur le panneau */
-.camera-translation-floating {
-  border: 2px solid #2196f3;
+.camera-translation-floating.dragging .drag-handle {
+  background: rgba(52, 152, 219, 0.2);
+  color: #2980b9;
+  border-bottom: 1px solid rgba(52, 152, 219, 0.4);
+  font-weight: bold;
 }
 
 .camera-translation-floating.dragging {
@@ -63,12 +59,6 @@
   border-color: #2196f3;
   top: auto;
   bottom: 20px;
-}
-
-.camera-translation-floating.dragging .drag-handle {
-  background: rgba(52, 152, 219, 0.2);
-  color: #2980b9;
-  font-weight: bold;
 }
 
 .camera-translation-floating:hover:not(.locked) {
@@ -127,13 +117,7 @@
   pointer-events: auto;
 }
 
-/* État déverrouillé : zone de drag bleue (par défaut) */
 
-.camera-translation-floating .drag-handle {
-  background: rgba(52, 152, 219, 0.15);
-  border-bottom: 1px solid rgba(52, 152, 219, 0.4);
-  color: #3498db;
-}
 /*
 .camera-translation-floating.locked .drag-handle {
   background: rgba(231, 76, 60, 0.2);
@@ -185,12 +169,9 @@
 }
 
 .camera-translation-floating .drag-handle {
-  width: 85px !important;
-  min-width: 85px !important;
-  max-width: 85px !important;
-  height: 22px !important;
-  min-height: 22px !important;
-  max-height: 22px !important;
+  background: rgba(52, 152, 219, 0.15);
+  border-bottom: 1px solid rgba(52, 152, 219, 0.4);
+  color: #3498db;
   padding: 4px 0 !important;
   font-weight: bold;
   font-size: 10px !important;
@@ -198,7 +179,6 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  cursor: grab;
   transition: none !important;
   border-radius: 10px 10px 0 0;
 }
