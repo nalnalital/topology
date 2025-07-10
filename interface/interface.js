@@ -7,7 +7,7 @@
 //   - v1.0.1: Ajout import renderTopologyIcon depuis shape-selector.js
 //   - v1.0.0: Génération dynamique des boutons de topologie (plus de pictos en dur)
 
-import { renderTopologyIcon } from './shape-selector.js';
+import { renderTopologyIcon } from '../shape-selector.js';
 
 // Liste des surfaces à afficher à gauche (deux colonnes) et à droite (classiques)
 const leftSurfaces = [
@@ -40,7 +40,7 @@ export async function buildTopologyButtons() {
   const allSurfaces = [...leftSurfaces, ...rightSurfaces].filter(name => name && name.trim() !== '');
   const modules = {};
   for (const name of allSurfaces) {
-    modules[name] = await import(`./surfaces/${name}.js`);
+    modules[name] = await import(`../surfaces/${name}.js`);
   }
 
   // Génération colonne gauche avec organisation spécifique
@@ -133,8 +133,8 @@ export function displayTopologyGroups(surfaceName) {
   }
 
   // Importer dynamiquement la surface pour obtenir les invariants
-  console.log('[DEBUG] Tentative d\'import du module:', `./surfaces/${surfaceName}.js`);
-  import(`./surfaces/${surfaceName}.js`).then(module => {
+  console.log('[DEBUG] Tentative d\'import du module:', `../surfaces/${surfaceName}.js`);
+  import(`../surfaces/${surfaceName}.js`).then(module => {
     console.log(`[DEBUG] Module chargé pour ${surfaceName}:`, module);
     
     if (!module.algebraicInvariants) {

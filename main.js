@@ -15,10 +15,10 @@
 
 // === IMPORTS ===
 import { config } from './config.js';
-import { createMesh, homeomorphism, transformCase, transformMesh, debugCase, debugMesh } from './mesh.js';
+import { createMesh, homeomorphism, transformCase, transformMesh, debugCase, debugMesh } from './3D/mesh.js';
 import { drawUVPalette } from './3D/3Diso.js';
 import { setupCameraControls } from './3D/camera.js';
-import { displayTopologyGroups } from './interface.js';
+import { displayTopologyGroups } from './interface/interface.js';
 
 // === CONFIGURATION MAILLAGE ===
 // ========================================================================
@@ -3101,7 +3101,7 @@ async function startApp() {
   
   // Initialiser le panneau isométrique
   try {
-    const { initPanelIso } = await import('./panel-iso.js');
+    const { initPanelIso } = await import('./interface/panel-iso.js');
     initPanelIso({
       is2D: () => window.currentSurface === 'plane',
       onReset: resetToDefaultConfiguration
