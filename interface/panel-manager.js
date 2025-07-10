@@ -1,10 +1,13 @@
 // File: panel-manager.js - Gestionnaire centralisé des panneaux flottants
 // Desc: En français, dans l'architecture, je suis le module centralisé de gestion des panneaux (drag, position, resize, lock, etc.)
-// Version 1.0.0
+// Version 1.3.0 (gestion mode 2D/3D)
 // Author: DNAvatar.org - Arnaud Maignan
 // Date: June 08, 2025 20:30 UTC+1
 // Logs:
+//   - v1.3.0: Ajout gestion mode 2D/3D avec détection surface plane et désactivation panneau isométrique
 //   - v1.0.0: Création du module, centralisation de la gestion des panneaux
+//   - v1.0.1: Enregistrement automatique de isometriesPanel
+//   - v1.2.0: Création automatique du drag-handle si absent
 
 // Classe pour gérer l'état d'un panneau
 class PanelState {
@@ -16,13 +19,17 @@ class PanelState {
     this.isDragging = false;
     this.isHovered = false;
     this.isDisabled = false;
+    this.is2DMode = false;
+    this.disableIn2D = options.disableIn2D || false; // Désactiver ce panneau en mode 2D
     this.dragOffsetX = 0;
     this.dragOffsetY = 0;
+    this.initialMouseX = 0;
+    this.initialMouseY = 0;
     this.mouseDownTime = 0;
     this.isClick = false;
     this.clickThreshold = options.clickThreshold || 300; // ms
     this.defaultPosition = options.defaultPosition || 'bottom-left';
-    this.defaultWidth = options.defaultWidth || '85px';
+    this.defaultWidth = options.defaultWidth; // peut être undefined
     this.defaultHeight = options.defaultHeight || 'auto';
     this.margin = options.margin || 20;
     
@@ -36,22 +43,27 @@ class PanelState {
       return;
     }
 
+    // Assurer la présence d'une zone de drag ; la créer si absente
     this.dragHandle = this.panel.querySelector('.drag-handle');
     if (!this.dragHandle) {
-      pdManager('init', `❌ Drag handle pour ${this.panelId} introuvable`);
-      return;
+      this.dragHandle = document.createElement('div');
+      this.dragHandle.className = 'drag-handle';
+      this.dragHandle.textContent = '⋮⋮⋮';
+      this.panel.insertBefore(this.dragHandle, this.panel.firstChild);
+      pdManager('init', `🆕 Drag handle créé pour ${this.panelId}`);
     }
 
     // Appliquer les dimensions par défaut
-    this.panel.style.width = this.defaultWidth;
-    this.panel.style.minWidth = this.defaultWidth;
-    this.panel.style.maxWidth = this.defaultWidth;
+    if (this.defaultWidth) {
+      this.panel.style.width = this.defaultWidth;
+      this.panel.style.minWidth = this.defaultWidth;
+      this.panel.style.maxWidth = this.defaultWidth;
+    }
     if (this.defaultHeight !== 'auto') {
       this.panel.style.height = this.defaultHeight;
     }
 
-    // Positionner le panneau
-    this.positionPanel();
+    // Positionnement initial géré désormais uniquement par le CSS (plus de JS).
 
     // Attacher les événements
     this.attachEvents();
@@ -59,166 +71,114 @@ class PanelState {
     pdManager('init', `✅ Panneau ${this.panelId} initialisé`);
   }
 
-  positionPanel() {
-    if (!this.panel) return;
+  // Méthodes de positionnement supprimées : positionPanel / position* (géré par CSS)
 
-    switch (this.defaultPosition) {
-      case 'bottom-left':
-        this.positionBottomLeft();
-        break;
-      case 'bottom-right':
-        this.positionBottomRight();
-        break;
-      case 'top-left':
-        this.positionTopLeft();
-        break;
-      case 'top-right':
-        this.positionTopRight();
-        break;
-      default:
-        this.positionBottomLeft();
-    }
-  }
-
-  positionBottomLeft() {
-    const canvas = document.getElementById('canvas');
-    if (canvas) {
-      // Positionner par rapport au canvas
-      const parent = this.panel.offsetParent || this.panel.parentElement;
-      const parentRect = parent.getBoundingClientRect();
-      const canvasRect = canvas.getBoundingClientRect();
-      const top = (canvasRect.bottom - parentRect.top) - this.panel.offsetHeight - this.margin;
-      this.panel.style.top = top + 'px';
-      this.panel.style.left = this.margin + 'px';
-      this.panel.style.bottom = '';
-      this.panel.style.right = '';
-    } else {
-      // Positionner par rapport à la fenêtre
-      const top = window.innerHeight - this.panel.offsetHeight - this.margin;
-      this.panel.style.top = top + 'px';
-      this.panel.style.left = this.margin + 'px';
-      this.panel.style.bottom = '';
-      this.panel.style.right = '';
-    }
-  }
-
-  positionBottomRight() {
-    const canvas = document.getElementById('canvas');
-    if (canvas) {
-      const parent = this.panel.offsetParent || this.panel.parentElement;
-      const parentRect = parent.getBoundingClientRect();
-      const canvasRect = canvas.getBoundingClientRect();
-      const top = (canvasRect.bottom - parentRect.top) - this.panel.offsetHeight - this.margin;
-      this.panel.style.top = top + 'px';
-      this.panel.style.right = this.margin + 'px';
-      this.panel.style.bottom = '';
-      this.panel.style.left = '';
-    } else {
-      const top = window.innerHeight - this.panel.offsetHeight - this.margin;
-      this.panel.style.top = top + 'px';
-      this.panel.style.right = this.margin + 'px';
-      this.panel.style.bottom = '';
-      this.panel.style.left = '';
-    }
-  }
-
-  positionTopLeft() {
-    this.panel.style.top = this.margin + 'px';
-    this.panel.style.left = this.margin + 'px';
-    this.panel.style.bottom = '';
-    this.panel.style.right = '';
-  }
-
-  positionTopRight() {
-    this.panel.style.top = this.margin + 'px';
-    this.panel.style.right = this.margin + 'px';
-    this.panel.style.bottom = '';
-    this.panel.style.left = '';
-  }
+  /*
+   * positionPanel(), positionBottomLeft(), positionBottomRight(), positionTopLeft(),
+   * positionTopRight() supprimés : l'init CSS fixe l'emplacement initial.
+   */
 
   attachEvents() {
     if (!this.dragHandle) return;
 
+    const self = this; // pour accès dans les callbacks
+
     // Mousedown pour commencer le drag
     this.dragHandle.addEventListener('mousedown', (e) => {
-      this.mouseDownTime = Date.now();
-      this.isClick = true;
-      this.setDragging(true);
+      // Refuser si un autre panneau est déjà en drag
+      if (!panelManager.startDrag(self)) return;
+
+      self.mouseDownTime = Date.now();
+      self.isClick = true;
       
-      const rect = this.panel.getBoundingClientRect();
-      this.dragOffsetX = e.clientX - rect.left;
-      this.dragOffsetY = e.clientY - rect.top;
+      // Stocker la position initiale de la souris pour détecter le mouvement
+      self.initialMouseX = e.clientX;
+      self.initialMouseY = e.clientY;
+
+      // Calculer l'offset par rapport au point de clic exact
+      const panelRect = self.panel.getBoundingClientRect();
       
-      this.panel.style.transition = 'none';
+      // Compenser le scroll de la page dans le calcul de l'offset
+      const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+      const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+      
+      self.dragOffsetX = e.clientX - (panelRect.left + scrollX);
+      self.dragOffsetY = e.clientY - (panelRect.top + scrollY);
+      
+      self.setDragging(true);
+
+      self.panel.style.transition = 'none';
       document.body.style.userSelect = 'none';
-      this.dragHandle.style.cursor = 'grabbing';
-      
-      pdManager('mousedown', `MouseDown sur ${this.panelId} - isClick=${this.isClick}`);
+      self.dragHandle.style.cursor = 'grabbing';
+
+      pdManager('mousedown', `MouseDown sur ${self.panelId} - offset=(${self.dragOffsetX}, ${self.dragOffsetY})`);
     });
 
     // Click pour verrouiller/déverrouiller
     this.dragHandle.addEventListener('click', (e) => {
-      const clickDuration = Date.now() - this.mouseDownTime;
-      const wasClick = this.isClick;
+      const clickDuration = Date.now() - self.mouseDownTime;
+      const wasClick = self.isClick;
       
-      pdManager('click', `Click sur ${this.panelId} - duration=${clickDuration}ms, isClick=${this.isClick}`);
+      pdManager('click', `Click sur ${self.panelId} - duration=${clickDuration}ms, isClick=${self.isClick}`);
       
-      if (clickDuration < this.clickThreshold && wasClick) {
-        this.toggleLock();
+      if (clickDuration < self.clickThreshold && wasClick) {
+        self.toggleLock();
         e.stopPropagation();
         e.preventDefault();
       }
       
-      this.isClick = false;
+      self.isClick = false;
     });
 
     // Mousemove pour le drag
     document.addEventListener('mousemove', (e) => {
-      if (!this.isDragging) return;
+      if (!self.isDragging) return;
       
-      const x = e.clientX - this.dragOffsetX;
-      const y = e.clientY - this.dragOffsetY;
+      const x = e.clientX - self.dragOffsetX;
+      const y = e.clientY - self.dragOffsetY;
       
-      this.panel.style.left = x + 'px';
-      this.panel.style.top = y + 'px';
-      this.panel.style.right = '';
-      this.panel.style.bottom = '';
+      // Supprimer explicitement right/bottom pour éviter les conflits avec le CSS
+      self.panel.style.right = '';
+      self.panel.style.bottom = '';
+      self.panel.style.left = x + 'px';
+      self.panel.style.top = y + 'px';
       
       // Si on bouge, ce n'est plus un clic
-      if (this.isClick) {
+      if (self.isClick) {
         const moveDistance = Math.sqrt(
-          Math.pow(e.clientX - (this.mouseDownTime), 2) + 
-          Math.pow(e.clientY - (this.mouseDownTime), 2)
+          Math.pow(e.clientX - self.initialMouseX, 2) + 
+          Math.pow(e.clientY - self.initialMouseY, 2)
         );
         if (moveDistance > 5) {
-          this.isClick = false;
+          self.isClick = false;
         }
       }
     });
 
     // Mouseup pour finir le drag
     document.addEventListener('mouseup', () => {
-      if (this.isDragging) {
-        this.setDragging(false);
-        this.panel.style.transition = '';
+      if (self.isDragging) {
+        self.setDragging(false);
+        panelManager.endDrag(self);
+        self.panel.style.transition = '';
         document.body.style.userSelect = '';
-        this.dragHandle.style.cursor = '';
-        pdManager('mouseup', `MouseUp sur ${this.panelId} - drag terminé`);
+        self.dragHandle.style.cursor = '';
+        pdManager('mouseup', `MouseUp sur ${self.panelId} - drag terminé`);
       }
     });
 
     // Rollover pour ouvrir/fermer
     this.panel.addEventListener('mouseenter', () => {
-      this.setHovered(true);
-      if (!this.isLocked) {
-        this.expand();
+      self.setHovered(true);
+      if (!self.isLocked) {
+        self.expand();
       }
     });
 
     this.panel.addEventListener('mouseleave', () => {
-      this.setHovered(false);
-      if (!this.isLocked) {
-        this.collapse();
+      self.setHovered(false);
+      if (!self.isLocked) {
+        self.collapse();
       }
     });
   }
@@ -251,6 +211,15 @@ class PanelState {
     } else {
       this.panel.classList.remove('disabled');
     }
+
+    // Gérer l'état 2D/3D
+    if (this.is2DMode) {
+      this.panel.classList.add('mode-2d');
+      this.panel.classList.remove('mode-3d');
+    } else {
+      this.panel.classList.add('mode-3d');
+      this.panel.classList.remove('mode-2d');
+    }
   }
 
   setDragging(dragging) {
@@ -270,6 +239,19 @@ class PanelState {
     pdManager('setDisabled', `Panneau ${this.panelId} ${disabled ? 'désactivé' : 'activé'}`);
   }
 
+  // Gestion du mode 2D/3D
+  set2DMode(is2D) {
+    this.is2DMode = is2D;
+    
+    // Si ce panneau doit être désactivé en mode 2D, le faire automatiquement
+    if (this.disableIn2D) {
+      this.setDisabled(is2D);
+    }
+    
+    this.updateVisualState();
+    pdManager('set2DMode', `Panneau ${this.panelId} mode ${is2D ? '2D' : '3D'}`);
+  }
+
   expand() {
     if (this.panel) {
       this.panel.classList.add('expanded');
@@ -287,8 +269,8 @@ class PanelState {
   }
 
   reset() {
-    this.positionPanel();
-    pdManager('reset', `Panneau ${this.panelId} repositionné`);
+    // Plus de repositionnement JS ; CSS seul décide.
+    pdManager('reset', `Panneau ${this.panelId} - pas de reposition JS (géré par CSS)`);
   }
 }
 
@@ -297,6 +279,49 @@ class PanelManager {
   constructor() {
     this.panels = new Map();
     this.resizeObservers = new Map();
+    // Panneau actuellement en cours de drag (un seul à la fois)
+    this.currentDraggingPanel = null;
+    
+    // Observer les changements de surface pour détecter le mode 2D/3D
+    this.initSurfaceObserver();
+  }
+
+  // Initialiser l'observateur de surface pour détecter le mode 2D/3D
+  initSurfaceObserver() {
+    // Observer les changements de window.currentSurface
+    let lastSurface = null;
+    
+    const checkSurface = () => {
+      const currentSurface = window.currentSurface;
+      if (currentSurface !== lastSurface) {
+        lastSurface = currentSurface;
+        const is2D = currentSurface === 'plane';
+        this.setAll2DMode(is2D);
+        pdManager('surfaceChange', `Surface changée: ${currentSurface} (mode ${is2D ? '2D' : '3D'})`);
+      }
+    };
+    
+    // Vérifier périodiquement (toutes les 100ms)
+    setInterval(checkSurface, 100);
+    
+    // Vérifier immédiatement
+    checkSurface();
+  }
+
+  // Début de drag : retourne false si un autre panneau est déjà en drag
+  startDrag(panelState) {
+    if (this.currentDraggingPanel && this.currentDraggingPanel !== panelState) {
+      return false; // Refuser le drag concurrent
+    }
+    this.currentDraggingPanel = panelState;
+    return true;
+  }
+
+  // Fin de drag
+  endDrag(panelState) {
+    if (this.currentDraggingPanel === panelState) {
+      this.currentDraggingPanel = null;
+    }
   }
 
   // Enregistrer un nouveau panneau
@@ -367,10 +392,34 @@ class PanelManager {
     });
     pdManager('setAllDisabled', `Tous les panneaux ${disabled ? 'désactivés' : 'activés'}`);
   }
+
+  // Définir le mode 2D/3D pour tous les panneaux
+  setAll2DMode(is2D) {
+    this.panels.forEach(panelState => {
+      panelState.set2DMode(is2D);
+    });
+    pdManager('setAll2DMode', `Tous les panneaux passés en mode ${is2D ? '2D' : '3D'}`);
+  }
+
+  // Obtenir l'état 2D/3D actuel
+  is2DMode() {
+    return window.currentSurface === 'plane';
+  }
 }
 
 // Instance globale du gestionnaire
 const panelManager = new PanelManager();
+
+// === Enregistrement automatique du panneau isométrique ===
+document.addEventListener('DOMContentLoaded', () => {
+  panelManager.registerPanel('isometriesPanel', {
+    defaultPosition: 'bottom-left',
+    defaultWidth: '85px',
+    clickThreshold: 300,
+    margin: 20,
+    disableIn2D: true // Désactiver le panneau isométrique en mode 2D
+  });
+});
 
 // Fonction de debug
 function pdManager(f, msg) {

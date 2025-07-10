@@ -1,88 +1,33 @@
 /* File: panel-iso.css - Styles panneau isométrique
- * Desc: En français, dans l'architecture, je suis les styles CSS du panneau isométrique (drag, rollover, disabled, etc.)
- * Version 1.3.6
+ * Desc: En français, dans l'architecture, je suis les styles CSS du panneau isométrique (rollover, disabled, boutons internes)
+ * Version 2.0.0 (nettoyage panel-manager)
  * Author: DNAvatar.org - Arnaud Maignan
  * Date: June 08, 2025 19:15 UTC+1
  * Logs:
+ *   - v2.0.0: Suppression des styles redondants avec panel-manager.css (bordures, locked, drag-handle génériques)
  *   - v1.3.6: Renforcement styles verrouillé avec !important et bordure rouge
  *   - v1.3.5: Ajout styles pour état verrouillé (rouge) et déverrouillé (bleu)
  *   - v1.3.4: overflow: hidden sur le panneau pour garantir la hauteur stricte 30px plié
  */
 
-/* Bordure bleue par défaut sur le panneau */
+/* Position initiale et dimensions spécifiques */
 .isometries-panel.panel-floating {
-  border: 2px solid #2196f3;
-  border-radius: 12px;
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  top: auto;
+  top: 600px;
+  left: 100px;
   width: 85px;
   height: 30px;
   overflow: hidden;
 }
-/* Panneau verrouillé : hauteur automatique pour contenir tout */
-.isometries-panel.locked {
-  height: auto;
-  top: auto;
-  bottom: 20px;
-  border: 2px solid #2196f3 !important; /* Toujours bleu, même locked */
-  outline: 2px solid #c07015 !important;
-  outline-offset: 0px;
-  box-shadow: 0 4px 12px rgba(33,150,243,0.15) !important;
-}
 
-/* Zone de drag verrouillée : bleu vif, aucune bordure ni effet */
-
-.isometries-panel.locked .drag-handle {
-  background: #ffcdcd !important;
-  color: #990000 !important;
-  border-bottom: 1px solid rgba(243, 33, 33, 0.4) !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
-.isometries-panel.dragging .drag-handle {
-  background: rgba(52, 152, 219, 0.2);
-  color: #2980b9;
-  border-bottom: 1px solid rgba(52, 152, 219, 0.4);
-  font-weight: bold;
-}
-
-.isometries-panel.dragging {
-  /* Suppression des effets visuels lors du drag */
-  height: auto !important;
-  min-height: 100px !important;
-  max-height: none !important;
-  overflow: visible !important;
-  transition: none !important;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-  border-color: #2196f3;
-  top: auto;
-  bottom: 20px;
-}
-
-.isometries-panel:hover:not(.locked) {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-  transform: translateY(0);
-  height: auto;
-  top: auto;
-  bottom: 20px;
-}
-
-/* En mode disabled, forcer la hauteur fixe et pas d'animation */
-.isometries-panel.disabled {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
+/* En mode disabled, forcer la hauteur fixe spécifique au panneau isométrique */
+.isometries-panel.panel-floating.disabled {
   height: 30px !important;
-  transition: none !important;
-  animation: none !important;
-  /* Pas de curseur sur le conteneur principal pour laisser les enfants gérer */
 }
 
 /* MODE ROLLOUT : Par défaut seule la zone de drag visible */
-.isometries-panel .translation-grid,
-.isometries-panel .separator,
-.isometries-panel .rotation-controls {
+.isometries-panel.panel-floating .translation-grid,
+.isometries-panel.panel-floating .separator,
+.isometries-panel.panel-floating .rotation-controls {
   opacity: 0;
   transform: scale(0.8);
   pointer-events: none;
@@ -92,18 +37,18 @@
 }
 
 /* Au survol du panneau : dépliage des actions (identique 2D/3D) */
-.isometries-panel:hover:not(.locked) .translation-grid,
-.isometries-panel:hover:not(.locked) .separator,
-.isometries-panel:hover:not(.locked) .rotation-controls {
+.isometries-panel.panel-floating:hover:not(.locked) .translation-grid,
+.isometries-panel.panel-floating:hover:not(.locked) .separator,
+.isometries-panel.panel-floating:hover:not(.locked) .rotation-controls {
   opacity: 1;
   transform: scale(1);
   max-height: 200px;
 }
 
 /* Panneau verrouillé : toujours déplié */
-.isometries-panel.locked .translation-grid,
-.isometries-panel.locked .separator,
-.isometries-panel.locked .rotation-controls {
+.isometries-panel.panel-floating.locked .translation-grid,
+.isometries-panel.panel-floating.locked .separator,
+.isometries-panel.panel-floating.locked .rotation-controls {
   opacity: 1;
   transform: scale(1);
   pointer-events: auto;
@@ -111,117 +56,17 @@
 }
 
 /* Interactions activées seulement en mode 3D */
-.isometries-panel:hover:not(.disabled) .translation-grid,
-.isometries-panel:hover:not(.disabled) .separator,
-.isometries-panel:hover:not(.disabled) .rotation-controls {
+.isometries-panel.panel-floating:hover:not(.disabled) .translation-grid,
+.isometries-panel.panel-floating:hover:not(.disabled) .separator,
+.isometries-panel.panel-floating:hover:not(.disabled) .rotation-controls {
   pointer-events: auto;
 }
 
-
-/*
-.isometries-panel.locked .drag-handle {
-  background: rgba(231, 76, 60, 0.2);
-  border-bottom: 1px solid rgba(231, 76, 60, 0.4);
-  color: #e74c3c;
-}*/
-/* En mode disabled, appliquer grayscale SEULEMENT aux zones inactives */
-.isometries-panel.disabled .translation-grid,
-.isometries-panel.disabled .rotation-controls,
-.isometries-panel.disabled .separator {
-  filter: grayscale(100%);
-  background: transparent;
-  backdrop-filter: none;
-  pointer-events: none !important;
-  cursor: not-allowed !important;
-}
-
-/* Curseur interdit sur les zones inactives en mode disabled */
-.isometries-panel.disabled .translation-grid *,
-.isometries-panel.disabled .rotation-controls *,
-.isometries-panel.disabled .separator {
-  cursor: not-allowed !important;
-}
-
-/* Curseur interdit sur les conteneurs eux-mêmes en mode disabled */
-.isometries-panel.disabled .translation-grid,
-.isometries-panel.disabled .rotation-controls,
-.isometries-panel.disabled .separator {
-  cursor: not-allowed !important;
-}
-
-/* En mode disabled, seule la zone de drag reste interactive et bleue */
-.isometries-panel.disabled .drag-handle {
-  pointer-events: auto !important;
-  opacity: 1;
-  filter: none;
-  cursor: grab !important;
-  position: relative;
-  z-index: 15;
-}
-
-/* Curseur grabbing pendant le drag en mode disabled */
-.isometries-panel.disabled .drag-handle:active {
-  cursor: grabbing;
-}
-
-.drag-handle:active {
-  cursor: grabbing;
-}
-
-.isometries-panel .drag-handle {
-  background: rgba(52, 152, 219, 0.15);
-  border-bottom: 1px solid rgba(52, 152, 219, 0.4);
-  color: #3498db;
-  padding: 4px 0 !important;
-  font-weight: bold;
-  font-size: 10px !important;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  transition: none !important;
-  border-radius: 10px 10px 0 0;
-}
-
-.isometries-panel .translation-grid,
-.isometries-panel .separator,
-.isometries-panel .rotation-controls {
-  opacity: 0;
-  pointer-events: none;
-  overflow: hidden;
-  margin: 0 !important;
-  transition: opacity 0.3s;
-}
-
-.isometries-panel:hover {
-  height: auto !important; /* Laisse le layout naturel gérer la hauteur dépliée */
-}
-
-.isometries-panel:hover .translation-grid,
-.isometries-panel:hover .separator,
-.isometries-panel:hover .rotation-controls {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-/* En mode 2D (disabled), tout reste visible mais grisé et inactif */
-.isometries-panel.disabled .translation-grid,
-.isometries-panel.disabled .rotation-controls,
-.isometries-panel.disabled .separator {
-  filter: grayscale(100%);
-}
-
-.isometries-panel.disabled button,
-.isometries-panel.disabled .translation-grid *,
-.isometries-panel.disabled .rotation-controls *,
-.isometries-panel.disabled .separator {
-  cursor: not-allowed !important;
-  pointer-events: none !important;
-}
+/* Les styles disabled génériques sont maintenant dans panel-manager.css */
 
 /* === GRID TRANSLATION === */
 
-.isometries-panel .translation-grid {
+.isometries-panel.panel-floating .translation-grid {
   display: grid;
   grid-template-columns: repeat(3, 20px);
   grid-template-rows: repeat(3, 20px);
@@ -229,7 +74,7 @@
   padding: 8px;
 }
 
-.isometries-panel .translation-grid button {
+.isometries-panel.panel-floating .translation-grid button {
   width: 20px;
   height: 20px;
   border: 1px solid #bdc3c7;
@@ -245,32 +90,32 @@
   margin: 0;
 }
 
-.isometries-panel .translation-grid button:hover {
+.isometries-panel.panel-floating .translation-grid button:hover {
   background: #3498db;
   color: white;
   border-color: #2980b9;
   transform: scale(1.1);
 }
 
-.isometries-panel .translation-grid button:active {
+.isometries-panel.panel-floating .translation-grid button:active {
   transform: scale(0.95);
   background: #2980b9;
 }
 
-.isometries-panel #camCenter {
+.isometries-panel.panel-floating #camCenter {
   background: #e74c3c;
   color: white;
   border-color: #c0392b;
 }
 
-.isometries-panel #camCenter:hover {
+.isometries-panel.panel-floating #camCenter:hover {
   background: #c0392b;
   transform: scale(1.15);
 }
 
 /* === SEPARATOR === */
 
-.separator {
+.isometries-panel.panel-floating .separator {
   text-align: center;
   color: #7f8c8d;
   font-size: 10px;
@@ -280,26 +125,26 @@
 
 /* === ROTATION CONTROLS === */
 
-.rotation-controls {
+.isometries-panel.panel-floating .rotation-controls {
   padding: 4px;
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
 
-.rotation-axis {
+.isometries-panel.panel-floating .rotation-axis {
   display: flex;
   align-items: center;
   font-size: 10px;
 }
 
-.axis-icon {
+.isometries-panel.panel-floating .axis-icon {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
 }
 
-.angle-display {
+.isometries-panel.panel-floating .angle-display {
   width: 32px;
   height: 16px;
   display: inline-flex;
@@ -307,13 +152,13 @@
   font-size: 11px;
 }
 
-.rotation-buttons-vertical {
+.isometries-panel.panel-floating .rotation-buttons-vertical {
   display: flex;
   flex-direction: column;
   gap: 1px;
 }
 
-.rotation-buttons-vertical button {
+.isometries-panel.panel-floating .rotation-buttons-vertical button {
   width: 12px;
   height: 10px;
   border: 1px solid #bdc3c7;
@@ -330,48 +175,19 @@
   line-height: 1;
 }
 
-.rotation-buttons-vertical button:hover {
+.isometries-panel.panel-floating .rotation-buttons-vertical button:hover {
   background: #e9ecef;
   transform: scale(1.1);
 }
 
-.rotation-buttons-vertical button:active {
+.isometries-panel.panel-floating .rotation-buttons-vertical button:active {
   background: #dee2e6;
   transform: scale(0.95);
 }
-
-/* === ROTATION BUTTONS === */
-
-.rotation-buttons-vertical button {
-  width: 12px;
-  height: 10px;
-  border: 1px solid #bdc3c7;
-  background: #f8f9fa;
-  border-radius: 2px;
-  cursor: pointer;
-  font-size: 8px;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  padding: 0;
-  line-height: 1;
-}
-
-.rotation-buttons-vertical button:hover {
-  background: #e9ecef;
-  transform: scale(1.1);
-}
-
-.rotation-buttons-vertical button:active {
-  background: #dee2e6;
-  transform: scale(0.95);
-} 
 
 /* === OVERLAYS POUR MODE 2D === */
 
-.move-overlay {
+.isometries-panel.panel-floating .move-overlay {
   position: absolute;
   width: 100% !important;
   height: 100% !important;
@@ -383,7 +199,7 @@
   z-index: 1;
   display: block;
   cursor: pointer;
-  border-radius: 0 0 12px 12px;
+  border-radius: 0;
   pointer-events: all;
   opacity: 0.8;
   padding: 0 !important;
@@ -391,19 +207,19 @@
   border: none !important;
 }
 
-.move-overlay:not(.active) {
+.isometries-panel.panel-floating .move-overlay:not(.active) {
   z-index: 1;
   pointer-events: none;
   cursor: not-allowed;
 }
 
-.move-overlay.active ~ .drag-handle {
+.isometries-panel.panel-floating .move-overlay.active ~ .drag-handle {
   pointer-events: auto;
   z-index: 15;
   position: relative;
 }
 
-.move-overlay.active {
+.isometries-panel.panel-floating .move-overlay.active {
   visibility: visible;
   pointer-events: all;
   background: rgba(255, 255, 255, 0.01);
@@ -412,12 +228,12 @@
 }
 
 /* En 3D, au survol, l'overlay passe derrière les boutons */
-.isometries-panel:not(.disabled):hover .move-overlay {
+.isometries-panel.panel-floating:not(.disabled):hover .move-overlay {
   z-index: -1;
 } 
 
 /* === TITRE DU PANNEAU ISOMÉTRIQUE === */
-.panel-iso-title {
+.isometries-panel.panel-floating .panel-iso-title {
   font-family: 'Times New Roman', serif;
   font-size: 1.0em;
   color: #000;
@@ -429,24 +245,24 @@
   user-select: none;
 } 
 
-.isometries-panel.locked,
-.isometries-panel.dragging,
-.isometries-panel:hover {
+.isometries-panel.panel-floating.locked,
+.isometries-panel.panel-floating.dragging,
+.isometries-panel.panel-floating:hover {
   height: 206px !important;
   min-height: 206px !important;
   max-height: 206px !important;
   overflow: visible !important;
 } 
 
-.isometries-panel.locked .translation-grid,
-.isometries-panel.locked .separator,
-.isometries-panel.locked .rotation-controls,
-.isometries-panel.dragging .translation-grid,
-.isometries-panel.dragging .separator,
-.isometries-panel.dragging .rotation-controls,
-.isometries-panel:hover .translation-grid,
-.isometries-panel:hover .separator,
-.isometries-panel:hover .rotation-controls {
+.isometries-panel.panel-floating.locked .translation-grid,
+.isometries-panel.panel-floating.locked .separator,
+.isometries-panel.panel-floating.locked .rotation-controls,
+.isometries-panel.panel-floating.dragging .translation-grid,
+.isometries-panel.panel-floating.dragging .separator,
+.isometries-panel.panel-floating.dragging .rotation-controls,
+.isometries-panel.panel-floating:hover .translation-grid,
+.isometries-panel.panel-floating:hover .separator,
+.isometries-panel.panel-floating:hover .rotation-controls {
   opacity: 1 !important;
   transform: scale(1) !important;
   max-height: none !important;
@@ -454,7 +270,7 @@
   transition: none !important;
 } 
 
-.isometries-panel {
+.isometries-panel.panel-floating {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;

@@ -1,0 +1,18 @@
+/* File: panel-algebre.css - Styles spécifiques du panneau Algèbre */
+.algebre-panel.panel-floating {
+  width: 85px;
+  min-width: 85px;
+  max-width: 85px;
+  top: 600px;
+  right: 100px;
+}
+
+.algebre-panel.panel-floating .algebre-invariants div {
+  font-family: 'Times New Roman', serif;
+  color: #000;
+  font-size: 0.95em;
+  color: #000;
+  font-size: 1em;
+  font-weight: bold;
+  margin-bottom: 3px;
+} 

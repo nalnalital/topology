@@ -1573,141 +1573,9 @@ function startAnimation() {
 }
 
 // === INTERFACE MOVE DRAGGABLE ===
+// Bloc de drag obsolète remplacé par panel-manager.js — conservé vide pour compatibilité.
 let isInterfaceDragging = false;
 let dragOffset = { x: 0, y: 0 };
-
-const isometriesPanel = document.getElementById('isometriesPanel');
-const dragHandle = isometriesPanel.querySelector('.drag-handle');
-
-// Gestionnaire pour le drag uniquement (plus de clic pour ouvrir/fermer)
-// Le panneau s'ouvre/ferme automatiquement au survol
-
-// Gestionnaire de survol pour forcer le rendu
-// CORRECTION: Désactiver les effets de rollover en mode plane
-isometriesPanel.addEventListener('mouseenter', () => {
-  const isPlaneMode = window.currentSurface === 'plane';
-  if (!isPlaneMode) {
-    pd('isometricPanel', 'main.js', '🔓 Panneau isométrique survolé - trièdre visible');
-  } else {
-    pd('isometricPanel', 'main.js', '🔒 Mode plane: pas d\'effets de rollover');
-  }
-  requestAnimationFrame(render);
-});
-
-isometriesPanel.addEventListener('mouseleave', () => {
-  const isPlaneMode = window.currentSurface === 'plane';
-  if (!isPlaneMode) {
-    pd('isometricPanel', 'main.js', '🔒 Panneau isométrique quitté - trièdre caché');
-  } else {
-    pd('isometricPanel', 'main.js', '🔒 Mode plane: pas d\'effets de rollover');
-  }
-  requestAnimationFrame(render);
-});
-
-dragHandle.addEventListener('mousedown', (e) => {
-  isInterfaceDragging = true;
-  
-  // Positionner instantanément le div sous la souris (coordonnées globales)
-  const container = isometriesPanel.parentElement;
-  const containerRect = container.getBoundingClientRect();
-  
-  // Position de la souris relative au container
-  const mouseX = e.clientX - containerRect.left;
-  const mouseY = e.clientY - containerRect.top;
-  
-  // Positionner les ⋮⋮⋮ sous la souris (pas le centre de la div)
-  const interfaceWidth = isometriesPanel.offsetWidth;
-  const interfaceHeight = isometriesPanel.offsetHeight;
-  const handleHeight = dragHandle.offsetHeight;
-  
-  dragOffset.x = interfaceWidth / 2;  // Centre horizontal
-  dragOffset.y = handleHeight / 2;    // Centre de la bande ⋮⋮⋮
-  
-  // Positionner immédiatement l'interface sous la souris
-  const newX = mouseX - dragOffset.x;
-  const newY = mouseY - dragOffset.y;
-  
-  // CONTRAINTE INTELLIGENTE : Seule la zone de drag doit rester dans le container
-  // Calculer la position de la zone de drag
-  const dragHandleX = newX + dragOffset.x;
-  const dragHandleY = newY + dragOffset.y;
-  
-  // Contraintes pour que la zone de drag reste dans le container
-  const minDragX = dragOffset.x;
-  const maxDragX = containerRect.width - dragOffset.x;
-  const minDragY = dragOffset.y;
-  const maxDragY = containerRect.height - dragOffset.y;
-  
-  const constrainedDragX = Math.max(minDragX, Math.min(dragHandleX, maxDragX));
-  const constrainedDragY = Math.max(minDragY, Math.min(dragHandleY, maxDragY));
-  
-  // Recalculer la position du panneau depuis la zone de drag contrainte
-  const constrainedX = constrainedDragX - dragOffset.x;
-  const constrainedY = constrainedDragY - dragOffset.y;
-  
-  isometriesPanel.style.left = constrainedX + 'px';
-  isometriesPanel.style.top = constrainedY + 'px';
-  isometriesPanel.style.right = 'auto';
-  isometriesPanel.style.bottom = 'auto';
-  
-  // Ajouter classe de drag pour animation
-  isometriesPanel.classList.add('dragging');
-  
-  // Empêcher la sélection de texte
-  e.preventDefault();
-});
-
-document.addEventListener('mousemove', (e) => {
-  if (!isInterfaceDragging) return;
-  
-  // Optimisation: utiliser requestAnimationFrame pour éviter les ralentissements
-  requestAnimationFrame(() => {
-    const container = isometriesPanel.parentElement;
-    const containerRect = container.getBoundingClientRect();
-    
-    // Position de la souris relative au container
-    const mouseX = e.clientX - containerRect.left;
-    const mouseY = e.clientY - containerRect.top;
-    
-    // Positionner l'interface centrée sous la souris
-    const newX = mouseX - dragOffset.x;
-    const newY = mouseY - dragOffset.y;
-    
-    // CONTRAINTE INTELLIGENTE : Seule la zone de drag doit rester dans le container
-    // Calculer la position de la zone de drag
-    const dragHandleX = newX + dragOffset.x;
-    const dragHandleY = newY + dragOffset.y;
-    
-    // Contraintes pour que la zone de drag reste dans le container
-    const minDragX = dragOffset.x;
-    const maxDragX = containerRect.width - dragOffset.x;
-    const minDragY = dragOffset.y;
-    const maxDragY = containerRect.height - dragOffset.y;
-    
-    const constrainedDragX = Math.max(minDragX, Math.min(dragHandleX, maxDragX));
-    const constrainedDragY = Math.max(minDragY, Math.min(dragHandleY, maxDragY));
-    
-    // Recalculer la position du panneau depuis la zone de drag contrainte
-    const constrainedX = constrainedDragX - dragOffset.x;
-    const constrainedY = constrainedDragY - dragOffset.y;
-    
-    isometriesPanel.style.left = constrainedX + 'px';
-    isometriesPanel.style.top = constrainedY + 'px';
-    isometriesPanel.style.right = 'auto';
-    isometriesPanel.style.bottom = 'auto';
-  });
-});
-
-document.addEventListener('mouseup', () => {
-  if (isInterfaceDragging) {
-    isInterfaceDragging = false;
-    
-    // Retirer classe de drag pour restaurer les transitions
-    isometriesPanel.classList.remove('dragging');
-  }
-});
-
-// Plus besoin de fermer le panneau au clic - géré automatiquement par le survol
 
 // === INITIALISATION DYNAMIQUE DES TEXTURES ===
 // Remplacer l'IIFE par une fonction globale
@@ -3109,6 +2977,15 @@ async function startApp() {
     pd('startApp', 'main.js', '✅ Panneau isométrique initialisé');
   } catch (error) {
     pd('startApp', 'main.js', `❌ Erreur initialisation panneau isométrique: ${error.message}`);
+  }
+
+  // Initialiser le panneau algèbre
+  try {
+    const { initPanelAlgebre } = await import('./interface/panel-algebre.js');
+    initPanelAlgebre();
+    pd('startApp', 'main.js', '✅ Panneau algèbre initialisé');
+  } catch (error) {
+    pd('startApp', 'main.js', `❌ Erreur initialisation panneau algèbre: ${error.message}`);
   }
   
   setTimeout(() => {

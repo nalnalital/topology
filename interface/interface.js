@@ -114,11 +114,24 @@ export async function buildTopologyButtons() {
   }
 }
 
-// Fonction pour afficher les invariants algébriques à droite du titre
+// Fonction pour afficher les invariants algébriques via le panneau flottant
 export function displayTopologyGroups(surfaceName) {
   console.log('[DEBUG] displayTopologyGroups appelé avec surfaceName:', surfaceName);
+  
+  // Utiliser le panneau algèbre s'il existe
+  if (window.updateAlgebrePanel) {
+    window.updateAlgebrePanel(surfaceName);
+    console.log('[DEBUG] Panneau algèbre mis à jour avec', surfaceName);
+  } else {
+    console.log('[DEBUG] Panneau algèbre non disponible, fallback vers ancien système');
+    // Fallback vers l'ancien système si le panneau n'est pas disponible
+    fallbackDisplayTopologyGroups(surfaceName);
+  }
+}
+
+// Fonction de fallback pour l'ancien système d'affichage
+function fallbackDisplayTopologyGroups(surfaceName) {
   const projectionTitle = document.getElementById('titleCarte');
-  console.log('[DEBUG] Élément titleCarte trouvé:', projectionTitle);
   if (!projectionTitle) {
     console.log('[DEBUG] Élément titleCarte non trouvé');
     return;
@@ -126,24 +139,15 @@ export function displayTopologyGroups(surfaceName) {
 
   // Supprimer l'ancien groupe s'il existe
   const existingGroup = projectionTitle.querySelector('.algebre-groups');
-  console.log('[DEBUG] Ancien groupe trouvé:', existingGroup);
   if (existingGroup) {
     existingGroup.remove();
-    console.log('[DEBUG] Ancien groupe supprimé');
   }
 
   // Importer dynamiquement la surface pour obtenir les invariants
-  console.log('[DEBUG] Tentative d\'import du module:', `../surfaces/${surfaceName}.js`);
   import(`../surfaces/${surfaceName}.js`).then(module => {
-    console.log(`[DEBUG] Module chargé pour ${surfaceName}:`, module);
-    
     if (!module.algebraicInvariants) {
-      console.log(`[DEBUG] Surface ${surfaceName} n'a pas d'invariants algébriques`);
       return;
     }
-
-    console.log(`[DEBUG] Affichage invariants pour ${surfaceName}:`, module.algebraicInvariants);
-    console.log(`[DEBUG] Nom de la surface: ${module.algebraicInvariants.name}`);
 
     // Créer un conteneur principal pour le titre et l'algèbre
     const mainContainer = document.createElement('div');
@@ -164,8 +168,6 @@ export function displayTopologyGroups(surfaceName) {
     // Conteneur pour le titre centré
     const titleContainer = document.createElement('div');
     titleContainer.className = 'title-carte';
-    
-    // Utiliser le titre original
     titleContainer.textContent = originalTitle;
 
     // Conteneur pour l'algèbre à droite
@@ -269,12 +271,8 @@ export function displayTopologyGroups(surfaceName) {
     mainContainer.appendChild(algebraContainer);
 
     // Remplacer le contenu de projectionTitle par le nouveau conteneur
-    console.log('[DEBUG] Tentative de remplacement du contenu de titleCarte');
-    console.log('[DEBUG] Contenu du mainContainer:', mainContainer.outerHTML);
     projectionTitle.innerHTML = '';
     projectionTitle.appendChild(mainContainer);
-    console.log('[DEBUG] Contenu de titleCarte remplacé avec succès');
-    console.log('[DEBUG] Contenu final de titleCarte:', projectionTitle.innerHTML);
   }).catch(error => {
     console.log(`[DEBUG] Erreur import surface ${surfaceName}:`, error);
   });
