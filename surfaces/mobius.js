@@ -8,9 +8,9 @@
 //   - v1.1.0: Structure 2D universelle appliquée
 //   - v1.0.0: Icône topologique initiale
 
-// Icône topologique avec flèches directionnelles
-// Möbius [+ -] : bord horizontal avec torsion
+// Icône topologique pour la bande de Möbius
 export const topologyIcon = {
+  shape: 'square',
   center: '♾️',
   top: '',
   left: '🔽',
@@ -20,14 +20,32 @@ export const topologyIcon = {
 
 // Configuration spécifique mobius
 export const config = {
-  scale: 140,                    // Scale optimal pour mobius
-  defaultRotation: { x: 30, y: 45 }, // Vue 3/4 légèrement inclinée
-  name: 'Ruban de Möbius',
-  emoji: '♾️'
+  scale: 90,
+  rotX: 27,
+  rotY: -9,
+  rotZ: -45
 };
 
+// Invariants algébriques complets
+export const algebraicInvariants = {
+  name: 'M',       // Nom algébrique
+  pi1: 'ℤ/2ℤ',    // Groupe fondamental π₁
+  H1: 'ℤ/2ℤ',     // Premier groupe d'homologie H₁
+  chi: 0,         // Caractéristique d'Euler χ
+  H2: '{∅}',      // Deuxième groupe d'homologie H₂
+  orientable: '⊗' // Orientabilité
+};
+
+// Décalage texture spécifique ruban de Möbius (offset paramétrique)
+export function getTextureOffsetU() { return 0; }
+export function getTextureOffsetV() { return 0; }
+
 // Fonction mathématique du ruban de Möbius
-export function mobius(u, v) {
+export function createSurface(u, v) {
+  u = u + getTextureOffsetU();
+  if (u > 1.0) u -= 1.0;if (u<0) u+=1.0
+  v = v + getTextureOffsetV();
+  if (v > 1.0) v -= 1.0;if (v < 0) v += 1.0;
   u *= 2 * Math.PI;
   v = (v - 0.5) * 2;
   return {
@@ -37,16 +55,9 @@ export function mobius(u, v) {
   };
 }
 
-// Fonction Three.js (legacy)
-export function createSurface() {
-  const geometry = new THREE.ParametricGeometry((u, t, target) => {
-    u *= Math.PI * 2;
-    t = t * 2 - 1;
-    const x = Math.cos(u) + t * Math.cos(u / 2) * Math.cos(u);
-    const y = Math.sin(u) + t * Math.cos(u / 2) * Math.sin(u);
-    const z = t * Math.sin(u / 2);
-    target.set(x, y, z);
-  }, 100, 15);
-  const material = new THREE.MeshStandardMaterial({ color: 0x9900cc, side: THREE.DoubleSide });
-  return new THREE.Mesh(geometry, material);
+// Gestion du drag spécifique ruban de Möbius
+export function handleDrag(deltaX, deltaY, angles, config) {
+  angles.rotY += deltaX * config.mouseSensitivity * 0.01;
+  angles.rotX += deltaY * config.mouseSensitivity * 0.01;
+  angles.rotX = Math.max(-Math.PI, Math.min(Math.PI, angles.rotX));
 }

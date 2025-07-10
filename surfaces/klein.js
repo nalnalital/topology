@@ -7,8 +7,9 @@
 //   - Initial Klein bottle implementation with self-intersection
 
 // Icône topologique avec flèches directionnelles
-// Bouteille de Klein [+ -] : bords verticaux opposés
+// Bouteille de Klein [+- ++] : bords verticaux avec torsion, bords horizontaux sans
 export const topologyIcon = {
+  shape: 'square',
   center: '🖇️',
   top: '▶️',
   left: '⏫',
@@ -16,47 +17,53 @@ export const topologyIcon = {
   bottom: '◀️'
 };
 
-export function klein(u, v) {
-  u *= 2 * Math.PI;
-  v *= 2 * Math.PI;
-  
-  const a = 1.5;
-  const cosU = Math.cos(u);
-  const sinU = Math.sin(u);
-  const cosV = Math.cos(v);
-  const sinV = Math.sin(v);
-  
+// Décalage texture spécifique Klein (offset paramétrique)
+export function getTextureOffsetU() { return 0; }
+export function getTextureOffsetV() { return 0.5; }
+
+export function createSurface(u, v) {
+  u = u + getTextureOffsetU();
+  if (u > 1.0) u -= 1.0; if (u < 0) u += 1.0;
+  v = v + getTextureOffsetV();
+  if (v > 1.0) v -= 1.0; if (v < 0) v += 1.0;
+  u *= Math.PI * 2;
+  v *= Math.PI * 2;
+
+  let x, y, z;
   if (u < Math.PI) {
-    return {
-      x: (2.5 + 1.5 * cosV) * cosU,
-      y: (2.5 + 1.5 * cosV) * sinU,
-      z: -2.5 * sinV
-    };
+    x = 3 * Math.cos(u) * (1 + Math.sin(u)) + (2 * (1 - Math.cos(u) / 2)) * Math.cos(u) * Math.cos(v);
+    y = 8 * Math.sin(u) + (2 * (1 - Math.cos(u) / 2)) * Math.sin(u) * Math.cos(v);
+    z = (2 * (1 - Math.cos(u) / 2)) * Math.sin(v);
   } else {
-    return {
-      x: (2.5 + 1.5 * cosV) * cosU,
-      y: (2.5 + 1.5 * cosV) * sinU,
-      z: 2.5 * sinV
-    };
+    x = 3 * Math.cos(u) * (1 + Math.sin(u)) + (2 * (1 - Math.cos(u) / 2)) * Math.cos(v + Math.PI);
+    y = 8 * Math.sin(u);
+    z = (2 * (1 - Math.cos(u) / 2)) * Math.sin(v);
   }
+  // Mise à l'échelle pour correspondre à l'affichage
+  return { x: x * 0.12, y: y * 0.12, z: z * 0.12 };
 }
 
-export function createSurface() {
-  const geometry = new THREE.ParametricGeometry((u, v, target) => {
-    u *= Math.PI * 2;
-    v *= Math.PI * 2;
-    let x, y, z;
-    const r = 0.5;
-    if (u < Math.PI) {
-      x = 3 * Math.cos(u) * (1 + Math.sin(u)) + r * Math.cos(v) * Math.cos(u);
-      y = 3 * Math.sin(u) * (1 + Math.sin(u)) + r * Math.cos(v) * Math.sin(u);
-    } else {
-      x = 3 * Math.cos(u) * (1 + Math.sin(u)) + r * Math.cos(v + Math.PI) * Math.cos(u);
-      y = 3 * Math.sin(u) * (1 + Math.sin(u)) + r * Math.cos(v + Math.PI) * Math.sin(u);
-    }
-    z = r * Math.sin(v);
-    target.set(x * 0.1, y * 0.1, z * 0.1);
-  }, 100, 30);
-  const material = new THREE.MeshStandardMaterial({ color: 0x009999, side: THREE.DoubleSide });
-  return new THREE.Mesh(geometry, material);
+// Invariants algébriques complets
+export const algebraicInvariants = {
+  name: 'K²',      // Nom algébrique
+  pi1: 'ℤ²',      // Groupe fondamental π₁
+  H1: 'ℤ²',       // Premier groupe d'homologie H₁
+  chi: 0,         // Caractéristique d'Euler χ
+  H2: '{∅}',      // Deuxième groupe d'homologie H₂
+  orientable: '⊗' // Orientabilité
+};
+
+// Configuration spécifique bouteille de Klein
+export const config = {
+  scale: 190,
+  rotX: -40,
+  rotY: 65,
+  rotZ: 0
+};
+
+// Gestion du drag spécifique Klein
+export function handleDrag(deltaX, deltaY, angles, config) {
+  angles.rotY += deltaX * config.mouseSensitivity * 0.01;
+  angles.rotX += deltaY * config.mouseSensitivity * 0.01;
+  angles.rotX = Math.max(-Math.PI, Math.min(Math.PI, angles.rotX));
 }

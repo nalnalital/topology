@@ -2,58 +2,53 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Visualisation de Surfaces Topologiques - Projection Isométrique</title>
-  <link rel="stylesheet" href="css.css">
-      <!-- Version 2.40.0 - Bouton grille fixé, gaps texture corrigés -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Topologicon</title>
+  <link rel="stylesheet" href="css/main.css?v=2.56.8">
+  <link rel="stylesheet" href="css/shapes_buttons.css">
+  <link rel="stylesheet" href="css/panel-iso.css">
+  <link rel="icon" href="cartes/favicon.ico" type="image/x-icon">
+      <!-- Version 2.53.0 - Refactoring CSS -->
 </head>
 <body>
-  <h1>Square Topologicon</h1>
-  <div class="control-row-single">
-    <label class="map-option">
-      <input type="radio" name="topology" value="view2d" checked>
-      <span class="map-name">🔄</span>
-    </label>
-    
-    <div id="selectedProjection" class="selected-projection-inline">Steam Texture</div>
-    
-    <label class="map-option">
-      <input type="checkbox" id="showTexture" style="display: none;">
-      <span class="map-name">🌐</span>
-    </label>
-  </div>
 
-  
+    <!-- Structure à 3 colonnes pour titre centré + bouton PDF à droite -->
+    <div class="title-container">
+      <div class="title-left">
+        &nbsp;
+      </div>
+      <div class="title-center">
+        <h1 trad="mainTitle">Topologicon</h1>
+      </div>
+      <div class="title-right">
+        <!-- Conteneur PDF avec cadre -->
+        <div class="pdf-container">
+          <!-- URL du site au-dessus -->
+          <div id="pdfSiteUrl" class="pdf-site-url">
+            <a href="#" id="siteUrlLink" target="_blank" trad-alt="siteLink">PDF</a>
+          </div>
+          
+          <!-- Ligne avec bouton PDF et drapeau courant -->
+          <div class="pdf-button-row">
+            <button id="pdfBtn" class="pdf-button" title="Ouvrir le Topologicon PDF">
+              <img src="trads/topologicon.jpg" trad-alt="pdfIcon" alt="Topologicon PDF" class="pdf-icon">
+            </button>
+            <span id="pdfCurrentLangFlag" class="pdf-lang-flag"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
   <!-- Nouvelle structure avec grille CSS pour alignement parfait -->
   <div class="simulation-grid">
     <!-- Boutons gauche -->
     <div class="left-controls">
-      <label class="topology-option">
-        <input type="radio" name="topology" value="sphere">
-        <span class="topology-visual">🌍</span>
-      </label>
-      
-      <label class="topology-option">
-        <input type="radio" name="topology" value="disk">
-        <span class="topology-visual">💿</span>
-      </label>
-      
-      <label class="topology-option">
-        <input type="radio" name="topology" value="cylinder">
-        <span class="topology-visual cross-pattern">
-          <span class="cross-top"></span>
-          <span class="cross-left">🔼</span><span class="cross-center">🫙</span><span class="cross-right">🔼</span>
-          <span class="cross-bottom"></span>
-        </span>
-      </label>
-      
-      <label class="topology-option">
-        <input type="radio" name="topology" value="mobius">
-        <span class="topology-visual cross-pattern">
-          <span class="cross-top">▶️</span>
-          <span class="cross-left"></span><span class="cross-center">🎀</span><span class="cross-right"></span>
-          <span class="cross-bottom">◀️</span>
-        </span>
-      </label>
+      <div class="language-selector-bottom">
+        
+      </div>
+      <div class="left-shapes-grid">
+        <!-- Les boutons de topologie seront générés dynamiquement ici -->
+      </div>
     </div>
   
     <!-- Zone centrale avec simulation uniquement -->
@@ -63,8 +58,9 @@
       <div id="loading-overlay"></div>
       
       <!-- Interface move positionnée relativement au canvas -->
-      <div class="camera-translation-floating" id="cameraTranslationFloating">
+      <div class="isometries-panel panel-floating" id="isometriesPanel">
         <div class="drag-handle">⋮⋮⋮</div>
+        <div class="panel-iso-title" trad="isoPanelTitle">Isométries</div>
         <!-- Overlay pour désactiver contenu en mode 2D -->
         <div class="move-overlay" id="moveOverlay"></div>
         
@@ -87,7 +83,7 @@
         <!-- Section Rotations -->
         <div class="rotation-controls">
           <div class="rotation-axis">
-            <img src="axis_x.svg" class="axis-icon" alt="X">
+                          <img src="axis_x.svg" class="axis-icon" trad-alt="axisX" alt="X">
             <span class="angle-display" id="angleXDisplay">0°</span>
             <div class="rotation-buttons-vertical">
               <button id="rotXRight">↪️</button>
@@ -96,7 +92,7 @@
           </div>
           
           <div class="rotation-axis">
-            <img src="axis_y.svg" class="axis-icon" alt="Y">
+                          <img src="axis_y.svg" class="axis-icon" trad-alt="axisY" alt="Y">
             <span class="angle-display" id="angleYDisplay">135°</span>
             <div class="rotation-buttons-vertical">
               <button id="rotYRight">↪️</button>
@@ -105,7 +101,7 @@
           </div>
           
           <div class="rotation-axis">
-            <img src="axis_z.svg" class="axis-icon" alt="Z">
+                          <img src="axis_z.svg" class="axis-icon" trad-alt="axisZ" alt="Z">
             <span class="angle-display" id="angleZDisplay">0°</span>
             <div class="rotation-buttons-vertical">
               <button id="rotZRight">↪️</button>
@@ -118,59 +114,209 @@
     
     <!-- Boutons droite -->
     <div class="right-controls">
-      <label class="topology-option">
-        <input type="radio" name="topology" value="torus">
-        <span class="topology-visual cross-pattern">
-          <span class="cross-top">▶️</span>
-          <span class="cross-left">⏫</span><span class="cross-center">🍩</span><span class="cross-right">⏫</span>
-          <span class="cross-bottom">▶️</span>
-        </span>
-      </label>
-      
-      <label class="topology-option">
-        <input type="radio" name="topology" value="projective">
-        <span class="topology-visual cross-pattern">
-          <span class="cross-top">▶️</span>
-          <span class="cross-left">⏬</span><span class="cross-center">🍎</span><span class="cross-right">🔼</span>
-          <span class="cross-bottom">⏪</span>
-        </span>
-      </label>
-      
-      <label class="topology-option">
-        <input type="radio" name="topology" value="klein">
-        <span class="topology-visual cross-pattern">
-          <span class="cross-top">▶️</span>
-          <span class="cross-left">⏫</span><span class="cross-center">🖇️</span><span class="cross-right">⏫</span>
-          <span class="cross-bottom">◀️</span>
-        </span>
-      </label>
-      
-      <label class="topology-option">
-        <input type="radio" name="topology" value="crosscap">
-        <span class="topology-visual cross-pattern">
-          <span class="cross-top">▶️</span>
-          <span class="cross-left">⏬</span><span class="cross-center">🪢</span><span class="cross-right">⏫</span>
-          <span class="cross-bottom">◀️</span>
-        </span>
-      </label>
+      <div id="langSelectorBottom">
+        <span class="lang-flag" data-lang="fr">🇫🇷</span>
+        <span class="lang-flag" data-lang="en">🇬🇧</span>
+        <span class="lang-flag" data-lang="es">🇪🇸</span>
+        <span class="lang-flag" data-lang="it">🇮🇹</span>
+        <span class="lang-flag" data-lang="de">🇩🇪</span>
+      </div>
+      <!-- Les boutons de topologie seront générés dynamiquement ici -->
     </div>
   </div>
+  
+  <!-- Titre de la carte -->
+  <div id="titleCarte" class="title-carte" trad="projectionTitle"></div>
   <!-- Ligne unique : Reinit - Steam Texture - Grille -->
   <div class="map-selection">
     
     
-    <!-- Ligne du bas : Textures dynamiques -->
-    <div class="map-options">
-      <!-- Les textures seront générées dynamiquement ici -->
+    <!-- Ligne du bas : Textures dynamiques + Palette UV -->
+    <div style="display: flex; justify-content: center; align-items: center; gap: 0;">
+      <div style="display: flex; flex-direction: column; gap: 5px; margin-right: 10px;">
+        <label class="map-option" style="max-width:30px; min-width:30px; height:30px; padding:0;">
+          <input type="checkbox" id="showGrille">
+          <span class="map-name" style="font-size:16px;">🌐</span>
+        </label>
+        <label class="map-option" style="max-width:30px; min-width:30px; height:30px; padding:0;">
+          <input type="checkbox" id="showUVPalette">
+          <span class="map-name" style="font-size:16px;">🎨</span>
+        </label>
+        <label class="map-option" style="max-width:30px; min-width:30px; height:30px; padding:0;">
+          <input type="checkbox" id="showCoordinates">
+          <span class="map-name" style="font-size:16px;">📍</span>
+        </label>
+      </div>
+      <div class="map-options">
+        <!-- Les textures seront générées dynamiquement ici -->
+      </div>
     </div>
   </div>
   
   <div class="info-panel">
     <div class="mouse-help">
-      <small>🖱️ Drag pour faire tourner • Shift+Drag pour incliner • Molette pour zoomer</small>
+      <small trad="mouseHelp">🖱️ Drag pour faire tourner • Shift+Drag pour incliner • Molette pour zoomer</small>
     </div>
   </div>
-  <script type="module" src="main.js"></script>
-  <!-- Config chargé automatiquement via import ES6 -->
-</body>
-</html>
+  <div id="pdfModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
+    <img src="trads/topologicon.jpg" trad-alt="pdfModal" alt="Topologicon BD" style="max-width:90vw; max-height:90vh; border-radius:12px; box-shadow:0 4px 32px #000; cursor:pointer;" id="pdfModalImg">
+  </div>
+  <script src="trads/translations.js"></script>
+  <script type="module" src="shape-selector.js"></script>
+  <script type="module" src="debug/debug.js"></script>
+  <script type="module" src="interface/panel-iso.js"></script>
+  <script type="module">
+    import { buildTopologyButtons } from './interface/interface.js';
+    import { pdfLinks } from './trads/pdf.js';
+    function attachShapeListeners() {
+      const radios = document.querySelectorAll('input[name="topology"]');
+      //console.log('[DEBUG] attachShapeListeners: boutons trouvés =', radios.length);
+      radios.forEach(radio => {
+        //console.log('[DEBUG] Bouton radio trouvé:', radio.value);
+        radio.addEventListener('change', (e) => {
+          if (e.target.checked) {
+            const newValue = e.target.value;
+            //console.log('[DEBUG] Changement de shape détecté:', newValue);
+            window.currentTopology = newValue;
+            if (typeof window.morphToSurface === 'function') {
+              window.morphToSurface(newValue);
+            }
+            if (typeof window.refreshProjectionTitle === 'function') {
+              window.refreshProjectionTitle();
+            }
+          }
+        });
+      });
+    }
+    function setLang(lang) {
+      //console.log('[DEBUG][setLang] Appel avec', lang);
+      window.currentLang = lang;
+      
+      // Met à jour le style des drapeaux (pour les deux sélecteurs)
+      document.querySelectorAll('.lang-flag').forEach(flag => {
+        flag.style.borderColor = (flag.dataset.lang === lang) ? '#2196f3' : 'transparent';
+      });
+      
+      // Met à jour le drapeau dans le cadre PDF
+      const pdfFlag = document.getElementById('pdfCurrentLangFlag');
+      const flagEmojis = { 'fr': '🇫🇷', 'en': '🇬🇧', 'es': '🇪🇸', 'it': '🇮🇹', 'de': '🇩🇪' };
+      if (pdfFlag) {
+        pdfFlag.textContent = flagEmojis[lang] || '🇫🇷';
+      }
+      
+      // Rafraîchit les traductions si la fonction existe
+      if (typeof window.refreshAllTranslations === 'function') {
+        //console.log('[DEBUG][setLang] Appel de refreshAllTranslations');
+        window.refreshAllTranslations();
+      }
+      // Met à jour le titre principal si la fonction existe
+      if (typeof window.refreshProjectionTitle === 'function') {
+        //console.log('[DEBUG][setLang] Appel de refreshProjectionTitle');
+        window.refreshProjectionTitle();
+      }
+      console.log('[DEBUG][setLang] window.currentLang =', window.currentLang);
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      //console.log('[DEBUG] buildTopologyButtons start');
+      buildTopologyButtons().then(() => {
+        attachShapeListeners();
+        // Gestion du changement de langue (pour les deux sélecteurs)
+        document.querySelectorAll('.lang-flag').forEach(flag => {
+          flag.addEventListener('click', () => {
+            //console.log('[DEBUG][lang-flag] Clic sur', flag.dataset.lang);
+            setLang(flag.dataset.lang);
+          });
+        });
+        // Gestion du changement de texture (radio mapChoice)
+        document.querySelectorAll('input[name="mapChoice"]').forEach(radio => {
+          radio.addEventListener('change', (e) => {
+            if (e.target.checked) {
+              const mapName = e.target.value;
+              if (typeof window.changeTexture === 'function') {
+                window.changeTexture(mapName);
+              }
+              if (typeof window.refreshProjectionTitle === 'function') {
+                window.refreshProjectionTitle();
+              }
+            }
+          });
+        });
+        // Initialisation : sélectionne la langue par défaut
+        setLang(window.currentLang || 'fr');
+        // Bouton PDF : ouverture directe du PDF selon la langue
+        const pdfBtn = document.getElementById('pdfBtn');
+        const siteUrlLink = document.getElementById('siteUrlLink');
+        
+        // Fonction pour mettre à jour l'URL du site
+        function updateSiteUrl() {
+          const lang = window.currentLang || 'fr';
+          const pdf = pdfLinks[lang] || pdfLinks['fr'];
+          siteUrlLink.href = pdf.siteUrl;
+          siteUrlLink.textContent = 'savoir-sans-frontieres.com';
+        }
+        
+        // Ouverture directe du PDF
+        pdfBtn.addEventListener('click', () => {
+          const lang = window.currentLang || 'fr';
+          const pdf = pdfLinks[lang] || pdfLinks['fr'];
+          window.open(pdf.url, '_blank');
+        });
+        
+        // Initialiser l'URL du site
+        updateSiteUrl();
+        
+        // Mettre à jour l'URL du site quand la langue change
+        const originalSetLang = setLang;
+        setLang = function(lang) {
+          originalSetLang(lang);
+          updateSiteUrl();
+        };
+      }).catch(e => {
+        console.error('[buildTopologyButtons ERROR]', e);
+      });
+    });
+    // Exposer la fonction t sur window pour garantir l'accès global
+    if (typeof window.t !== 'function') {
+      window.t = function(key) {
+        const lang = window.currentLang || 'fr';
+        if (window.translations && window.translations[lang] && window.translations[lang][key]) {
+          return window.translations[lang][key];
+        }
+        return key;
+      };
+    }
+    // Exposer explicitement refreshAllTranslations sur window
+    import("./main.js").then(mod => {
+      if (typeof mod.refreshAllTranslations === 'function') {
+        window.refreshAllTranslations = function() {
+          //console.log('[DEBUG][refreshAllTranslations] appelée');
+          mod.refreshAllTranslations();
+        };
+      }
+      if (typeof mod.updateProjectionName === 'function') {
+        window.updateProjectionName = mod.updateProjectionName;
+      }
+      if (typeof mod.refreshProjectionTitle === 'function') {
+        window.refreshProjectionTitle = mod.refreshProjectionTitle;
+      }
+    });
+  </script>
+  
+  <!-- Script de débogage pour le chargement de la police -->
+  <script>
+    (async () => {
+      try {
+        await document.fonts.load('1em "Soopafresh"');
+        console.log('[DEBUG][FONT] La police "Soopafresh" a été chargée avec succès !');
+      } catch (e) {
+        console.error('❌ [DEBUG][FONT] Le chargement de la police "Soopafresh" a échoué.', e);
+      }
+    })();
+  </script>
+
+  <script>
+    // Cache busting pour main.js
+    const version = new Date().getTime();
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.src = `main.js?v=${version}`

@@ -1,0 +1,218 @@
+# File: test_gif_debug.html - Test debug wrapper GIF
+# Desc: Test simple pour vérifier le fonctionnement du wrapper GIF
+# Version 1.0.0
+# Author: DNAvatar.org - Arnaud Maignan
+# Date: [June 08, 2025] [15:50 UTC+1]
+# Logs:
+#   - v1.0.0: Test debug simple pour wrapper GIF
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Debug GIF</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .gif-display {
+            text-align: center;
+            margin: 20px 0;
+            min-height: 200px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        .btn-start { background: #27ae60; color: white; }
+        .btn-start:hover { background: #229954; }
+        .btn-pause { background: #f39c12; color: white; }
+        .btn-pause:hover { background: #e67e22; }
+        .btn-resume { background: #3498db; color: white; }
+        .btn-resume:hover { background: #2980b9; }
+        .status {
+            text-align: center;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.playing { background: #d5f4e6; color: #27ae60; }
+        .status.paused { background: #fef9e7; color: #f39c12; }
+        .status.stopped { background: #fadbd8; color: #e74c3c; }
+        .debug-info {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐛 Test Debug GIF</h1>
+        <p>Test simple pour vérifier le fonctionnement du wrapper GIF</p>
+        
+        <div class="gif-display" id="gifContainer">
+            <p>Chargement du GIF...</p>
+        </div>
+        
+        <div class="controls">
+            <button class="btn-start" onclick="startAnimation()">▶️ Démarrer</button>
+            <button class="btn-pause" onclick="pauseAnimation()">⏸️ Pause</button>
+            <button class="btn-resume" onclick="resumeAnimation()">▶️ Reprendre</button>
+        </div>
+        
+        <div class="status" id="status">État: Chargement...</div>
+        
+        <div class="debug-info" id="debugInfo">
+            <strong>Debug Info:</strong><br>
+            <span id="frameCount">Frames: -</span><br>
+            <span id="currentFrame">Frame courante: -</span><br>
+            <span id="isPlaying">En cours: -</span><br>
+            <span id="frameType">Type frame: -</span><br>
+            <span id="frameSize">Taille frame: -</span>
+        </div>
+    </div>
+
+    <script src="gif-simple-native.js"></script>
+    <script>
+        // Variables globales
+        let gifElement = null;
+        let statusElement = null;
+        let debugElement = null;
+        
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            statusElement = document.getElementById('status');
+            debugElement = document.getElementById('debugInfo');
+            
+            console.log('[DEBUG] Démarrage test GIF...');
+            
+            // Charger le GIF
+            loadSimpleGif('../cartes/rotate.gif', 'gifContainer', function(element) {
+                if (element) {
+                    gifElement = element;
+                    updateStatus();
+                    updateDebugInfo();
+                    console.log('[DEBUG] GIF chargé avec succès');
+                } else {
+                    console.error('[DEBUG] Erreur lors du chargement du GIF');
+                    statusElement.textContent = 'État: Erreur de chargement';
+                    statusElement.className = 'status stopped';
+                }
+            });
+        });
+        
+        // Fonction pour démarrer l'animation
+        function startAnimation() {
+            if (gifElement) {
+                startSimpleGif();
+                updateStatus();
+                updateDebugInfo();
+                console.log('[DEBUG] Animation démarrée');
+            }
+        }
+        
+        // Fonction pour mettre en pause
+        function pauseAnimation() {
+            if (gifElement) {
+                pauseSimpleGif();
+                updateStatus();
+                updateDebugInfo();
+                console.log('[DEBUG] Animation en pause');
+            }
+        }
+        
+        // Fonction pour reprendre
+        function resumeAnimation() {
+            if (gifElement) {
+                resumeSimpleGif();
+                updateStatus();
+                updateDebugInfo();
+                console.log('[DEBUG] Animation reprise');
+            }
+        }
+        
+        // Fonction pour mettre à jour l'état
+        function updateStatus() {
+            if (!statusElement) return;
+            
+            const isPlaying = isSimpleGifPlaying();
+            const currentFrame = getCurrentFrameIndex();
+            const totalFrames = getTotalFrames();
+            
+            if (isPlaying) {
+                statusElement.textContent = `État: En cours (Frame ${currentFrame + 1}/${totalFrames})`;
+                statusElement.className = 'status playing';
+            } else {
+                statusElement.textContent = `État: En pause (Frame ${currentFrame + 1}/${totalFrames})`;
+                statusElement.className = 'status paused';
+            }
+        }
+        
+        // Fonction pour mettre à jour les infos de debug
+        function updateDebugInfo() {
+            if (!debugElement) return;
+            
+            const currentFrame = getCurrentFrameIndex();
+            const totalFrames = getTotalFrames();
+            const isPlaying = isSimpleGifPlaying();
+            const currentFrameData = getCurrentFrame();
+            
+            document.getElementById('frameCount').textContent = `Frames: ${totalFrames}`;
+            document.getElementById('currentFrame').textContent = `Frame courante: ${currentFrame + 1}`;
+            document.getElementById('isPlaying').textContent = `En cours: ${isPlaying ? 'Oui' : 'Non'}`;
+            
+            if (currentFrameData) {
+                if (currentFrameData instanceof HTMLCanvasElement) {
+                    document.getElementById('frameType').textContent = `Type frame: Canvas (${currentFrameData.width}x${currentFrameData.height})`;
+                } else if (currentFrameData instanceof ImageData) {
+                    document.getElementById('frameType').textContent = `Type frame: ImageData (${currentFrameData.width}x${currentFrameData.height})`;
+                } else {
+                    document.getElementById('frameType').textContent = `Type frame: ${typeof currentFrameData}`;
+                }
+                document.getElementById('frameSize').textContent = `Taille frame: ${currentFrameData.width}x${currentFrameData.height}`;
+            } else {
+                document.getElementById('frameType').textContent = 'Type frame: Aucune';
+                document.getElementById('frameSize').textContent = 'Taille frame: -';
+            }
+        }
+        
+        // Mise à jour périodique
+        setInterval(function() {
+            updateStatus();
+            updateDebugInfo();
+        }, 500);
+    </script>
+</body>
+</html> 

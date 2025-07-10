@@ -10,7 +10,11 @@
 // Fonction PrintDebug globale
 function pd(message, context = '') {
     const timestamp = new Date().toLocaleTimeString();
-    console.log(`❌ [${context}][translations.js] ${timestamp}: ${message}`);
+    let icon = '🌐';
+    if (message.includes('ERREUR') || message.includes('ERROR') || message.includes('❌')) {
+        icon = '❌';
+    }
+    console.log(`${icon} [${context}][translations.js] ${timestamp}: ${message}`);
 }
 
 class TranslationManager {
@@ -24,7 +28,8 @@ class TranslationManager {
     // Charge les traductions depuis le CSV
     async loadTranslations(csvFile = 'translations.csv') {
         try {
-            const response = await fetch(csvFile);
+            const version = new Date().getTime(); // Cache busting
+            const response = await fetch(`${csvFile}?v=${version}`);
             const csvText = await response.text();
             
             const lines = csvText.split('\n');
@@ -124,15 +129,15 @@ class TranslationManager {
             return `[${id}]`; // Afficher l'ID si traduction manquante
         }
         
-        if (!this.translations[id][lang]) {
+        let value = this.translations[id][lang];
+        if (!value) {
             // Fallback vers langue par défaut
-            if (this.translations[id][this.defaultLanguage]) {
-                return this.translations[id][this.defaultLanguage];
-            }
-            return `[${id}]`;
+            value = this.translations[id][this.defaultLanguage];
+            if (!value) return `[${id}]`;
         }
-        
-        return this.translations[id][lang];
+        // Supprimer tous les guillemets et espaces en début/fin de la valeur
+        value = value.replace(/^[\s"']+|[\s"']+$/g, '');
+        return value;
     }
     
     // Récupère toutes les traductions pour une langue

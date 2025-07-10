@@ -1,9 +1,10 @@
-// File: projective.js - Projective plane surface  
+// File: projective.js - Projective plane surface
 // Desc: En français, dans l'architecture, je suis le plan projectif avec pôle SUD à l'infini (projection sphérique douce)
-// Version 1.6.0 (retrait inversion X/Y)
+// Version 1.7.0 (Restored from faulty Steiner refactor)
 // Author: DNAvatar.org - Arnaud Maignan
-// Date: December 16, 2024 02:42 UTC+1
+// Date: [June 09, 2025] [HH:MM UTC+1]
 // Logs:
+//   - v1.7.0: Reverted faulty refactoring. Function is 'projective', config name is 'Steiner'.
 //   - v1.6.0: Retrait inversion X/Y - pas d'effet visuel en projection isométrique
 //   - v1.4.0: Inversion paramétrisation - pôle SUD à l'infini au lieu du pôle NORD (u_inverted = π - u)
 //   - v1.3.0: Transition ultra-douce - fréquence 0.5 + racine carrée pour meilleure progression aux pôles
@@ -11,16 +12,26 @@
 //   - v1.1.0: Ajout createSurface() et config pour homogénéité avec autres surfaces
 
 // Icône topologique avec flèches directionnelles
-// Plan projectif : géométrie complexe avec croisements
+// Plan projectif [+- -+] : bords opposés identifiés avec torsion
+// 2 côtés verts consécutifs, puis 2 côtés jaunes consécutifs
 export const topologyIcon = {
-  center: '🪩',
+  shape: 'square',
+  center: '🍎',
   top: '▶️',
   left: '⏬',
   right: '🔼',
   bottom: '⏪'
 };
 
-export function projective(u, v) {
+// Décalage texture spécifique projectif (offset paramétrique)
+export function getTextureOffsetU() { return 0; }
+export function getTextureOffsetV() { return 0; }
+
+export function createSurface(u, v) {
+  u = u + getTextureOffsetU();
+  if (u > 1.0) u -= 1.0; if (u < 0) u += 1.0;
+  v = v + getTextureOffsetV();
+  if (v > 1.0) v -= 1.0; if (v < 0) v += 1.0;
   u *= Math.PI;
   v *= 2 * Math.PI;
   
@@ -49,7 +60,7 @@ export function projective(u, v) {
   
   // DEBUG pour voir les valeurs aux pôles (plus fréquent pour vérifier)
   if (Math.random() < 0.002) { // 1 chance sur 500 pour debug
-    console.log(`🪩 [projective] u=${u.toFixed(2)} u_inv=${u_inverted.toFixed(2)} → polarFactor=${polarFactor.toFixed(3)} smooth=${smoothTransition.toFixed(3)} heightScale=${heightScale.toFixed(3)} z=${(heightVariation * 2.0).toFixed(3)}`);
+    console.log(`🍎 [projective] u=${u.toFixed(2)} u_inv=${u_inverted.toFixed(2)} → polarFactor=${polarFactor.toFixed(3)} smooth=${smoothTransition.toFixed(3)} heightScale=${heightScale.toFixed(3)} z=${(heightVariation * 2.0).toFixed(3)}`);
   }
   
   return {
@@ -59,18 +70,27 @@ export function projective(u, v) {
   };
 }
 
-// Configuration spécifique projective
-export const config = {
-  scale: 80,                     // Scale réduit pour plan projectif
-  defaultRotation: { x: 10, y: 20 }, // Vue par défaut
-  name: 'Plan projectif',
-  emoji: '🌎'
+// Invariants algébriques complets
+export const algebraicInvariants = {
+  name: 'ℝℙ²',     // Nom algébrique
+  pi1: 'ℤ/2ℤ',    // Groupe fondamental π₁
+  H1: 'ℤ/2ℤ',     // Premier groupe d'homologie H₁
+  chi: 1,         // Caractéristique d'Euler χ
+  H2: '{∅}',      // Deuxième groupe d'homologie H₂
+  orientable: '⊗' // Orientabilité
 };
 
-// Fonction Three.js (legacy - pour homogénéité)
-export function createSurface() {
-  // Géométrie approximative pour plan projectif
-  const geometry = new THREE.SphereGeometry(3, 16, 16);
-  const material = new THREE.MeshStandardMaterial({ color: 0x3399ff, transparent: true, opacity: 0.8 });
-  return new THREE.Mesh(geometry, material);
+// Configuration spécifique
+export const config = {
+  scale: 75,
+  rotX: -50,
+  rotY: -45,
+  rotZ: -10
+};
+
+// Gestion du drag spécifique projectif
+export function handleDrag(deltaX, deltaY, angles, config) {
+  angles.rotShape += deltaX * config.mouseSensitivity * 0.01;
+  angles.rotX -= deltaY * config.mouseSensitivity * 0.01;
+  angles.rotX = Math.max(-Math.PI, Math.min(Math.PI, angles.rotX));
 } 

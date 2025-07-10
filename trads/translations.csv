@@ -1,31 +1,57 @@
 # File: translations.csv - Traductions interface topologie 3D
 # Format: ID,FR,EN,ES,IT,DE
-"""topologyTitle""","""Surfaces topologiques - Projection 3D Isométrique""","""Topological Surfaces - 3D Isometric Projection""","""Superficies Topológicas - Proyección 3D Isométrica""","""Superfici Topologiche - Proiezione 3D Isometrica""","""Topologische Oberflächen - 3D Isometrische Projektion"""
-"""mainTitle""","""Topologicon du Carré""","""Square Topologicon""","""Topologicón del Cuadrado""","""Topologicon del Quadrato""","""Quadrat Topologicon"""
-"""view2d""","""Texture""","""Texture""","""Textura""","""Texture""","""Textur"""
-"""plane""","""Plan""","""Plane""","""Plano""","""Piano""","""Ebene"""
-"""disk""","""Disque""","""Disk""","""Disco""","""Disco""","""Scheibe"""
-"""cylinder""","""Cylindre""","""Cylinder""","""Cilindro""","""Cilindro""","""Zylinder"""
-"""mobius""","""Möbius""","""Möbius Strip""","""Cinta de Möbius""","""Nastro di Möbius""","""Möbiusband"""
-"""torus""","""Tore""","""Torus""","""Toro""","""Toro""","""Torus"""
-"""projective""","""Plan Projectif""","""Projective Plane""","""Plano Proyectivo""","""Piano Proiettivo""","""Projektive Ebene"""
-"""klein""","""Klein""","""Klein Bottle""","""Botella de Klein""","""Bottiglia di Klein""","""Kleinsche Flasche"""
-"""crosscap""","""Cross-cap""","""Cross-cap""","""Cross-cap""","""Cross-cap""","""Cross-cap"""
-"""mouseHelp""","""🖱️ Drag pour faire tourner • Shift+Drag pour incliner • Molette pour zoomer""","""🖱️ Drag to rotate • Shift+Drag to tilt • Wheel to zoom""","""🖱️ Arrastra para rotar • Shift+Arrastra para inclinar • Rueda para zoom""","""🖱️ Trascina per ruotare • Shift+Trascina per inclinare • Rotella per zoom""","""🖱️ Ziehen zum Drehen • Shift+Ziehen zum Neigen • Mausrad zum Zoomen"""
-"""rotationX""","""Rotation X""","""Rotation X""","""Rotación X""","""Rotazione X""","""Rotation X"""
-"""rotationY""","""Rotation Y""","""Rotation Y""","""Rotación Y""","""Rotazione Y""","""Rotation Y"""
-"""rotationZ""","""Rotation Z""","""Rotation Z""","""Rotación Z""","""Rotazione Z""","""Rotation Z"""
-"""scale""","""Échelle""","""Scale""","""Escala""","""Scala""","""Skalierung"""
-"""mapWorld""","""Monde""","""World""","""Mundo""","""Mondo""","""Welt"""
-"""mapRelief""","""Relief""","""Relief""","""Relieve""","""Rilievo""","""Relief"""
-"""mapNight""","""Nuit""","""Night""","""Noche""","""Notte""","""Nacht"""
-"""mapGreat""","""Great""","""Great""","""Great""","""Great""","""Great"""
-"""mapSheet""","""Sheet""","""Sheet""","""Hoja""","""Foglio""","""Blatt"""
-"""mapGeoview""","""GeoView""","""GeoView""","""GeoView""","""GeoView""","""GeoView"""
-"""mapSteam""","""Steam""","""Steam""","""Vapor""","""Vapore""","""Dampf"""
-"""mapSchool""","""École""","""School""","""Escuela""","""Scuola""","""Schule"""
-"""mapBrick""","""Brique""","""Brick""","""Ladrillo""","""Mattone""","""Ziegel"""
-"""mapEye""","""Œil""","""Eye""","""Ojo""","""Occhio""","""Auge"""
-"""mapMaze""","""Labyrinthe""","""Maze""","""Laberinto""","""Labirinto""","""Labyrinth"""
-"""mapRoom""","""Chambre""","""Room""","""Habitación""","""Stanza""","""Zimmer"""
-"""mapWater""","""Eau""","""Water""","""Agua""","""Acqua""","""Wasser""" 
+
+# === LIGNE DE LABELS (NE PAS SUPPRIMER) ===
+ID,FR,EN,ES,IT,DE
+
+# --- SHAPES (SURFACES TOPOLOGIQUES) ---
+disk,Disque,Disk,Disco,Disco,Scheibe
+cylinder,Cylindre,Cylinder,Cilindro,Cilindro,Zylinder
+mobius,Ruban de Möbius,Möbius Strip,Cinta de Möbius,Nastro di Möbius,Möbiusband
+torus,Tore,Torus,Toro,Toro,Torus
+projective,Plan projectif,Projective Plane,Superficie proyectiva,Piano proiettivo,Projektive Ebene
+klein,Bouteille de Klein,Klein Bottle,Botella de Klein,Bottiglia di Klein,Kleinsche Flasche
+crosscap,Cross-cap,Cross-cap,Cross-cap,Cross-cap,Cross-cap
+sphere,Sphère,Sphere,Esfera,Sfera,Sphäre
+boy,Surface de Boy,Boy Surface,Superficie de Boy,Superficie di Boy,Boysche Fläche
+plane,Plan,Plane,Plano,Piano,Ebene
+
+# --- TEXTURES (MAPS) ---
+mapWorld,Monde,World,Mundo,Mondo,Welt
+mapDisk,Disque,Disk,Disco,Disco,Scheibe
+mapRelief,Relief,Relief,Relieve,Rilievo,Relief
+mapNight,Nuit,Night,Noche,Notte,Nacht
+mapGreat,Grande,Great,Grande,Grande,Groß
+mapSheet,Feuille,Sheet,Hoja,Foglio,Blatt
+mapGeoview,GeoView,GeoView,Vista geo,Vista geo,Geo-Ansicht
+mapSteam,Carte,Map,Mapa,Mappa,Karte
+mapSchool,École,School,Escuela,Scuola,Schule
+mapBrick,Brique,Brick,Ladrillo,Mattone,Ziegel
+mapEye,Œil,Eye,Ojo,Occhio,Auge
+mapMaze,Labyrinthe,Maze,Laberinto,Labirinto,Labyrinth
+mapRoom,Pièce,Room,Habitación,Stanza,Zimmer
+mapWater,Eau,Water,Agua,Acqua,Wasser
+mapRotate,Rotation,Rotation,Rotación,Rotazione,Rotation
+mapFace,Visage,Face,Cara,Faccia,Gesicht
+mapJanus,Janus,Janus Model,Modelo Janus,Modello Janus,Janus-Modell
+mapColors,Couleurs,Colors,Colores,Colori,Farben
+
+# --- AUTRES CLÉS ---
+projectionTitle,Projection du plan sur un(e) {surface} avec la carte "{mapName}",Projection of the plane onto a {surface} with the map "{mapName}",Proyección del plano sobre un(a) {surface} con el mapa "{mapName}",Proiezione del piano su un(a) {surface} con la mappa "{mapName}",Projektion der Ebene auf eine(n) {surface} mit der Karte "{mapName}"
+topologyTitle,Surfaces topologiques - Projection 3D Isométrique,Topological Surfaces - 3D Isometric Projection,Superficies Topológicas - Proyección 3D Isométrica,Superfici Topologiche - Proiezione 3D Isometrica,Topologische Oberflächen - 3D Isometrische Projektion
+mainTitle,Librement inspiré par\n"le TOPOLOGICON"\nde J.P. Petit,Freely inspired by\n"The TOPOLOGICON"\nby J.P. Petit,Libremente inspirado por\n"El TOPOLOGICON"\nde J.P. Petit,Liberamente ispirato da\n"Il TOPOLOGICON"\ndi J.P. Petit,Frei inspiriert von\n"Das TOPOLOGICON"\nvon J.P. Petit
+mouseHelp,🖱️ Drag pour faire tourner • Molette pour zoomer,🖱️ Drag to rotate • Wheel to zoom,🖱️ Arrastra para rotar • Rueda para zoom,🖱️ Trascina per ruotare • Rotella per zoom,🖱️ Ziehen zum Drehen • Mausrad zum Zoomen
+rotationX,Rotation X,Rotation X,Rotación X,Rotazione X,Rotation X
+rotationY,Rotation Y,Rotation Y,Rotación Y,Rotazione Y,Rotation Y
+rotationZ,Rotation Z,Rotation Z,Rotación Z,Rotazione Z,Rotation Z
+scale,Échelle,Scale,Escala,Scala,Skalierung
+
+# --- ATTRIBUTS ALT (ACCESSIBILITÉ) ---
+pdfIcon,Icône PDF Topologicon,Topologicon PDF Icon,Icono PDF Topologicon,Icona PDF Topologicon,Topologicon PDF Symbol
+pdfModal,Bande dessinée Topologicon,Topologicon Comic,Cómic Topologicon,Fumetto Topologicon,Topologicon Comic
+axisX,Axe X,X Axis,Eje X,Asse X,X-Achse
+axisY,Axe Y,Y Axis,Eje Y,Asse Y,Y-Achse
+axisZ,Axe Z,Z Axis,Eje Z,Asse Z,Z-Achse
+siteLink,Site Savoir Sans Frontières,Savoir Sans Frontières Website,Sitio Savoir Sans Frontières,Sito Savoir Sans Frontières,Savoir Sans Frontières Website
+isoPanelTitle,Isométries,Isometries,Isometrías,Isometrie,Isometrien
+algebrePanelTitle,Algèbre,Algebra,Álgebra,Algebra

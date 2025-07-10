@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Test extraction frames GIF</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f8f8;
+      color: #222;
+      padding: 2em;
+    }
+    h2 {
+      color: #3498db;
+    }
+    #frames-container {
+      margin-top: 2em;
+      padding: 1em;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .frame-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1em;
+      margin-top: 1em;
+    }
+    .frame-item {
+      border: 2px solid #3498db;
+      border-radius: 4px;
+      padding: 0.5em;
+      text-align: center;
+      background: #f8f9fa;
+    }
+    .frame-item canvas {
+      border: 1px solid #ddd;
+      border-radius: 2px;
+      background: #eee;
+      max-width: 100%;
+      height: auto;
+    }
+    .frame-info {
+      margin-top: 0.5em;
+      font-size: 0.9em;
+      color: #666;
+    }
+    .controls {
+      margin-top: 1em;
+      text-align: center;
+    }
+    button {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 0.5em 1em;
+      margin: 0 0.5em;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #2980b9;
+    }
+    button:disabled {
+      background: #bdc3c7;
+      cursor: not-allowed;
+    }
+    .info {
+      margin-top: 1em;
+      padding: 1em;
+      background: #e8f4fd;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.9em;
+    }
+    .status {
+      margin-top: 1em;
+      padding: 0.5em;
+      background: #f1f2f6;
+      border-radius: 4px;
+      text-align: center;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h2>Test extraction frames GIF</h2>
+          <p>Ce test extrait toutes les frames du GIF <code>../cartes/rotate.gif</code> et les affiche.<br>
+  Cela nous permettra de voir combien de frames contient le GIF et leurs propriétés.<br>
+  Ouvre la console pour voir les logs détaillés d'extraction.</p>
+  
+  <div class="controls">
+    <button id="extractBtn" onclick="extractFrames()">🔍 Extraire les frames</button>
+    <button id="clearBtn" onclick="clearFrames()" disabled>🗑️ Effacer</button>
+  </div>
+  
+  <div class="status" id="status">En attente...</div>
+  
+  <div id="frames-container" style="display: none;">
+    <h3>Frames extraites :</h3>
+    <div class="frame-grid" id="frameGrid"></div>
+  </div>
+  
+  <div class="info">
+    <strong>Fonctionnalités :</strong><br>
+    • Extraction de toutes les frames du GIF<br>
+    • Affichage des propriétés de chaque frame<br>
+    • Visualisation des dimensions et délais<br>
+    • Analyse de la structure du GIF
+  </div>
+  
+  <!-- Extracteur de frames GIF -->
+  <script src="gif-frame-extractor.js"></script>
+  <script>
+    // Variables globales
+    let extractor = null;
+    let frames = [];
+    
+    // Fonction pour extraire les frames
+    async function extractFrames() {
+      const extractBtn = document.getElementById('extractBtn');
+      const clearBtn = document.getElementById('clearBtn');
+      const status = document.getElementById('status');
+      const framesContainer = document.getElementById('frames-container');
+      const frameGrid = document.getElementById('frameGrid');
+      
+      extractBtn.disabled = true;
+      status.textContent = 'Extraction en cours...';
+      
+      try {
+        // Créer l'extracteur
+        extractor = new window.GifFrameExtractor();
+        
+        // Extraire les frames
+        frames = await extractor.extractFrames('../cartes/rotate.gif');
+        
+        if (frames.length > 0) {
+          // Afficher les frames
+          frameGrid.innerHTML = '';
+          
+          frames.forEach((frame, index) => {
+            const frameItem = document.createElement('div');
+            frameItem.className = 'frame-item';
+            
+            // Créer un canvas pour la frame
+            const canvas = extractor.createFrameCanvas(index);
+            
+            // Informations de la frame
+            const frameInfo = document.createElement('div');
+            frameInfo.className = 'frame-info';
+            frameInfo.innerHTML = `
+              <strong>Frame ${index + 1}</strong><br>
+              ${frame.width}×${frame.height}<br>
+              Delay: ${frame.delay}ms<br>
+              Disposal: ${frame.disposalMethod}<br>
+              ${frame.imageData.length} bytes
+            `;
+            
+            frameItem.appendChild(canvas);
+            frameItem.appendChild(frameInfo);
+            frameGrid.appendChild(frameItem);
+          });
+          
+          framesContainer.style.display = 'block';
+          clearBtn.disabled = false;
+          
+          status.textContent = `${frames.length} frames extraites avec succès !`;
+          console.log('[TEST] Extraction terminée:', frames.length, 'frames');
+          
+        } else {
+          status.textContent = 'Aucune frame trouvée';
+          console.warn('[TEST] Aucune frame extraite');
+        }
+        
+      } catch (error) {
+        console.error('[TEST] Erreur extraction:', error);
+        status.textContent = 'Erreur: ' + error.message;
+      } finally {
+        extractBtn.disabled = false;
+      }
+    }
+    
+    // Fonction pour effacer les frames
+    function clearFrames() {
+      const framesContainer = document.getElementById('frames-container');
+      const clearBtn = document.getElementById('clearBtn');
+      const status = document.getElementById('status');
+      
+      framesContainer.style.display = 'none';
+      clearBtn.disabled = true;
+      status.textContent = 'Frames effacées';
+      
+      frames = [];
+      extractor = null;
+    }
+    
+    // Initialisation
+    document.getElementById('status').textContent = 'Prêt - Cliquez "Extraire les frames"';
+  </script>
+</body>
+</html> 

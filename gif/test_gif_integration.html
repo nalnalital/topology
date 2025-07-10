@@ -1,0 +1,366 @@
+# File: test_gif_integration.html - Test intégration wrapper GIF avec mapping tuiles
+# Desc: Test de l'intégration du wrapper GIF simple avec le système de mapping des tuiles
+# Version 1.0.0
+# Author: DNAvatar.org - Arnaud Maignan
+# Date: [June 08, 2025] [15:45 UTC+1]
+# Logs:
+#   - v1.0.0: Test intégration wrapper GIF avec mapping tuiles
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Intégration GIF - Mapping Tuiles</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #2980b9;
+        }
+        .gif-display {
+            text-align: center;
+            margin: 20px 0;
+            min-height: 200px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        .btn-start { background: #27ae60; color: white; }
+        .btn-start:hover { background: #229954; }
+        .btn-pause { background: #f39c12; color: white; }
+        .btn-pause:hover { background: #e67e22; }
+        .btn-resume { background: #3498db; color: white; }
+        .btn-resume:hover { background: #2980b9; }
+        .status {
+            text-align: center;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.playing { background: #d5f4e6; color: #27ae60; }
+        .status.paused { background: #fef9e7; color: #f39c12; }
+        .status.stopped { background: #fadbd8; color: #e74c3c; }
+        .info {
+            background: #ebf3fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .info h3 {
+            margin-top: 0;
+            color: #2980b9;
+        }
+        .info ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .info li {
+            margin: 5px 0;
+        }
+        .frame-info {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        .mapping-test {
+            background: #d1ecf1;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .mapping-test h4 {
+            margin-top: 0;
+            color: #0c5460;
+        }
+        .mapping-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 5px;
+            margin: 10px 0;
+        }
+        .mapping-cell {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 Test Intégration GIF - Mapping Tuiles</h1>
+        <p>Test de l'intégration du wrapper GIF simple avec le système de mapping des tuiles</p>
+        
+        <div class="info">
+            <h3>📋 Objectifs du test :</h3>
+            <ul>
+                <li>✅ Charger le GIF avec extraction des frames</li>
+                <li>✅ Vérifier que les frames sont disponibles</li>
+                <li>✅ Tester l'animation frame par frame</li>
+                <li>✅ Simuler le mapping des tuiles avec les frames</li>
+                <li>✅ Vérifier la compatibilité avec le système existant</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <h3>🎬 Test Chargement GIF</h3>
+            <div class="gif-display" id="gifContainer">
+                <p>Chargement du GIF...</p>
+            </div>
+            
+            <div class="controls">
+                <button class="btn-start" onclick="startAnimation()">▶️ Démarrer</button>
+                <button class="btn-pause" onclick="pauseAnimation()">⏸️ Pause</button>
+                <button class="btn-resume" onclick="resumeAnimation()">▶️ Reprendre</button>
+            </div>
+            
+            <div class="status" id="status">État: Chargement...</div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 Informations Frames</h3>
+            <div class="frame-info" id="frameInfo">
+                <strong>Frames :</strong> <span id="frameCount">-</span><br>
+                <strong>Frame courante :</strong> <span id="currentFrame">-</span><br>
+                <strong>Délai :</strong> <span id="frameDelay">-</span> ms<br>
+                <strong>État :</strong> <span id="animationState">-</span>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🗺️ Test Mapping Tuiles</h3>
+            <div class="mapping-test">
+                <h4>Simulation mapping 6x6 (grille réduite)</h4>
+                <p>Test du mapping des tuiles avec les frames du GIF :</p>
+                
+                <div class="mapping-grid" id="mappingGrid">
+                    <!-- Les cellules seront générées dynamiquement -->
+                </div>
+                
+                <div class="frame-info">
+                    <strong>Tuile sélectionnée :</strong> <span id="selectedTile">-</span><br>
+                    <strong>Frame utilisée :</strong> <span id="tileFrame">-</span><br>
+                    <strong>Coordonnées :</strong> <span id="tileCoords">-</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="info">
+            <h3>🔧 Informations techniques :</h3>
+            <ul>
+                <li><strong>Wrapper :</strong> gif-simple-native.js v1.4.0</li>
+                <li><strong>Extraction frames :</strong> ImageData + Canvas</li>
+                <li><strong>Animation :</strong> setInterval avec délai configurable</li>
+                <li><strong>Mapping :</strong> Simulation grille 6x6 pour test</li>
+                <li><strong>Intégration :</strong> Compatible avec getBmp(x, y)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="gif-simple-native.js"></script>
+    <script>
+        // Variables globales
+        let gifElement = null;
+        let statusElement = null;
+        let frameInfoElement = null;
+        let mappingGridElement = null;
+        let selectedTile = null;
+        
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            statusElement = document.getElementById('status');
+            frameInfoElement = document.getElementById('frameInfo');
+            mappingGridElement = document.getElementById('mappingGrid');
+            
+            // Charger le GIF
+            loadSimpleGif('../cartes/rotate.gif', 'gifContainer', function(element) {
+                if (element) {
+                    gifElement = element;
+                    updateStatus();
+                    updateFrameInfo();
+                    generateMappingGrid();
+                    console.log('[TEST] GIF chargé avec succès');
+                } else {
+                    console.error('[TEST] Erreur lors du chargement du GIF');
+                    statusElement.textContent = 'État: Erreur de chargement';
+                    statusElement.className = 'status stopped';
+                }
+            });
+        });
+        
+        // Fonction pour démarrer l'animation
+        function startAnimation() {
+            if (gifElement) {
+                startSimpleGif();
+                updateStatus();
+                updateFrameInfo();
+                console.log('[TEST] Animation démarrée');
+            }
+        }
+        
+        // Fonction pour mettre en pause
+        function pauseAnimation() {
+            if (gifElement) {
+                pauseSimpleGif();
+                updateStatus();
+                updateFrameInfo();
+                console.log('[TEST] Animation en pause');
+            }
+        }
+        
+        // Fonction pour reprendre
+        function resumeAnimation() {
+            if (gifElement) {
+                resumeSimpleGif();
+                updateStatus();
+                updateFrameInfo();
+                console.log('[TEST] Animation reprise');
+            }
+        }
+        
+        // Fonction pour mettre à jour l'état
+        function updateStatus() {
+            if (!statusElement) return;
+            
+            const isPlaying = isSimpleGifPlaying();
+            const currentFrame = getCurrentFrameIndex();
+            const totalFrames = getTotalFrames();
+            
+            if (isPlaying) {
+                statusElement.textContent = `État: En cours (Frame ${currentFrame + 1}/${totalFrames})`;
+                statusElement.className = 'status playing';
+            } else {
+                statusElement.textContent = `État: En pause (Frame ${currentFrame + 1}/${totalFrames})`;
+                statusElement.className = 'status paused';
+            }
+        }
+        
+        // Fonction pour mettre à jour les infos des frames
+        function updateFrameInfo() {
+            if (!frameInfoElement) return;
+            
+            const currentFrame = getCurrentFrameIndex();
+            const totalFrames = getTotalFrames();
+            const isPlaying = isSimpleGifPlaying();
+            const currentFrameData = getCurrentFrame();
+            
+            document.getElementById('frameCount').textContent = totalFrames;
+            document.getElementById('currentFrame').textContent = currentFrame + 1;
+            document.getElementById('frameDelay').textContent = '100'; // Délai fixe pour le test
+            document.getElementById('animationState').textContent = isPlaying ? 'En cours' : 'En pause';
+            
+            // Mettre à jour la tuile sélectionnée si elle existe
+            if (selectedTile) {
+                updateSelectedTileInfo();
+            }
+        }
+        
+        // Fonction pour générer la grille de mapping
+        function generateMappingGrid() {
+            if (!mappingGridElement) return;
+            
+            mappingGridElement.innerHTML = '';
+            
+            // Créer une grille 6x6 pour le test
+            for (let y = 0; y < 6; y++) {
+                for (let x = 0; x < 6; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'mapping-cell';
+                    cell.textContent = `${x},${y}`;
+                    cell.dataset.x = x;
+                    cell.dataset.y = y;
+                    
+                    cell.addEventListener('click', function() {
+                        selectTile(x, y);
+                    });
+                    
+                    mappingGridElement.appendChild(cell);
+                }
+            }
+        }
+        
+        // Fonction pour sélectionner une tuile
+        function selectTile(x, y) {
+            selectedTile = { x, y };
+            
+            // Mettre en surbrillance la tuile sélectionnée
+            document.querySelectorAll('.mapping-cell').forEach(cell => {
+                cell.style.background = '#f8f9fa';
+                cell.style.border = '1px solid #ccc';
+            });
+            
+            const selectedCell = document.querySelector(`[data-x="${x}"][data-y="${y}"]`);
+            if (selectedCell) {
+                selectedCell.style.background = '#d4edda';
+                selectedCell.style.border = '2px solid #28a745';
+            }
+            
+            updateSelectedTileInfo();
+        }
+        
+        // Fonction pour mettre à jour les infos de la tuile sélectionnée
+        function updateSelectedTileInfo() {
+            if (!selectedTile) return;
+            
+            const currentFrame = getCurrentFrameIndex();
+            const totalFrames = getTotalFrames();
+            
+            document.getElementById('selectedTile').textContent = `${selectedTile.x},${selectedTile.y}`;
+            document.getElementById('tileFrame').textContent = `${currentFrame + 1}/${totalFrames}`;
+            document.getElementById('tileCoords').textContent = `(${selectedTile.x}, ${selectedTile.y})`;
+            
+            // Simuler l'appel à getBmp(x, y)
+            console.log(`[TEST] getBmp(${selectedTile.x}, ${selectedTile.y}) appelé avec frame ${currentFrame + 1}`);
+        }
+        
+        // Mise à jour périodique
+        setInterval(function() {
+            updateStatus();
+            updateFrameInfo();
+        }, 100);
+    </script>
+</body>
+</html> 

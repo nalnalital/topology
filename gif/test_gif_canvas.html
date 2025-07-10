@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Test GIF animé sur canvas (approche Canvas native)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f8f8;
+      color: #222;
+      padding: 2em;
+    }
+    h2 {
+      color: #3498db;
+    }
+    #canvas-container {
+      margin-top: 2em;
+      padding: 1em;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      min-height: 100px;
+      min-width: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas {
+      border: 2px solid #3498db;
+      border-radius: 4px;
+      background: #eee;
+    }
+    .controls {
+      margin-top: 1em;
+      text-align: center;
+    }
+    button {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 0.5em 1em;
+      margin: 0 0.5em;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #2980b9;
+    }
+    button:disabled {
+      background: #bdc3c7;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <h2>Test GIF animé sur canvas (approche Canvas native)</h2>
+  <p>Ce test charge <code>../cartes/rotate.gif</code> et l'affiche animé dans un canvas.<br>
+  Utilise l'API Canvas native pour l'animation, sans décodage complexe.<br>
+  Ouvre la console pour voir les logs de test.</p>
+  <div id="canvas-container">
+    <p>Chargement en cours...</p>
+  </div>
+  <div class="controls">
+    <button id="startBtn" onclick="startAnimation()">Démarrer</button>
+    <button id="stopBtn" onclick="stopAnimation()" disabled>Arrêter</button>
+  </div>
+  
+  <!-- Wrapper Canvas pour GIF animés -->
+  <script src="gif-canvas-wrapper.js"></script>
+  <script>
+    // Variables globales
+    let canvas = null;
+    
+    // Fonction pour démarrer l'animation
+    function startAnimation() {
+      if (canvas) {
+        window.startGifAnimation();
+        document.getElementById('startBtn').disabled = true;
+        document.getElementById('stopBtn').disabled = false;
+        console.log('[TEST] Animation démarrée');
+      }
+    }
+    
+    // Fonction pour arrêter l'animation
+    function stopAnimation() {
+      window.stopGifAnimation();
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('stopBtn').disabled = true;
+      console.log('[TEST] Animation arrêtée');
+    }
+    
+    // Test principal
+    async function runTest() {
+      console.log('[TEST] Chargement GIF avec approche Canvas...');
+      
+      // Attendre que le wrapper soit chargé
+      await new Promise((resolve) => {
+        window.waitForGifDecoder(resolve);
+      });
+      
+      // Charger le GIF
+              window.loadGifToCanvas('../cartes/rotate.gif', (loadedCanvas) => {
+        if (loadedCanvas) {
+          canvas = loadedCanvas;
+          document.getElementById('canvas-container').innerHTML = '';
+          document.getElementById('canvas-container').appendChild(canvas);
+          console.log('[TEST] Canvas GIF prêt, ajout au DOM');
+          
+          // Activer le bouton démarrer
+          document.getElementById('startBtn').disabled = false;
+        } else {
+          console.error('[TEST] Erreur chargement GIF');
+          document.getElementById('canvas-container').innerHTML = '<p style="color: red;">Erreur chargement GIF</p>';
+        }
+      });
+    }
+    
+    // Démarrer le test
+    runTest().catch(console.error);
+  </script>
+</body>
+</html> 

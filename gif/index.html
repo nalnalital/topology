@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module GIF - Tests et exemples</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin: 10px 0 0 0;
+        }
+        
+        .tests-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .test-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .test-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        
+        .test-card h3 {
+            margin: 0 0 15px 0;
+            color: #ffd700;
+            font-size: 1.3em;
+        }
+        
+        .test-card p {
+            margin: 0 0 20px 0;
+            line-height: 1.6;
+            opacity: 0.9;
+        }
+        
+        .test-card .status {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        
+        .status.recommended {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .status.working {
+            background: #2196F3;
+            color: white;
+        }
+        
+        .status.deprecated {
+            background: #f44336;
+            color: white;
+        }
+        
+        .status.experimental {
+            background: #FF9800;
+            color: white;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            background: linear-gradient(45deg, #ee5a24, #ff6b6b);
+        }
+        
+        .info-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            margin-top: 30px;
+        }
+        
+        .info-section h2 {
+            color: #ffd700;
+            margin-top: 0;
+        }
+        
+        .info-section ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .info-section li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .info-section li:last-child {
+            border-bottom: none;
+        }
+        
+        .version-info {
+            text-align: center;
+            margin-top: 30px;
+            opacity: 0.7;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎬 Module GIF</h1>
+        <p>Gestion des textures GIF animées pour le moteur 3Diso</p>
+        <p><strong>Version 1.1.0</strong> - Approche données brutes recommandée</p>
+    </div>
+    
+    <div class="tests-grid">
+        <div class="test-card">
+            <span class="status recommended">✅ Recommandé</span>
+            <h3>Test Final - Approche données brutes</h3>
+            <p>Version stable utilisant les données GIF brutes via Blob/URL. Simple, fiable et performant.</p>
+            <a href="test_gif_final.html" class="btn">Lancer le test</a>
+        </div>
+        
+        <div class="test-card">
+            <span class="status working">🔄 Fonctionnel</span>
+            <h3>Animation GIF native</h3>
+            <p>Utilise l'animation GIF native du navigateur avec contrôles play/pause/stop.</p>
+            <a href="test_gif_animated.html" class="btn">Lancer le test</a>
+        </div>
+        
+        <div class="test-card">
+            <span class="status experimental">🔬 Expérimental</span>
+            <h3>Extracteur de frames</h3>
+            <p>Analyse complète de la structure GIF et extraction des frames individuelles.</p>
+            <a href="test_gif_frames.html" class="btn">Lancer le test</a>
+        </div>
+        
+        <div class="test-card">
+            <span class="status working">⚙️ Fonctionnel</span>
+            <h3>Test données brutes</h3>
+            <p>Test de l'approche Blob/URL pour charger les GIF sans décodage complexe.</p>
+            <a href="test_gif_raw.html" class="btn">Lancer le test</a>
+        </div>
+        
+        <div class="test-card">
+            <span class="status working">🎨 Canvas</span>
+            <h3>Test Canvas native</h3>
+            <p>Utilise l'API Canvas native pour copier et afficher les GIF animés.</p>
+            <a href="test_gif_canvas.html" class="btn">Lancer le test</a>
+        </div>
+        
+        <div class="test-card">
+            <span class="status deprecated">⚠️ Déprécié</span>
+            <h3>Test texture (ancien)</h3>
+            <p>Ancienne version avec décodage GIF simple (LZW non implémenté).</p>
+            <a href="test_gif_texture.html" class="btn">Lancer le test</a>
+        </div>
+    </div>
+    
+    <div class="info-section">
+        <h2>📋 Informations importantes</h2>
+        <ul>
+            <li><strong>Approche recommandée :</strong> Données brutes (test_gif_final.html)</li>
+            <li><strong>Performance :</strong> Pas de décodage complexe, utilisation native du navigateur</li>
+            <li><strong>Compatibilité :</strong> Tous les navigateurs modernes supportent les GIF animés</li>
+            <li><strong>Contrôle :</strong> Play/Pause/Stop disponible avec l'animation native</li>
+            <li><strong>Diagnostic :</strong> L'extracteur de frames permet d'analyser les problèmes</li>
+        </ul>
+    </div>
+    
+    <div class="version-info">
+        <p>Module GIF v1.1.0 - DNAvatar.org - Arnaud Maignan</p>
+        <p>Dernière mise à jour : Juillet 2024</p>
+    </div>
+</body>
+</html> 
