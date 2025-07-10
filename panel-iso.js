@@ -95,11 +95,47 @@ class PanelIsoState {
 // Instance globale de l'état du panneau
 const panelState = new PanelIsoState();
 
+function positionPanelBottom() {
+  const panel = document.getElementById('isometriesPanel');
+  if (!panel) return;
+  const panelHeight = panel.offsetHeight || 30;
+  const top = window.innerHeight - panelHeight - 20;
+  panel.style.top = top + 'px';
+  panel.style.left = '20px';
+  panel.style.bottom = '';
+  panel.style.right = '';
+}
+
+function positionPanelBottomCanvas() {
+  const panel = document.getElementById('isometriesPanel');
+  const canvas = document.getElementById('canvas');
+  if (!panel || !canvas) return;
+  const parent = panel.offsetParent || panel.parentElement;
+  const parentRect = parent.getBoundingClientRect();
+  const canvasRect = canvas.getBoundingClientRect();
+  const top = (canvasRect.bottom - parentRect.top) - panel.offsetHeight - 20;
+  panel.style.top = top + 'px';
+  panel.style.left = '20px';
+  panel.style.bottom = '';
+  panel.style.right = '';
+}
+
 export function initPanelIso(options = {}) {
-  const panel = document.getElementById('cameraTranslationFloating');
+  const panel = document.getElementById('isometriesPanel');
   if (!panel) {
     pdPanel('initPanelIso', '❌ Panneau isométrique introuvable');
     return;
+  }
+  // Positionner le panneau en bas à gauche du canvas (flottant)
+  positionPanelBottomCanvas();
+  window.addEventListener('resize', positionPanelBottomCanvas);
+  // Observer le canvas pour repositionner dynamiquement le panneau
+  const canvas = document.getElementById('canvas');
+  if (canvas && 'ResizeObserver' in window) {
+    const ro = new ResizeObserver(() => {
+      positionPanelBottomCanvas();
+    });
+    ro.observe(canvas);
   }
 
   // Initialiser l'état

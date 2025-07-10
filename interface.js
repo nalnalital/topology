@@ -68,10 +68,10 @@ export async function buildTopologyButtons() {
       
       const icon = modules[name].topologyIcon;
       const label = document.createElement('label');
-      label.className = 'topology-option';
-      const input = document.createElement('input');
-      input.type = 'radio';
-      input.name = 'topology';
+          label.className = 'topology-option';
+    const input = document.createElement('input');
+    input.type = 'radio';
+    input.name = 'topology';
       input.value = name;
       label.appendChild(input);
       // Nouveau : conteneur pour l'icône
@@ -125,7 +125,7 @@ export function displayTopologyGroups(surfaceName) {
   }
 
   // Supprimer l'ancien groupe s'il existe
-  const existingGroup = projectionTitle.querySelector('.topology-groups');
+  const existingGroup = projectionTitle.querySelector('.algebre-groups');
   console.log('[DEBUG] Ancien groupe trouvé:', existingGroup);
   if (existingGroup) {
     existingGroup.remove();
@@ -170,7 +170,7 @@ export function displayTopologyGroups(surfaceName) {
 
     // Conteneur pour l'algèbre à droite
     const algebraContainer = document.createElement('div');
-    algebraContainer.className = 'topology-groups';
+    algebraContainer.className = 'algebre-groups';
     algebraContainer.style.cssText = `
       position: absolute;
       left: 70%;

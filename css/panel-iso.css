@@ -10,7 +10,7 @@
  */
 
 /* Bordure bleue par défaut sur le panneau */
-.camera-translation-floating {
+.isometries-panel.panel-floating {
   border: 2px solid #2196f3;
   border-radius: 12px;
   position: absolute;
@@ -22,7 +22,7 @@
   overflow: hidden;
 }
 /* Panneau verrouillé : hauteur automatique pour contenir tout */
-.camera-translation-floating.locked {
+.isometries-panel.locked {
   height: auto;
   top: auto;
   bottom: 20px;
@@ -34,21 +34,21 @@
 
 /* Zone de drag verrouillée : bleu vif, aucune bordure ni effet */
 
-.camera-translation-floating.locked .drag-handle {
+.isometries-panel.locked .drag-handle {
   background: #ffcdcd !important;
   color: #990000 !important;
   border-bottom: 1px solid rgba(243, 33, 33, 0.4) !important;
   box-shadow: none !important;
   outline: none !important;
 }
-.camera-translation-floating.dragging .drag-handle {
+.isometries-panel.dragging .drag-handle {
   background: rgba(52, 152, 219, 0.2);
   color: #2980b9;
   border-bottom: 1px solid rgba(52, 152, 219, 0.4);
   font-weight: bold;
 }
 
-.camera-translation-floating.dragging {
+.isometries-panel.dragging {
   /* Suppression des effets visuels lors du drag */
   height: auto !important;
   min-height: 100px !important;
@@ -61,7 +61,7 @@
   bottom: 20px;
 }
 
-.camera-translation-floating:hover:not(.locked) {
+.isometries-panel:hover:not(.locked) {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
   transform: translateY(0);
   height: auto;
@@ -70,7 +70,7 @@
 }
 
 /* En mode disabled, forcer la hauteur fixe et pas d'animation */
-.camera-translation-floating.disabled {
+.isometries-panel.disabled {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   height: 30px !important;
@@ -80,9 +80,9 @@
 }
 
 /* MODE ROLLOUT : Par défaut seule la zone de drag visible */
-.camera-translation-floating .translation-grid,
-.camera-translation-floating .separator,
-.camera-translation-floating .rotation-controls {
+.isometries-panel .translation-grid,
+.isometries-panel .separator,
+.isometries-panel .rotation-controls {
   opacity: 0;
   transform: scale(0.8);
   pointer-events: none;
@@ -92,18 +92,18 @@
 }
 
 /* Au survol du panneau : dépliage des actions (identique 2D/3D) */
-.camera-translation-floating:hover:not(.locked) .translation-grid,
-.camera-translation-floating:hover:not(.locked) .separator,
-.camera-translation-floating:hover:not(.locked) .rotation-controls {
+.isometries-panel:hover:not(.locked) .translation-grid,
+.isometries-panel:hover:not(.locked) .separator,
+.isometries-panel:hover:not(.locked) .rotation-controls {
   opacity: 1;
   transform: scale(1);
   max-height: 200px;
 }
 
 /* Panneau verrouillé : toujours déplié */
-.camera-translation-floating.locked .translation-grid,
-.camera-translation-floating.locked .separator,
-.camera-translation-floating.locked .rotation-controls {
+.isometries-panel.locked .translation-grid,
+.isometries-panel.locked .separator,
+.isometries-panel.locked .rotation-controls {
   opacity: 1;
   transform: scale(1);
   pointer-events: auto;
@@ -111,23 +111,23 @@
 }
 
 /* Interactions activées seulement en mode 3D */
-.camera-translation-floating:hover:not(.disabled) .translation-grid,
-.camera-translation-floating:hover:not(.disabled) .separator,
-.camera-translation-floating:hover:not(.disabled) .rotation-controls {
+.isometries-panel:hover:not(.disabled) .translation-grid,
+.isometries-panel:hover:not(.disabled) .separator,
+.isometries-panel:hover:not(.disabled) .rotation-controls {
   pointer-events: auto;
 }
 
 
 /*
-.camera-translation-floating.locked .drag-handle {
+.isometries-panel.locked .drag-handle {
   background: rgba(231, 76, 60, 0.2);
   border-bottom: 1px solid rgba(231, 76, 60, 0.4);
   color: #e74c3c;
 }*/
 /* En mode disabled, appliquer grayscale SEULEMENT aux zones inactives */
-.camera-translation-floating.disabled .translation-grid,
-.camera-translation-floating.disabled .rotation-controls,
-.camera-translation-floating.disabled .separator {
+.isometries-panel.disabled .translation-grid,
+.isometries-panel.disabled .rotation-controls,
+.isometries-panel.disabled .separator {
   filter: grayscale(100%);
   background: transparent;
   backdrop-filter: none;
@@ -136,21 +136,21 @@
 }
 
 /* Curseur interdit sur les zones inactives en mode disabled */
-.camera-translation-floating.disabled .translation-grid *,
-.camera-translation-floating.disabled .rotation-controls *,
-.camera-translation-floating.disabled .separator {
+.isometries-panel.disabled .translation-grid *,
+.isometries-panel.disabled .rotation-controls *,
+.isometries-panel.disabled .separator {
   cursor: not-allowed !important;
 }
 
 /* Curseur interdit sur les conteneurs eux-mêmes en mode disabled */
-.camera-translation-floating.disabled .translation-grid,
-.camera-translation-floating.disabled .rotation-controls,
-.camera-translation-floating.disabled .separator {
+.isometries-panel.disabled .translation-grid,
+.isometries-panel.disabled .rotation-controls,
+.isometries-panel.disabled .separator {
   cursor: not-allowed !important;
 }
 
 /* En mode disabled, seule la zone de drag reste interactive et bleue */
-.camera-translation-floating.disabled .drag-handle {
+.isometries-panel.disabled .drag-handle {
   pointer-events: auto !important;
   opacity: 1;
   filter: none;
@@ -160,7 +160,7 @@
 }
 
 /* Curseur grabbing pendant le drag en mode disabled */
-.camera-translation-floating.disabled .drag-handle:active {
+.isometries-panel.disabled .drag-handle:active {
   cursor: grabbing;
 }
 
@@ -168,7 +168,7 @@
   cursor: grabbing;
 }
 
-.camera-translation-floating .drag-handle {
+.isometries-panel .drag-handle {
   background: rgba(52, 152, 219, 0.15);
   border-bottom: 1px solid rgba(52, 152, 219, 0.4);
   color: #3498db;
@@ -183,9 +183,9 @@
   border-radius: 10px 10px 0 0;
 }
 
-.camera-translation-floating .translation-grid,
-.camera-translation-floating .separator,
-.camera-translation-floating .rotation-controls {
+.isometries-panel .translation-grid,
+.isometries-panel .separator,
+.isometries-panel .rotation-controls {
   opacity: 0;
   pointer-events: none;
   overflow: hidden;
@@ -193,35 +193,35 @@
   transition: opacity 0.3s;
 }
 
-.camera-translation-floating:hover {
+.isometries-panel:hover {
   height: auto !important; /* Laisse le layout naturel gérer la hauteur dépliée */
 }
 
-.camera-translation-floating:hover .translation-grid,
-.camera-translation-floating:hover .separator,
-.camera-translation-floating:hover .rotation-controls {
+.isometries-panel:hover .translation-grid,
+.isometries-panel:hover .separator,
+.isometries-panel:hover .rotation-controls {
   opacity: 1;
   pointer-events: auto;
 }
 
 /* En mode 2D (disabled), tout reste visible mais grisé et inactif */
-.camera-translation-floating.disabled .translation-grid,
-.camera-translation-floating.disabled .rotation-controls,
-.camera-translation-floating.disabled .separator {
+.isometries-panel.disabled .translation-grid,
+.isometries-panel.disabled .rotation-controls,
+.isometries-panel.disabled .separator {
   filter: grayscale(100%);
 }
 
-.camera-translation-floating.disabled button,
-.camera-translation-floating.disabled .translation-grid *,
-.camera-translation-floating.disabled .rotation-controls *,
-.camera-translation-floating.disabled .separator {
+.isometries-panel.disabled button,
+.isometries-panel.disabled .translation-grid *,
+.isometries-panel.disabled .rotation-controls *,
+.isometries-panel.disabled .separator {
   cursor: not-allowed !important;
   pointer-events: none !important;
 }
 
 /* === GRID TRANSLATION === */
 
-.camera-translation-floating .translation-grid {
+.isometries-panel .translation-grid {
   display: grid;
   grid-template-columns: repeat(3, 20px);
   grid-template-rows: repeat(3, 20px);
@@ -229,7 +229,7 @@
   padding: 8px;
 }
 
-.camera-translation-floating .translation-grid button {
+.isometries-panel .translation-grid button {
   width: 20px;
   height: 20px;
   border: 1px solid #bdc3c7;
@@ -245,25 +245,25 @@
   margin: 0;
 }
 
-.camera-translation-floating .translation-grid button:hover {
+.isometries-panel .translation-grid button:hover {
   background: #3498db;
   color: white;
   border-color: #2980b9;
   transform: scale(1.1);
 }
 
-.camera-translation-floating .translation-grid button:active {
+.isometries-panel .translation-grid button:active {
   transform: scale(0.95);
   background: #2980b9;
 }
 
-.camera-translation-floating #camCenter {
+.isometries-panel #camCenter {
   background: #e74c3c;
   color: white;
   border-color: #c0392b;
 }
 
-.camera-translation-floating #camCenter:hover {
+.isometries-panel #camCenter:hover {
   background: #c0392b;
   transform: scale(1.15);
 }
@@ -412,7 +412,7 @@
 }
 
 /* En 3D, au survol, l'overlay passe derrière les boutons */
-.camera-translation-floating:not(.disabled):hover .move-overlay {
+.isometries-panel:not(.disabled):hover .move-overlay {
   z-index: -1;
 } 
 
@@ -429,27 +429,35 @@
   user-select: none;
 } 
 
-.camera-translation-floating.locked,
-.camera-translation-floating.dragging,
-.camera-translation-floating:hover {
+.isometries-panel.locked,
+.isometries-panel.dragging,
+.isometries-panel:hover {
   height: 206px !important;
   min-height: 206px !important;
   max-height: 206px !important;
   overflow: visible !important;
 } 
 
-.camera-translation-floating.locked .translation-grid,
-.camera-translation-floating.locked .separator,
-.camera-translation-floating.locked .rotation-controls,
-.camera-translation-floating.dragging .translation-grid,
-.camera-translation-floating.dragging .separator,
-.camera-translation-floating.dragging .rotation-controls,
-.camera-translation-floating:hover .translation-grid,
-.camera-translation-floating:hover .separator,
-.camera-translation-floating:hover .rotation-controls {
+.isometries-panel.locked .translation-grid,
+.isometries-panel.locked .separator,
+.isometries-panel.locked .rotation-controls,
+.isometries-panel.dragging .translation-grid,
+.isometries-panel.dragging .separator,
+.isometries-panel.dragging .rotation-controls,
+.isometries-panel:hover .translation-grid,
+.isometries-panel:hover .separator,
+.isometries-panel:hover .rotation-controls {
   opacity: 1 !important;
   transform: scale(1) !important;
   max-height: none !important;
   pointer-events: auto !important;
   transition: none !important;
 } 
+
+.isometries-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+} 
+
+/* Retrait du debug visuel sur les enfants du panneau isométrique */ 

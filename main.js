@@ -1305,8 +1305,8 @@ function render() {
   // 🎯 Dessiner le trièdre en premier (derrière les tuiles) si le panneau isométrique est survolé
   // CORRECTION: Désactiver tous les effets de rollover en mode plane
   const isPlaneMode = window.currentSurface === 'plane';
-  const cameraTranslationFloating = document.getElementById('cameraTranslationFloating');
-  const isIsometricPanelHovered = !isPlaneMode && cameraTranslationFloating && cameraTranslationFloating.matches(':hover');
+  const isometriesPanel = document.getElementById('isometriesPanel');
+  const isIsometricPanelHovered = !isPlaneMode && isometriesPanel && isometriesPanel.matches(':hover');
   
   // DEBUG: État du panneau isométrique
   pd('render', 'main.js', `🔍 DEBUG ISOMETRIC PANEL: isHovered=${isIsometricPanelHovered}, planeMode=${isPlaneMode}`);
@@ -1399,8 +1399,8 @@ function render() {
       } else {
         // Vérifier si le panneau isométrique est survolé (rollover)
         // CORRECTION: Désactiver la transparence des tuiles en mode plane
-        const cameraTranslationFloating = document.getElementById('cameraTranslationFloating');
-        const isIsometricPanelHovered = !isPlaneMode && cameraTranslationFloating && cameraTranslationFloating.matches(':hover');
+        const isometriesPanel = document.getElementById('isometriesPanel');
+        const isIsometricPanelHovered = !isPlaneMode && isometriesPanel && isometriesPanel.matches(':hover');
         const transparency = isIsometricPanelHovered ? 0.5 : 1.0; // Alpha 0.5 pour les tuiles au rollover (seulement en 3D)
         
         // DEBUG: Log seulement pour la première tuile pour éviter le spam
@@ -1576,15 +1576,15 @@ function startAnimation() {
 let isInterfaceDragging = false;
 let dragOffset = { x: 0, y: 0 };
 
-const floatingInterface = document.getElementById('cameraTranslationFloating');
-const dragHandle = floatingInterface.querySelector('.drag-handle');
+const isometriesPanel = document.getElementById('isometriesPanel');
+const dragHandle = isometriesPanel.querySelector('.drag-handle');
 
 // Gestionnaire pour le drag uniquement (plus de clic pour ouvrir/fermer)
 // Le panneau s'ouvre/ferme automatiquement au survol
 
 // Gestionnaire de survol pour forcer le rendu
 // CORRECTION: Désactiver les effets de rollover en mode plane
-floatingInterface.addEventListener('mouseenter', () => {
+isometriesPanel.addEventListener('mouseenter', () => {
   const isPlaneMode = window.currentSurface === 'plane';
   if (!isPlaneMode) {
     pd('isometricPanel', 'main.js', '🔓 Panneau isométrique survolé - trièdre visible');
@@ -1594,7 +1594,7 @@ floatingInterface.addEventListener('mouseenter', () => {
   requestAnimationFrame(render);
 });
 
-floatingInterface.addEventListener('mouseleave', () => {
+isometriesPanel.addEventListener('mouseleave', () => {
   const isPlaneMode = window.currentSurface === 'plane';
   if (!isPlaneMode) {
     pd('isometricPanel', 'main.js', '🔒 Panneau isométrique quitté - trièdre caché');
@@ -1608,7 +1608,7 @@ dragHandle.addEventListener('mousedown', (e) => {
   isInterfaceDragging = true;
   
   // Positionner instantanément le div sous la souris (coordonnées globales)
-  const container = floatingInterface.parentElement;
+  const container = isometriesPanel.parentElement;
   const containerRect = container.getBoundingClientRect();
   
   // Position de la souris relative au container
@@ -1616,8 +1616,8 @@ dragHandle.addEventListener('mousedown', (e) => {
   const mouseY = e.clientY - containerRect.top;
   
   // Positionner les ⋮⋮⋮ sous la souris (pas le centre de la div)
-  const interfaceWidth = floatingInterface.offsetWidth;
-  const interfaceHeight = floatingInterface.offsetHeight;
+  const interfaceWidth = isometriesPanel.offsetWidth;
+  const interfaceHeight = isometriesPanel.offsetHeight;
   const handleHeight = dragHandle.offsetHeight;
   
   dragOffset.x = interfaceWidth / 2;  // Centre horizontal
@@ -1645,13 +1645,13 @@ dragHandle.addEventListener('mousedown', (e) => {
   const constrainedX = constrainedDragX - dragOffset.x;
   const constrainedY = constrainedDragY - dragOffset.y;
   
-  floatingInterface.style.left = constrainedX + 'px';
-  floatingInterface.style.top = constrainedY + 'px';
-  floatingInterface.style.right = 'auto';
-  floatingInterface.style.bottom = 'auto';
+  isometriesPanel.style.left = constrainedX + 'px';
+  isometriesPanel.style.top = constrainedY + 'px';
+  isometriesPanel.style.right = 'auto';
+  isometriesPanel.style.bottom = 'auto';
   
   // Ajouter classe de drag pour animation
-  floatingInterface.classList.add('dragging');
+  isometriesPanel.classList.add('dragging');
   
   // Empêcher la sélection de texte
   e.preventDefault();
@@ -1662,7 +1662,7 @@ document.addEventListener('mousemove', (e) => {
   
   // Optimisation: utiliser requestAnimationFrame pour éviter les ralentissements
   requestAnimationFrame(() => {
-    const container = floatingInterface.parentElement;
+    const container = isometriesPanel.parentElement;
     const containerRect = container.getBoundingClientRect();
     
     // Position de la souris relative au container
@@ -1691,10 +1691,10 @@ document.addEventListener('mousemove', (e) => {
     const constrainedX = constrainedDragX - dragOffset.x;
     const constrainedY = constrainedDragY - dragOffset.y;
     
-    floatingInterface.style.left = constrainedX + 'px';
-    floatingInterface.style.top = constrainedY + 'px';
-    floatingInterface.style.right = 'auto';
-    floatingInterface.style.bottom = 'auto';
+    isometriesPanel.style.left = constrainedX + 'px';
+    isometriesPanel.style.top = constrainedY + 'px';
+    isometriesPanel.style.right = 'auto';
+    isometriesPanel.style.bottom = 'auto';
   });
 });
 
@@ -1703,7 +1703,7 @@ document.addEventListener('mouseup', () => {
     isInterfaceDragging = false;
     
     // Retirer classe de drag pour restaurer les transitions
-    floatingInterface.classList.remove('dragging');
+    isometriesPanel.classList.remove('dragging');
   }
 });
 
@@ -1856,9 +1856,9 @@ export function refreshProjectionTitle() {
 
   // Gérer l'état de l'interface en fonction du mode plane/3D
   const is2D = window.currentSurface === 'plane';
-  const cameraTranslationFloating = document.getElementById('cameraTranslationFloating');
-  if (cameraTranslationFloating) {
-    cameraTranslationFloating.classList.toggle('disabled', is2D);
+  const isometriesPanel = document.getElementById('isometriesPanel');
+  if (isometriesPanel) {
+    isometriesPanel.classList.toggle('disabled', is2D);
   }
   
   console.log('[DEBUG] refreshProjectionTitle === FIN ===');
@@ -3075,9 +3075,9 @@ function cleanCsv(csvText) {
 
 function updateCameraControlsState() {
   const is2D = window.currentSurface === 'plane';
-  const cameraTranslationFloating = document.getElementById('cameraTranslationFloating');
-  if (cameraTranslationFloating) {
-    cameraTranslationFloating.classList.toggle('disabled', is2D);
+  const isometriesPanel = document.getElementById('isometriesPanel');
+  if (isometriesPanel) {
+    isometriesPanel.classList.toggle('disabled', is2D);
   }
 
   // Activer/Désactiver l'overlay en même temps
